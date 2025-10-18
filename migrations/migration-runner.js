@@ -1,0 +1,343 @@
+const { Pool } = require("pg");
+const fs = require("fs");
+const path = require("path");
+const winston = require("winston");
+
+// Carregar variáveis de ambiente
+require("dotenv").config();
+
+// Configuração do logger
+const logger = winston.createLogger({
+  level: "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    }),
+  ],
+});
+
+// Configuração do banco de dados
+const dbConfig = {
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT) || 5432,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+  connectionTimeoutMillis: 30000,
+  idleTimeoutMillis: 30000,
+  max: 5,
+};
+
+class MigrationRunner {
+  constructor() {
+    this.pool = new Pool(dbConfig);
+    this.migrationsDir = __dirname;
+  }
+
+  /**
+   * Cria a tabela de controle de migrations se não existir
+   */
+  async createMigrationsTable() {
+    const query = `
+      CREATE TABLE IF NOT EXISTS migrations (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_migrations_name ON migrations(name);
+    `;
+
+    try {
+      await this.pool.query(query);
+      logger.info("Tabela de migrations criada/verificada com sucesso");
+    } catch (error) {
+      logger.error("Erro ao criar tabela de migrations:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém lista de migrations executadas
+   */
+  async getExecutedMigrations() {
+    try {
+      const result = await this.pool.query(
+        "SELECT name FROM migrations ORDER BY executed_at ASC"
+      );
+      return result.rows.map((row) => row.name);
+    } catch (error) {
+      logger.error("Erro ao buscar migrations executadas:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém lista de arquivos de migration disponíveis
+   */
+  getMigrationFiles() {
+    try {
+      const files = fs
+        .readdirSync(this.migrationsDir)
+        .filter(
+          (file) => file.endsWith(".js") && file !== "migration-runner.js"
+        )
+        .sort();
+
+      return files;
+    } catch (error) {
+      logger.error("Erro ao ler arquivos de migration:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Executa uma migration específica
+   */
+  async executeMigration(migrationFile) {
+    const migrationPath = path.join(this.migrationsDir, migrationFile);
+    const migrationName = path.basename(migrationFile, ".js");
+
+    try {
+      // Importa o arquivo de migration
+      delete require.cache[require.resolve(migrationPath)];
+      const migration = require(migrationPath);
+
+      logger.info(`Executando migration: ${migrationName}`);
+
+      // Executa a migration dentro de uma transação
+      const client = await this.pool.connect();
+
+      try {
+        await client.query("BEGIN");
+
+        // Executa o método up da migration
+        await migration.up(client);
+
+        // Registra a migration como executada
+        await client.query("INSERT INTO migrations (name) VALUES ($1)", [
+          migrationName,
+        ]);
+
+        await client.query("COMMIT");
+        logger.info(`Migration ${migrationName} executada com sucesso`);
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      logger.error(`Erro ao executar migration ${migrationName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reverte uma migration específica
+   */
+  async rollbackMigration(migrationFile) {
+    const migrationPath = path.join(this.migrationsDir, migrationFile);
+    const migrationName = path.basename(migrationFile, ".js");
+
+    try {
+      // Importa o arquivo de migration
+      delete require.cache[require.resolve(migrationPath)];
+      const migration = require(migrationPath);
+
+      if (!migration.down) {
+        throw new Error(
+          `Migration ${migrationName} não possui método down() para rollback`
+        );
+      }
+
+      logger.info(`Revertendo migration: ${migrationName}`);
+
+      // Executa o rollback dentro de uma transação
+      const client = await this.pool.connect();
+
+      try {
+        await client.query("BEGIN");
+
+        // Executa o método down da migration
+        await migration.down(client);
+
+        // Remove o registro da migration
+        await client.query("DELETE FROM migrations WHERE name = $1", [
+          migrationName,
+        ]);
+
+        await client.query("COMMIT");
+        logger.info(`Migration ${migrationName} revertida com sucesso`);
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      logger.error(`Erro ao reverter migration ${migrationName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Executa todas as migrations pendentes
+   */
+  async runPendingMigrations() {
+    try {
+      await this.createMigrationsTable();
+
+      const executedMigrations = await this.getExecutedMigrations();
+      const migrationFiles = this.getMigrationFiles();
+
+      const pendingMigrations = migrationFiles.filter(
+        (file) => !executedMigrations.includes(path.basename(file, ".js"))
+      );
+
+      if (pendingMigrations.length === 0) {
+        logger.info("Nenhuma migration pendente encontrada");
+        return;
+      }
+
+      logger.info(
+        `Executando ${pendingMigrations.length} migration(s) pendente(s)`
+      );
+
+      for (const migrationFile of pendingMigrations) {
+        await this.executeMigration(migrationFile);
+      }
+
+      logger.info("Todas as migrations foram executadas com sucesso");
+    } catch (error) {
+      logger.error("Erro ao executar migrations:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reverte a última migration executada
+   */
+  async rollbackLastMigration() {
+    try {
+      await this.createMigrationsTable();
+
+      const executedMigrations = await this.getExecutedMigrations();
+
+      if (executedMigrations.length === 0) {
+        logger.info("Nenhuma migration para reverter");
+        return;
+      }
+
+      const lastMigration = executedMigrations[executedMigrations.length - 1];
+      const migrationFile = `${lastMigration}.js`;
+
+      await this.rollbackMigration(migrationFile);
+    } catch (error) {
+      logger.error("Erro ao reverter migration:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mostra o status das migrations
+   */
+  async showStatus() {
+    try {
+      await this.createMigrationsTable();
+
+      const executedMigrations = await this.getExecutedMigrations();
+      const migrationFiles = this.getMigrationFiles();
+
+      console.log("\n📊 STATUS DAS MIGRATIONS");
+      console.log("========================\n");
+
+      if (migrationFiles.length === 0) {
+        console.log("Nenhum arquivo de migration encontrado.\n");
+        return;
+      }
+
+      migrationFiles.forEach((file) => {
+        const migrationName = path.basename(file, ".js");
+        const isExecuted = executedMigrations.includes(migrationName);
+        const status = isExecuted ? "✅ EXECUTADA" : "⏳ PENDENTE";
+
+        console.log(`${status} - ${migrationName}`);
+      });
+
+      console.log(`\nTotal: ${migrationFiles.length} migrations`);
+      console.log(`Executadas: ${executedMigrations.length}`);
+      console.log(
+        `Pendentes: ${migrationFiles.length - executedMigrations.length}\n`
+      );
+    } catch (error) {
+      logger.error("Erro ao verificar status:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fecha o pool de conexões
+   */
+  async close() {
+    await this.pool.end();
+  }
+}
+
+// CLI Interface
+async function main() {
+  const command = process.argv[2];
+  const runner = new MigrationRunner();
+
+  try {
+    switch (command) {
+      case "up":
+        await runner.runPendingMigrations();
+        break;
+
+      case "down":
+        await runner.rollbackLastMigration();
+        break;
+
+      case "status":
+        await runner.showStatus();
+        break;
+
+      default:
+        console.log(`
+🚀 MIGRATION RUNNER - API Polox
+
+Comandos disponíveis:
+  
+  npm run migrate           - Executa migrations pendentes
+  npm run migrate:rollback  - Reverte última migration
+  npm run migrate:status    - Mostra status das migrations
+
+Ou diretamente:
+  node migrations/migration-runner.js up
+  node migrations/migration-runner.js down  
+  node migrations/migration-runner.js status
+        `);
+    }
+  } catch (error) {
+    logger.error("Erro:", error);
+    process.exit(1);
+  } finally {
+    await runner.close();
+  }
+}
+
+// Executa apenas se chamado diretamente
+if (require.main === module) {
+  main();
+}
+
+module.exports = MigrationRunner;

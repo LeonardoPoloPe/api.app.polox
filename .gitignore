@@ -1,0 +1,112 @@
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage
+.grunt
+
+# node-woven
+.lock-wscript
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Serverless directories
+.serverless
+.serverless_plugins/
+.webpack/
+serverless-*.log
+
+# Package lock files (para projetos serverless)
+package-lock.json
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+
+# Testes internos - arquivos de teste não devem ir para produção
+testes-internos/
+test-*.js
+*.test.js
+tests/
+__tests__/
+
+# VS Code
+.vscode/
+
+# IDE files
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# AWS
+.aws/
+
+# Temporary files
+tmp/
+temp/
+
+# Build outputs
+dist/
+build/
+
+# Jest coverage
+coverage/
+
+# ESLint cache
+.eslintcache
+
+setup_databases.sql
+
+sql/
+.env.example
+
+# Documentação que pode conter informações sensíveis - específico por arquivo
+docs/AWS_SETUP_INSTRUCTIONS.md
+docs/README.md
+
+# Arquivo com informações sensíveis (redundância de segurança)
+docs/naocompartilhar/*
+docs/naocompartilhar/
+.naocompartilhar
+docs/.naocompartilhar
+
+# Relatório de segurança (pode conter informações internas sensíveis)
+docs/RELATORIO_SEGURANCA.md

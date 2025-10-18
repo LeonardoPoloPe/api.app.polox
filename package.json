@@ -1,0 +1,61 @@
+{
+  "name": "api-app-polox",
+  "version": "1.0.0",
+  "description": "Node.js Serverless API para AWS Lambda com PostgreSQL RDS",
+  "main": "src/handler.js",
+  "scripts": {
+    "dev": "serverless offline --stage dev",
+    "test": "jest",
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:sandbox": "serverless deploy --stage sandbox",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove:dev": "serverless remove --stage dev",
+    "remove:sandbox": "serverless remove --stage sandbox",
+    "remove:prod": "serverless remove --stage prod",
+    "logs:dev": "serverless logs -f api --stage dev --tail",
+    "logs:sandbox": "serverless logs -f api --stage sandbox --tail",
+    "logs:prod": "serverless logs -f api --stage prod --tail",
+    "migrate": "node migrations/migration-runner.js up",
+    "migrate:rollback": "node migrations/migration-runner.js down",
+    "migrate:status": "node migrations/migration-runner.js status",
+    "migrate:create": "node scripts/create-migration.js"
+  },
+  "dependencies": {
+    "aws-lambda": "^1.0.7",
+    "aws-sdk": "^2.1496.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
+    "serverless-http": "^3.2.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "serverless": "^3.38.0",
+    "serverless-dotenv-plugin": "^6.0.0",
+    "serverless-offline": "^13.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "serverless",
+    "aws",
+    "lambda",
+    "postgresql",
+    "rds",
+    "api",
+    "node.js"
+  ],
+  "author": "Polox Team",
+  "license": "MIT"
+}

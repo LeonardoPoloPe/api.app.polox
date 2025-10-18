@@ -1,0 +1,123 @@
+service: api-app-polox
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: sa-east-1
+  stage: ${opt:stage, 'dev'}
+  timeout: 15
+  memorySize: 512
+  environment:
+    NODE_ENV: ${self:provider.stage}
+    DB_HOST: ${env:DB_HOST, ssm:/polox/${self:provider.stage}/db/host~true}
+    DB_PORT: 5432
+    DB_NAME: ${self:custom.dbConfig.${self:provider.stage}.dbName}
+    DB_USER: ${self:custom.dbConfig.${self:provider.stage}.dbUser}
+    # Para desenvolvimento local, usa .env; para deploy AWS, usa SSM
+    DB_PASSWORD: ${env:DB_PASSWORD, ssm:/polox/${self:provider.stage}/db/password~true}
+    JWT_SECRET: ${env:JWT_SECRET, ssm:/polox/${self:provider.stage}/jwt/secret~true}
+    TZ: America/Sao_Paulo
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+            - ssm:GetParametersByPath
+          Resource:
+            - arn:aws:ssm:${aws:region}:${aws:accountId}:parameter/polox/${self:provider.stage}/*
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource:
+            - arn:aws:secretsmanager:${aws:region}:${aws:accountId}:secret:polox/${self:provider.stage}/*
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+
+custom:
+  dbConfig:
+    dev:
+      dbName: app_polox_dev
+      dbUser: polox_dev_user
+    sandbox:
+      dbName: app_polox_sandbox
+      dbUser: polox_sandbox_user
+    prod:
+      dbName: app_polox_prod
+      dbUser: polox_prod_user
+
+  serverless-offline:
+    httpPort: 3000
+    host: localhost
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+functions:
+  api:
+    handler: src/handler.handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors:
+            origin: "*"
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      - http:
+          path: /
+          method: ANY
+          cors:
+            origin: "*"
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+resources:
+  Resources:
+    # VPC Endpoint para RDS se necessário
+    PoloxLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/api-app-polox-${self:provider.stage}-api
+        RetentionInDays: 30
+
+  Outputs:
+    ApiEndpoint:
+      Description: API Gateway endpoint URL
+      Value:
+        Fn::Join:
+          - ""
+          - - "https://"
+            - Ref: RestApiApigEvent
+            - ".execute-api."
+            - ${aws:region}
+            - ".amazonaws.com/"
+            - ${self:provider.stage}
+
+    DatabaseHost:
+      Description: RDS Database Host
+      Value: ${self:provider.environment.DB_HOST}
+
+    DatabaseName:
+      Description: Database Name for this stage
+      Value: ${self:provider.environment.DB_NAME}
