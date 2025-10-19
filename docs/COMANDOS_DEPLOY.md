@@ -157,8 +157,8 @@ NODE_ENV=dev
 DB_HOST=database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
 DB_NAME=app_polox_dev
 DB_USER=polox_dev_user
-DB_PASSWORD=SenhaSeguraDev123!
-JWT_SECRET=jwt_secret_dev_polox_2024_secure_key_development
+DB_PASSWORD=[CONFIGURADO VIA AWS SSM]
+JWT_SECRET=[CONFIGURADO VIA AWS SSM]
 ```
 
 ### **SANDBOX**
@@ -167,8 +167,8 @@ NODE_ENV=sandbox
 DB_HOST=database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
 DB_NAME=app_polox_sandbox
 DB_USER=polox_sandbox_user
-DB_PASSWORD=PoloxHjdfhrhcvfBCSsgdo2x12
-JWT_SECRET=jwt_secret_sandbox_polox_2024_secure_key_testing
+DB_PASSWORD=[CONFIGURADO VIA AWS SSM]
+JWT_SECRET=[CONFIGURADO VIA AWS SSM]
 ```
 
 ### **PRODUÇÃO**
@@ -177,8 +177,8 @@ NODE_ENV=prod
 DB_HOST=polox-app-proxy.proxy-cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
 DB_NAME=app_polox_prod
 DB_USER=polox_prod_user
-DB_PASSWORD=Hsagasdbghnsafdnjsgvdlknfg
-JWT_SECRET=jwt_secret_prod_polox_2024_secure_key_production
+DB_PASSWORD=[CONFIGURADO VIA AWS SSM]
+JWT_SECRET=[CONFIGURADO VIA AWS SSM]
 ```
 
 ---

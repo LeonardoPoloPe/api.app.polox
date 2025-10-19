@@ -135,7 +135,7 @@ POST /api/auth/login
 ### 3. **Usando Token:**
 
 ```bash
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer [SEU_JWT_TOKEN_AQUI]
 ```
 
 ---
