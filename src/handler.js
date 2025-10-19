@@ -204,12 +204,16 @@ const initializeDatabase = async () => {
       logger.info("Inicializando conexão com banco de dados...");
       await initializePool();
 
-      // Executar migrations automaticamente
-      logger.info("Executando migrations...");
-      const MigrationRunner = require("../migrations/migration-runner");
-      const migrationRunner = new MigrationRunner();
-      await migrationRunner.runPendingMigrations();
-      await migrationRunner.close();
+      // Executar migrations automaticamente (apenas se não estiver skipando)
+      if (process.env.SKIP_MIGRATIONS !== 'true') {
+        logger.info("Executando migrations...");
+        const MigrationRunner = require("../migrations/migration-runner");
+        const migrationRunner = new MigrationRunner();
+        await migrationRunner.runPendingMigrations();
+        await migrationRunner.close();
+      } else {
+        logger.info("Migrations puladas (SKIP_MIGRATIONS=true)");
+      }
 
       isDbInitialized = true;
       logger.info("Banco de dados inicializado com sucesso");

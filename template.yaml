@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: API Polox - Serverless Node.js API
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, sandbox, prod]
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 1024
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Stage
+        DB_HOST: database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
+        DB_PROXY_HOST: polox-rds-proxy.proxy-cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
+        DB_PORT: 5432
+        DB_NAME: !Sub 'app_polox_${Stage}'
+        DB_USER: !Sub 'polox_${Stage}_user'
+        DB_PASSWORD: SenhaSeguraDev123!
+        JWT_SECRET: jwt_secret_dev_polox_2024_secure_key_development
+        TZ: America/Sao_Paulo
+        # Desabilitar migrations na inicialização da Lambda
+        SKIP_MIGRATIONS: true
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/handler.handler
+      Events:
+        ApiProxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PoloxRestApi
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PoloxRestApi
+            Path: /
+            Method: ANY
+
+  PoloxRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${PoloxRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/'
+  
+  DatabaseHost:
+    Description: RDS Database Host
+    Value: database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
