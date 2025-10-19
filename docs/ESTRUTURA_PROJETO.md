@@ -57,7 +57,7 @@ DB_PROXY_HOST: polox-app-proxy.proxy-cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
 DB_PORT: 5432
 DB_NAME: app_polox_{stage}
 DB_USER: polox_{stage}_user
-DB_PASSWORD: SenhaSeguraDev123!
+DB_PASSWORD: [CONFIGURADO VIA AWS SSM]
 SKIP_MIGRATIONS: true
 ```
 
