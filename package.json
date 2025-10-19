@@ -2,7 +2,7 @@
   "name": "api-app-polox",
   "version": "1.0.0",
   "description": "Node.js Serverless API para AWS Lambda com PostgreSQL RDS",
-  "main": "src/handler.js",
+  "main": "src/handler.js", 
   "scripts": {
     "dev": "serverless offline --stage dev",
     "test": "jest",
