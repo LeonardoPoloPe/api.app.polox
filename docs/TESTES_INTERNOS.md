@@ -42,7 +42,7 @@ DB_HOST=database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
 DB_PORT=5432
 DB_NAME=app_polox_dev
 DB_USER=polox_dev_user
-DB_PASSWORD=sua_senha_dev_aqui
+DB_PASSWORD=[CONFIGURADO VIA AWS SSM]
 ```
 
 ⚠️ **IMPORTANTE**:
