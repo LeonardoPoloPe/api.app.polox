@@ -1,5 +1,6 @@
 const { Pool } = require("pg");
 const winston = require("winston");
+const { getCurrentSSLConfig } = require("../config/ssl-config");
 
 // Configuração do logger
 const logger = winston.createLogger({
@@ -16,16 +17,25 @@ const logger = winston.createLogger({
   ],
 });
 
+// Determina qual host usar baseado no ambiente
+const getDbHost = () => {
+  if (process.env.NODE_ENV === 'prod') {
+    // Usar RDS Proxy em produção
+    return 'polox-app-proxy.proxy-cd2em8e0a6ot.sa-east-1.rds.amazonaws.com';
+  } else {
+    // Usar conexão direta para dev, sandbox e outros ambientes
+    return process.env.DB_HOST || 'database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com';
+  }
+};
+
 // Configuração do banco de dados baseada nas variáveis de ambiente
 const dbConfig = {
-  host: process.env.DB_HOST,
+  host: getDbHost(),
   port: parseInt(process.env.DB_PORT) || 5432,
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: getCurrentSSLConfig(), // ✅ Configuração SSL segura e flexível
   // Configurações de pool para Lambda
   max: 5, // Máximo de conexões
   min: 0, // Mínimo de conexões
@@ -48,6 +58,14 @@ let pool = null;
 const initializePool = () => {
   if (!pool) {
     try {
+      // Log do host sendo usado para debugging
+      logger.info(`Configurando conexão PostgreSQL:`, {
+        environment: process.env.NODE_ENV || 'development',
+        host: dbConfig.host,
+        database: dbConfig.database,
+        usingProxy: process.env.NODE_ENV === 'prod'
+      });
+
       pool = new Pool(dbConfig);
 
       // Event listeners para monitoramento

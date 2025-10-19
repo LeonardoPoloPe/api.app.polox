@@ -110,3 +110,8 @@ docs/.naocompartilhar
 
 # Relatório de segurança (pode conter informações internas sensíveis)
 docs/RELATORIO_SEGURANCA.md
+
+# Certificados SSL (embora sejam públicos, fica mais limpo baixá-los no deploy)
+src/config/ssl/*.pem
+src/config/ssl/*.crt
+src/config/ssl/*.key

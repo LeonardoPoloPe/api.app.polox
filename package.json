@@ -18,7 +18,9 @@
     "migrate": "node migrations/migration-runner.js up",
     "migrate:rollback": "node migrations/migration-runner.js down",
     "migrate:status": "node migrations/migration-runner.js status",
-    "migrate:create": "node scripts/create-migration.js"
+    "migrate:create": "node scripts/create-migration.js",
+    "setup:ssl": "bash scripts/setup-ssl.sh",
+    "postinstall": "npm run setup:ssl"
   },
   "dependencies": {
     "aws-lambda": "^1.0.7",
