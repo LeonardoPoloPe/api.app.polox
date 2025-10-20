@@ -1,0 +1,29 @@
+{
+  "testEnvironment": "node",
+  "testMatch": [
+    "**/tests/**/*.test.js",
+    "**/__tests__/**/*.test.js",
+    "**/?(*.)+(spec|test).js"
+  ],
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "/dist/"
+  ],
+  "collectCoverage": false,
+  "collectCoverageFrom": [
+    "src/**/*.js",
+    "!src/handler.js",
+    "!src/server.js",
+    "!**/node_modules/**"
+  ],
+  "coverageReporters": [
+    "text",
+    "lcov",
+    "html"
+  ],
+  "coverageDirectory": "coverage",
+  "verbose": true,
+  "setupFilesAfterEnv": [
+    "<rootDir>/tests/setup.js"
+  ]
+}

@@ -1,18 +1,24 @@
+/**
+ * ==========================================
+ * 🛡️ VALIDAÇÕES ENTERPRISE
+ * ==========================================
+ */
+
 const Joi = require("joi");
-const { logger } = require("../models");
+const { logger } = require("../utils/logger");
 
 /**
- * Schemas de validação para usuários
+ * 🔐 Schemas de validação para autenticação enterprise
  */
-const userValidationSchemas = {
+const authValidationSchemas = {
   register: Joi.object({
-    name: Joi.string().min(2).max(100).required().messages({
+    name: Joi.string().min(2).max(100).trim().required().messages({
       "string.min": "Nome deve ter pelo menos 2 caracteres",
       "string.max": "Nome deve ter no máximo 100 caracteres",
       "any.required": "Nome é obrigatório",
     }),
 
-    email: Joi.string().email().required().messages({
+    email: Joi.string().email().lowercase().required().messages({
       "string.email": "Email deve ter um formato válido",
       "any.required": "Email é obrigatório",
     }),
@@ -31,10 +37,35 @@ const userValidationSchemas = {
           "Senha deve conter pelo menos: 1 letra minúscula, 1 maiúscula, 1 número e 1 caractere especial",
         "any.required": "Senha é obrigatória",
       }),
+
+    companyId: Joi.string().uuid().required().messages({
+      "string.uuid": "ID da empresa deve ser um UUID válido",
+      "any.required": "ID da empresa é obrigatório",
+    }),
+
+    role: Joi.string().valid('viewer', 'editor', 'admin', 'super_admin').default('viewer').messages({
+      "any.only": "Role deve ser: viewer, editor, admin ou super_admin",
+    }),
+
+    department: Joi.string().max(100).trim().allow(null, '').messages({
+      "string.max": "Departamento deve ter no máximo 100 caracteres",
+    }),
+
+    position: Joi.string().max(100).trim().allow(null, '').messages({
+      "string.max": "Posição deve ter no máximo 100 caracteres",
+    }),
+
+    phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).allow(null, '').messages({
+      "string.pattern.base": "Telefone deve estar no formato internacional (+5511999999999)",
+    }),
+
+    permissions: Joi.array().items(Joi.string()).default([]).messages({
+      "array.base": "Permissões devem ser um array de strings",
+    }),
   }),
 
   login: Joi.object({
-    email: Joi.string().email().required().messages({
+    email: Joi.string().email().lowercase().required().messages({
       "string.email": "Email deve ter um formato válido",
       "any.required": "Email é obrigatório",
     }),
@@ -42,41 +73,194 @@ const userValidationSchemas = {
     password: Joi.string().required().messages({
       "any.required": "Senha é obrigatória",
     }),
+
+    rememberMe: Joi.boolean().default(false).messages({
+      "boolean.base": "RememberMe deve ser um valor booleano",
+    }),
   }),
 
-  updateProfile: Joi.object({
-    name: Joi.string().min(2).max(100).messages({
-      "string.min": "Nome deve ter pelo menos 2 caracteres",
-      "string.max": "Nome deve ter no máximo 100 caracteres",
-    }),
-
-    email: Joi.string().email().messages({
-      "string.email": "Email deve ter um formato válido",
-    }),
-  })
-    .min(1)
-    .messages({
-      "object.min": "Pelo menos um campo deve ser fornecido para atualização",
-    }),
-
   refresh: Joi.object({
-    refresh_token: Joi.string().required().messages({
+    refreshToken: Joi.string().required().messages({
       "any.required": "Refresh token é obrigatório",
     }),
   }),
 
+  recoverPassword: Joi.object({
+    email: Joi.string().email().lowercase().required().messages({
+      "string.email": "Email deve ter um formato válido",
+      "any.required": "Email é obrigatório",
+    }),
+  }),
+
+  resetPassword: Joi.object({
+    token: Joi.string().required().messages({
+      "any.required": "Token de recuperação é obrigatório",
+    }),
+
+    newPassword: Joi.string()
+      .min(8)
+      .max(128)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
+      )
+      .required()
+      .messages({
+        "string.min": "Nova senha deve ter pelo menos 8 caracteres",
+        "string.max": "Nova senha deve ter no máximo 128 caracteres",
+        "string.pattern.base":
+          "Nova senha deve conter pelo menos: 1 letra minúscula, 1 maiúscula, 1 número e 1 caractere especial",
+        "any.required": "Nova senha é obrigatória",
+      }),
+  }),
+};
+
+/**
+ * 👥 Schemas de validação para usuários enterprise
+ */
+const userValidationSchemas = {
+  // Para compatibilidade com sistema legado
+  register: authValidationSchemas.register,
+  login: authValidationSchemas.login,
+  refresh: authValidationSchemas.refresh,
+
+  createUser: Joi.object({
+    name: Joi.string().min(2).max(100).trim().required().messages({
+      "string.min": "Nome deve ter pelo menos 2 caracteres",
+      "string.max": "Nome deve ter no máximo 100 caracteres",
+      "any.required": "Nome é obrigatório",
+    }),
+
+    email: Joi.string().email().lowercase().required().messages({
+      "string.email": "Email deve ter um formato válido",
+      "any.required": "Email é obrigatório",
+    }),
+
+    password: Joi.string()
+      .min(8)
+      .max(128)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
+      )
+      .required()
+      .messages({
+        "string.min": "Senha deve ter pelo menos 8 caracteres",
+        "string.max": "Senha deve ter no máximo 128 caracteres",
+        "string.pattern.base":
+          "Senha deve conter pelo menos: 1 letra minúscula, 1 maiúscula, 1 número e 1 caractere especial",
+        "any.required": "Senha é obrigatória",
+      }),
+
+    role: Joi.string().valid('viewer', 'editor', 'admin', 'super_admin').default('viewer').messages({
+      "any.only": "Role deve ser: viewer, editor, admin ou super_admin",
+    }),
+
+    department: Joi.string().max(100).trim().allow(null, '').messages({
+      "string.max": "Departamento deve ter no máximo 100 caracteres",
+    }),
+
+    position: Joi.string().max(100).trim().allow(null, '').messages({
+      "string.max": "Posição deve ter no máximo 100 caracteres",
+    }),
+
+    phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).allow(null, '').messages({
+      "string.pattern.base": "Telefone deve estar no formato internacional (+5511999999999)",
+    }),
+
+    permissions: Joi.array().items(Joi.string()).default([]).messages({
+      "array.base": "Permissões devem ser um array de strings",
+    }),
+  }),
+
+  updateUser: Joi.object({
+    name: Joi.string().min(2).max(100).trim().messages({
+      "string.min": "Nome deve ter pelo menos 2 caracteres",
+      "string.max": "Nome deve ter no máximo 100 caracteres",
+    }),
+
+    email: Joi.string().email().lowercase().messages({
+      "string.email": "Email deve ter um formato válido",
+    }),
+
+    role: Joi.string().valid('viewer', 'editor', 'admin', 'super_admin').messages({
+      "any.only": "Role deve ser: viewer, editor, admin ou super_admin",
+    }),
+
+    department: Joi.string().max(100).trim().allow(null, '').messages({
+      "string.max": "Departamento deve ter no máximo 100 caracteres",
+    }),
+
+    position: Joi.string().max(100).trim().allow(null, '').messages({
+      "string.max": "Posição deve ter no máximo 100 caracteres",
+    }),
+
+    phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).allow(null, '').messages({
+      "string.pattern.base": "Telefone deve estar no formato internacional (+5511999999999)",
+    }),
+
+    permissions: Joi.array().items(Joi.string()).messages({
+      "array.base": "Permissões devem ser um array de strings",
+    }),
+
+    isActive: Joi.boolean().messages({
+      "boolean.base": "IsActive deve ser um valor booleano",
+    }),
+
+    password: Joi.string()
+      .min(8)
+      .max(128)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
+      )
+      .messages({
+        "string.min": "Senha deve ter pelo menos 8 caracteres",
+        "string.max": "Senha deve ter no máximo 128 caracteres",
+        "string.pattern.base":
+          "Senha deve conter pelo menos: 1 letra minúscula, 1 maiúscula, 1 número e 1 caractere especial",
+      }),
+  }).min(1).messages({
+    "object.min": "Pelo menos um campo deve ser fornecido para atualização",
+  }),
+
+  updateProfile: Joi.object({
+    name: Joi.string().min(2).max(100).trim().messages({
+      "string.min": "Nome deve ter pelo menos 2 caracteres",
+      "string.max": "Nome deve ter no máximo 100 caracteres",
+    }),
+
+    email: Joi.string().email().lowercase().messages({
+      "string.email": "Email deve ter um formato válido",
+    }),
+
+    phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).allow(null, '').messages({
+      "string.pattern.base": "Telefone deve estar no formato internacional (+5511999999999)",
+    }),
+
+    password: Joi.string()
+      .min(8)
+      .max(128)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
+      )
+      .messages({
+        "string.min": "Senha deve ter pelo menos 8 caracteres",
+        "string.max": "Senha deve ter no máximo 128 caracteres",
+        "string.pattern.base":
+          "Senha deve conter pelo menos: 1 letra minúscula, 1 maiúscula, 1 número e 1 caractere especial",
+      }),
+  }).min(1).messages({
+    "object.min": "Pelo menos um campo deve ser fornecido para atualização",
+  }),
+
   getUserById: Joi.object({
-    id: Joi.number().integer().positive().required().messages({
-      "number.base": "ID deve ser um número",
-      "number.integer": "ID deve ser um número inteiro",
-      "number.positive": "ID deve ser um número positivo",
+    id: Joi.string().uuid().required().messages({
+      "string.uuid": "ID deve ser um UUID válido",
       "any.required": "ID é obrigatório",
     }),
   }),
 };
 
 /**
- * Schemas de validação para paginação
+ * 📄 Schemas de validação para paginação
  */
 const paginationSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1).messages({
@@ -94,7 +278,7 @@ const paginationSchema = Joi.object({
 });
 
 /**
- * Middleware para validação de request
+ * 🔧 Middleware para validação de request
  * @param {Joi.Schema} schema - Schema Joi para validação
  * @param {string} property - Propriedade do request para validar ('body', 'params', 'query')
  * @returns {Function} Middleware function
@@ -124,6 +308,7 @@ const validateRequest = (schema, property = "body") => {
         });
 
         return res.status(400).json({
+          success: false,
           error: "Dados inválidos",
           details: validationErrors,
           timestamp: new Date().toISOString(),
@@ -136,6 +321,7 @@ const validateRequest = (schema, property = "body") => {
     } catch (validationError) {
       logger.error("Erro interno na validação:", validationError);
       return res.status(500).json({
+        success: false,
         error: "Erro interno na validação",
         timestamp: new Date().toISOString(),
       });
@@ -144,7 +330,7 @@ const validateRequest = (schema, property = "body") => {
 };
 
 /**
- * Valida parâmetros de paginação
+ * 📄 Valida parâmetros de paginação
  * @param {Object} req - Request object
  * @param {Object} res - Response object
  * @param {Function} next - Next middleware function
@@ -162,6 +348,7 @@ const validatePagination = (req, res, next) => {
     }));
 
     return res.status(400).json({
+      success: false,
       error: "Parâmetros de paginação inválidos",
       details: validationErrors,
       timestamp: new Date().toISOString(),
@@ -174,7 +361,7 @@ const validatePagination = (req, res, next) => {
 };
 
 /**
- * Valida se um email tem formato válido
+ * 📧 Valida se um email tem formato válido
  * @param {string} email - Email para validar
  * @returns {boolean} True se o email for válido
  */
@@ -185,7 +372,7 @@ const isValidEmail = (email) => {
 };
 
 /**
- * Valida se uma senha atende aos critérios de segurança
+ * 🔒 Valida se uma senha atende aos critérios de segurança
  * @param {string} password - Senha para validar
  * @returns {Object} Objeto com isValid e detalhes dos erros
  */
@@ -204,7 +391,7 @@ const validatePassword = (password) => {
 };
 
 /**
- * Sanitiza dados removendo campos sensíveis
+ * 🧹 Sanitiza dados removendo campos sensíveis
  * @param {Object} data - Dados para sanitizar
  * @param {Array} fieldsToRemove - Campos a serem removidos
  * @returns {Object} Dados sanitizados
@@ -224,7 +411,7 @@ const sanitizeData = (data, fieldsToRemove = ["password", "password_hash"]) => {
 };
 
 /**
- * Formata dados de usuário removendo informações sensíveis
+ * 👤 Formata dados de usuário removendo informações sensíveis
  * @param {Object} user - Dados do usuário
  * @returns {Object} Usuário formatado
  */
@@ -235,13 +422,42 @@ const formatUser = (user) => {
 };
 
 /**
- * Formata resposta de paginação
+ * 🧹 SANITIZA OUTPUT DE USUÁRIO - Remove dados sensíveis
+ * @param {Object} user - Dados do usuário
+ * @returns {Object} Usuário sanitizado
+ */
+const sanitizeUserOutput = (user) => {
+  if (!user) return null;
+
+  const sanitized = { ...user };
+  
+  // Remove campos sensíveis
+  delete sanitized.password;
+  delete sanitized.password_hash;
+  delete sanitized.failed_attempts;
+  delete sanitized.locked_until;
+  
+  // Converte permissões de string para array se necessário
+  if (typeof sanitized.permissions === 'string') {
+    try {
+      sanitized.permissions = JSON.parse(sanitized.permissions);
+    } catch (e) {
+      sanitized.permissions = [];
+    }
+  }
+
+  return sanitized;
+};
+
+/**
+ * 📄 Formata resposta de paginação
  * @param {Array} data - Dados da página
  * @param {Object} pagination - Metadados de paginação
  * @returns {Object} Resposta formatada
  */
 const formatPaginatedResponse = (data, pagination) => {
   return {
+    success: true,
     data,
     pagination: {
       current_page: pagination.page,
@@ -255,14 +471,93 @@ const formatPaginatedResponse = (data, pagination) => {
   };
 };
 
+/**
+ * 🔍 VALIDAÇÃO DE DADOS DE USUÁRIO
+ * @param {Object} userData - Dados do usuário para validar
+ * @returns {Object} Resultado da validação
+ */
+const validateUserData = (userData) => {
+  const schema = userValidationSchemas.createUser;
+  const { error, value } = schema.validate(userData, {
+    abortEarly: false,
+    stripUnknown: true,
+    convert: true,
+  });
+
+  if (error) {
+    const errors = error.details.map((detail) => ({
+      field: detail.path.join("."),
+      message: detail.message,
+      value: detail.context?.value,
+    }));
+
+    return {
+      isValid: false,
+      errors,
+      value: null
+    };
+  }
+
+  return {
+    isValid: true,
+    errors: [],
+    value
+  };
+};
+
+/**
+ * 🔍 VALIDAÇÃO DE DADOS DE ATUALIZAÇÃO
+ * @param {Object} updateData - Dados de atualização para validar
+ * @returns {Object} Resultado da validação
+ */
+const validateUpdateData = (updateData) => {
+  const schema = userValidationSchemas.updateUser;
+  const { error, value } = schema.validate(updateData, {
+    abortEarly: false,
+    stripUnknown: true,
+    convert: true,
+  });
+
+  if (error) {
+    const errors = error.details.map((detail) => ({
+      field: detail.path.join("."),
+      message: detail.message,
+      value: detail.context?.value,
+    }));
+
+    return {
+      isValid: false,
+      errors,
+      value: null
+    };
+  }
+
+  return {
+    isValid: true,
+    errors: [],
+    value
+  };
+};
+
 module.exports = {
+  // Schemas
+  authValidationSchemas,
   userValidationSchemas,
   paginationSchema,
+  
+  // Middlewares
   validateRequest,
   validatePagination,
+  
+  // Validações básicas
   isValidEmail,
   validatePassword,
+  validateUserData,
+  validateUpdateData,
+  
+  // Sanitização e formatação
   sanitizeData,
   formatUser,
+  sanitizeUserOutput,
   formatPaginatedResponse,
 };
