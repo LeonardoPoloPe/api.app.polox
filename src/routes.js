@@ -1,11 +1,24 @@
+/**
+ * ==========================================
+ * 🛣️ ROTAS ENTERPRISE API POLOX
+ * ==========================================
+ */
+
 const express = require("express");
-const authController = require("./controllers/authController");
-const userController = require("./controllers/userController");
-const { authenticateToken } = require("./utils/auth");
+const AuthController = require("./controllers/authController");
+const UserController = require("./controllers/userController");
+
+// Middleware e validações
+const { authenticateToken } = require("./middleware/auth");
 const { validateRequest } = require("./utils/validation");
-const { userValidationSchemas } = require("./utils/validation");
+const { userValidationSchemas, authValidationSchemas } = require("./utils/validation");
+const { rateLimiter } = require("./middleware/rateLimiter");
+const { securityHeaders } = require("./middleware/security");
 
 const router = express.Router();
+
+// Aplicar middlewares de segurança
+router.use(securityHeaders);
 
 // Swagger/OpenAPI - apenas se habilitado
 const enableSwagger = process.env.ENABLE_SWAGGER === "true";
@@ -82,9 +95,9 @@ if (enableSwagger) {
  * @swagger
  * tags:
  *   - name: Authentication
- *     description: Operações de autenticação e autorização
+ *     description: Operações de autenticação e autorização enterprise
  *   - name: Users
- *     description: Operações relacionadas aos usuários
+ *     description: Operações de gerenciamento de usuários enterprise
  *   - name: Demo
  *     description: Rotas de demonstração e testes
  *   - name: Health
@@ -97,14 +110,14 @@ router.use((req, res, next) => {
   next();
 });
 
-// ========== ROTAS DE AUTENTICAÇÃO ==========
+// ========== 🔐 ROTAS DE AUTENTICAÇÃO ENTERPRISE ==========
 
 /**
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Registrar novo usuário
- *     description: Cria uma nova conta de usuário no sistema
+ *     summary: Registrar novo usuário enterprise
+ *     description: Cria uma nova conta de usuário com validações e auditoria enterprise
  *     tags: [Authentication]
  *     security: []
  *     requestBody:
@@ -112,39 +125,69 @@ router.use((req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserRegistration'
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *               - companyId
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: João Silva
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: joao@empresa.com
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: SenhaSegura123!
+ *               companyId:
+ *                 type: string
+ *                 format: uuid
+ *                 example: 123e4567-e89b-12d3-a456-426614174000
+ *               role:
+ *                 type: string
+ *                 enum: [viewer, editor, admin, super_admin]
+ *                 default: viewer
+ *               department:
+ *                 type: string
+ *                 example: TI
+ *               position:
+ *                 type: string
+ *                 example: Desenvolvedor
+ *               phone:
+ *                 type: string
+ *                 example: +5511999999999
+ *               permissions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["users:read", "reports:view"]
  *     responses:
  *       201:
  *         description: Usuário criado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
  *       400:
  *         description: Dados inválidos
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       409:
  *         description: Email já cadastrado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Empresa inativa ou role não permitida
  */
 router.post(
   "/auth/register",
-  validateRequest(userValidationSchemas.register),
-  authController.register
+  rateLimiter.auth,
+  validateRequest(authValidationSchemas.register),
+  AuthController.register
 );
 
 /**
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Fazer login
- *     description: Autentica o usuário e retorna um token JWT
+ *     summary: Login enterprise com segurança avançada
+ *     description: Autentica usuário com controle de tentativas, sessões e auditoria
  *     tags: [Authentication]
  *     security: []
  *     requestBody:
@@ -152,39 +195,78 @@ router.post(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserLogin'
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: admin@empresa.com
+ *               password:
+ *                 type: string
+ *                 example: MinhaSenh@123
+ *               rememberMe:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Manter sessão por mais tempo
  *     responses:
  *       200:
  *         description: Login realizado com sucesso
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     tokens:
+ *                       type: object
+ *                       properties:
+ *                         accessToken:
+ *                           type: string
+ *                         refreshToken:
+ *                           type: string
+ *                         expiresIn:
+ *                           type: string
+ *                         tokenType:
+ *                           type: string
+ *                     session:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         expiresAt:
+ *                           type: string
+ *                           format: date-time
+ *                         rememberMe:
+ *                           type: boolean
  *       401:
- *         description: Credenciais inválidas
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       400:
- *         description: Dados inválidos
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Credenciais inválidas ou conta bloqueada
+ *       423:
+ *         description: Conta temporariamente bloqueada
  */
 router.post(
   "/auth/login",
-  validateRequest(userValidationSchemas.login),
-  authController.login
+  rateLimiter.auth,
+  validateRequest(authValidationSchemas.login),
+  AuthController.login
 );
 
 /**
  * @swagger
  * /auth/refresh:
  *   post:
- *     summary: Renovar token
- *     description: Renova o token JWT usando o refresh token
+ *     summary: Renovar token de acesso
+ *     description: Renova access token usando refresh token válido
  *     tags: [Authentication]
  *     security: []
  *     requestBody:
@@ -198,94 +280,275 @@ router.post(
  *             properties:
  *               refreshToken:
  *                 type: string
- *                 description: Token de renovação
- *                 example: refresh_token_example_123456
+ *                 description: Token de renovação válido
+ *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *     responses:
  *       200:
  *         description: Token renovado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
  *       401:
- *         description: Refresh token inválido
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Refresh token inválido ou expirado
  */
 router.post(
   "/auth/refresh",
-  validateRequest(userValidationSchemas.refresh),
-  authController.refreshToken
+  rateLimiter.token,
+  validateRequest(authValidationSchemas.refresh),
+  AuthController.refreshToken
 );
 
 /**
  * @swagger
  * /auth/logout:
  *   post:
- *     summary: Fazer logout
- *     description: Invalida o token atual do usuário
+ *     summary: Logout com invalidação de sessão
+ *     description: Invalida sessão atual ou todas as sessões do usuário
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               logoutAll:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Invalidar todas as sessões do usuário
+ *     responses:
+ *       200:
+ *         description: Logout realizado com sucesso
+ *       401:
+ *         description: Token inválido ou expirado
+ */
+router.post("/auth/logout", authenticateToken, AuthController.logout);
+
+/**
+ * @swagger
+ * /auth/recover-password:
+ *   post:
+ *     summary: Solicitar recuperação de senha
+ *     description: Inicia processo de recuperação de senha por email
+ *     tags: [Authentication]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: usuario@empresa.com
+ *     responses:
+ *       200:
+ *         description: Instruções enviadas se email existir
+ */
+router.post(
+  "/auth/recover-password",
+  rateLimiter.password,
+  validateRequest(authValidationSchemas.recoverPassword),
+  AuthController.recoverPassword
+);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Confirmar nova senha
+ *     description: Define nova senha usando token de recuperação
+ *     tags: [Authentication]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - newPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Token de recuperação recebido por email
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 description: Nova senha segura
+ *                 example: NovaSenha123!
+ *     responses:
+ *       200:
+ *         description: Senha redefinida com sucesso
+ *       400:
+ *         description: Token inválido ou expirado
+ */
+router.post(
+  "/auth/reset-password",
+  rateLimiter.password,
+  validateRequest(authValidationSchemas.resetPassword),
+  AuthController.resetPassword
+);
+
+/**
+ * @swagger
+ * /auth/profile:
+ *   get:
+ *     summary: Obter perfil completo do usuário autenticado
+ *     description: Retorna dados completos do usuário e empresa
  *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Logout realizado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Logout realizado com sucesso
- *                 timestamp:
- *                   type: string
- *                   format: date-time
+ *         description: Perfil obtido com sucesso
  *       401:
- *         description: Token inválido ou expirado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Token inválido
+ *       404:
+ *         description: Usuário não encontrado
  */
-router.post("/auth/logout", authenticateToken, authController.logout);
-
-// ========== ROTAS DE USUÁRIOS ==========
+router.get("/auth/profile", authenticateToken, AuthController.getProfile);
 
 /**
  * @swagger
- * /users/profile:
+ * /auth/sessions:
  *   get:
- *     summary: Obter perfil do usuário
- *     description: Retorna os dados do perfil do usuário autenticado
- *     tags: [Users]
+ *     summary: Listar sessões ativas do usuário
+ *     description: Mostra todas as sessões ativas e suas informações
+ *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Perfil obtido com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       401:
- *         description: Token inválido ou expirado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Sessões listadas com sucesso
  */
-// Rotas protegidas que requerem autenticação
-router.get("/users/profile", authenticateToken, userController.getProfile);
+router.get("/auth/sessions", authenticateToken, AuthController.getSessions);
 
 /**
  * @swagger
- * /users/profile:
- *   put:
- *     summary: Atualizar perfil do usuário
- *     description: Atualiza os dados do perfil do usuário autenticado
+ * /auth/sessions/{sessionId}:
+ *   delete:
+ *     summary: Revogar sessão específica
+ *     description: Invalida uma sessão específica do usuário
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID da sessão a ser revogada
+ *     responses:
+ *       200:
+ *         description: Sessão revogada com sucesso
+ *       404:
+ *         description: Sessão não encontrada
+ */
+router.delete("/auth/sessions/:sessionId", authenticateToken, AuthController.revokeSession);
+
+/**
+ * @swagger
+ * /auth/validate:
+ *   get:
+ *     summary: Validar token atual
+ *     description: Verifica se o token está válido e retorna dados do usuário
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token válido
+ *       401:
+ *         description: Token inválido ou expirado
+ */
+router.get("/auth/validate", authenticateToken, AuthController.validateToken);
+
+// ========== 👥 ROTAS DE USUÁRIOS ENTERPRISE ==========
+
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Listar usuários da empresa
+ *     description: Lista usuários com filtros, paginação e controle de permissões
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Página atual
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *         description: Itens por página
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Busca por nome ou email
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: [viewer, editor, admin, super_admin]
+ *         description: Filtrar por role
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: Filtrar por departamento
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filtrar por status ativo
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [name, email, role, department, created_at, last_login]
+ *           default: created_at
+ *         description: Campo para ordenação
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         description: Ordem da classificação
+ *     responses:
+ *       200:
+ *         description: Lista de usuários obtida com sucesso
+ *       401:
+ *         description: Token inválido
+ *       403:
+ *         description: Sem permissão para listar usuários
+ */
+router.get(
+  "/users",
+  authenticateToken,
+  UserController.getUsers
+);
+
+/**
+ * @swagger
+ * /users:
+ *   post:
+ *     summary: Criar novo usuário
+ *     description: Cria um novo usuário na empresa com validações de permissão
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -295,133 +558,63 @@ router.get("/users/profile", authenticateToken, userController.getProfile);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
  *             properties:
  *               name:
  *                 type: string
- *                 description: Nome do usuário
- *                 example: João Silva Atualizado
+ *                 example: Maria Santos
  *               email:
  *                 type: string
  *                 format: email
- *                 description: Email do usuário
- *                 example: novo.email@polox.com
+ *                 example: maria@empresa.com
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: SenhaSegura123!
+ *               role:
+ *                 type: string
+ *                 enum: [viewer, editor, admin, super_admin]
+ *                 default: viewer
+ *               department:
+ *                 type: string
+ *                 example: Vendas
+ *               position:
+ *                 type: string
+ *                 example: Gerente de Vendas
+ *               phone:
+ *                 type: string
+ *                 example: +5511999999999
+ *               permissions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["users:read", "reports:view"]
  *     responses:
- *       200:
- *         description: Perfil atualizado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
+ *       201:
+ *         description: Usuário criado com sucesso
  *       400:
  *         description: Dados inválidos
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Token inválido ou expirado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.put(
-  "/users/profile",
-  authenticateToken,
-  validateRequest(userValidationSchemas.updateProfile),
-  userController.updateProfile
-);
-
-/**
- * @swagger
- * /users/profile:
- *   delete:
- *     summary: Deletar perfil do usuário
- *     description: Remove permanentemente a conta do usuário autenticado
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Perfil deletado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Perfil deletado com sucesso
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *       401:
- *         description: Token inválido ou expirado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-router.delete(
-  "/users/profile",
-  authenticateToken,
-  userController.deleteProfile
-);
-
-/**
- * @swagger
- * /users:
- *   get:
- *     summary: Listar todos os usuários (Admin)
- *     description: Retorna lista de todos os usuários - requer permissões administrativas
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Lista de usuários obtida com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 users:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/User'
- *                 total:
- *                   type: integer
- *                   example: 50
- *                 page:
- *                   type: integer
- *                   example: 1
- *       401:
- *         description: Token inválido ou expirado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Acesso negado - requer permissões de admin
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Sem permissão para criar usuários
+ *       409:
+ *         description: Email já em uso
  */
-// Rotas administrativas (podem precisar de roles específicos)
-router.get(
+router.post(
   "/users",
   authenticateToken,
-  // TODO: Adicionar middleware de autorização para admin
-  userController.listUsers
+  validateRequest(userValidationSchemas.createUser),
+  UserController.createUser
 );
 
 /**
  * @swagger
  * /users/{id}:
  *   get:
- *     summary: Obter usuário por ID (Admin)
- *     description: Retorna dados de um usuário específico - requer permissões administrativas
+ *     summary: Obter usuário por ID
+ *     description: Retorna dados detalhados de um usuário específico
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -430,43 +623,388 @@ router.get(
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
  *         description: ID do usuário
- *         example: 1
  *     responses:
  *       200:
  *         description: Usuário encontrado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
  *       401:
- *         description: Token inválido ou expirado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Token inválido
  *       403:
- *         description: Acesso negado - requer permissões de admin
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Sem permissão para visualizar usuário
  *       404:
  *         description: Usuário não encontrado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.get(
   "/users/:id",
   authenticateToken,
   validateRequest(userValidationSchemas.getUserById),
-  userController.getUserById
+  UserController.getUserById
 );
 
-// ========== ROTAS DE EXEMPLO/DEMO ==========
+/**
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     summary: Atualizar usuário
+ *     description: Atualiza dados de um usuário com validações de permissão
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do usuário
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: João Silva Atualizado
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: joao.novo@empresa.com
+ *               role:
+ *                 type: string
+ *                 enum: [viewer, editor, admin, super_admin]
+ *               department:
+ *                 type: string
+ *                 example: TI
+ *               position:
+ *                 type: string
+ *                 example: Desenvolvedor Senior
+ *               phone:
+ *                 type: string
+ *                 example: +5511888888888
+ *               permissions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["users:read", "users:update"]
+ *               isActive:
+ *                 type: boolean
+ *                 description: Status ativo (apenas admins)
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *                 description: Nova senha (opcional)
+ *     responses:
+ *       200:
+ *         description: Usuário atualizado com sucesso
+ *       400:
+ *         description: Dados inválidos
+ *       403:
+ *         description: Sem permissão para atualizar usuário
+ *       404:
+ *         description: Usuário não encontrado
+ *       409:
+ *         description: Email já em uso
+ */
+router.put(
+  "/users/:id",
+  authenticateToken,
+  validateRequest(userValidationSchemas.updateUser),
+  UserController.updateUser
+);
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Remover usuário
+ *     description: Remove um usuário da empresa (soft delete)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do usuário
+ *     responses:
+ *       200:
+ *         description: Usuário removido com sucesso
+ *       400:
+ *         description: Não é possível remover próprio usuário
+ *       403:
+ *         description: Sem permissão para remover usuários
+ *       404:
+ *         description: Usuário não encontrado
+ */
+router.delete(
+  "/users/:id",
+  authenticateToken,
+  UserController.deleteUser
+);
+
+/**
+ * @swagger
+ * /users/{id}/toggle-status:
+ *   patch:
+ *     summary: Ativar/Desativar usuário
+ *     description: Alterna o status ativo/inativo de um usuário
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do usuário
+ *     responses:
+ *       200:
+ *         description: Status do usuário alterado com sucesso
+ *       400:
+ *         description: Não é possível alterar próprio status
+ *       403:
+ *         description: Sem permissão para ativar/desativar usuários
+ *       404:
+ *         description: Usuário não encontrado
+ */
+router.patch(
+  "/users/:id/toggle-status",
+  authenticateToken,
+  UserController.toggleUserStatus
+);
+
+/**
+ * @swagger
+ * /users/stats:
+ *   get:
+ *     summary: Estatísticas de usuários
+ *     description: Retorna estatísticas detalhadas dos usuários da empresa
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Estatísticas obtidas com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         overview:
+ *                           type: object
+ *                           properties:
+ *                             totalUsers:
+ *                               type: integer
+ *                             activeUsers:
+ *                               type: integer
+ *                             inactiveUsers:
+ *                               type: integer
+ *                             newUsers30d:
+ *                               type: integer
+ *                             activeUsers7d:
+ *                               type: integer
+ *                         byRole:
+ *                           type: object
+ *                           properties:
+ *                             admin:
+ *                               type: integer
+ *                             editor:
+ *                               type: integer
+ *                             viewer:
+ *                               type: integer
+ *                         byDepartment:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               department:
+ *                                 type: string
+ *                               total:
+ *                                 type: integer
+ *                               active:
+ *                                 type: integer
+ *       403:
+ *         description: Sem permissão para visualizar estatísticas
+ */
+router.get(
+  "/users/stats",
+  authenticateToken,
+  UserController.getUserStats
+);
+
+// ========== 👤 ROTAS DE PERFIL (COMPATIBILIDADE LEGADA) ==========
+
+/**
+ * @swagger
+ * /users/profile:
+ *   get:
+ *     summary: Obter perfil do usuário autenticado
+ *     description: Retorna dados do perfil do usuário logado (rota de compatibilidade)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Perfil obtido com sucesso
+ *       401:
+ *         description: Token inválido
+ *       404:
+ *         description: Usuário não encontrado
+ */
+router.get("/users/profile", authenticateToken, UserController.getProfile);
+
+/**
+ * @swagger
+ * /users/profile:
+ *   put:
+ *     summary: Atualizar perfil do usuário autenticado
+ *     description: Atualiza dados do próprio perfil (rota de compatibilidade)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: João Silva Atualizado
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: novo.email@empresa.com
+ *               phone:
+ *                 type: string
+ *                 example: +5511999999999
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *                 description: Nova senha (opcional)
+ *     responses:
+ *       200:
+ *         description: Perfil atualizado com sucesso
+ *       400:
+ *         description: Dados inválidos
+ *       409:
+ *         description: Email já em uso
+ */
+router.put(
+  "/users/profile",
+  authenticateToken,
+  validateRequest(userValidationSchemas.updateProfile),
+  UserController.updateProfile
+);
+
+/**
+ * @swagger
+ * /users/profile:
+ *   delete:
+ *     summary: Desativar conta própria
+ *     description: Desativa a própria conta do usuário (rota de compatibilidade)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Conta desativada com sucesso
+ */
+router.delete(
+  "/users/profile",
+  authenticateToken,
+  UserController.deleteProfile
+);
+
+// ========== 🔍 ROTAS DE BUSCA E COMPATIBILIDADE ==========
+
+/**
+ * @swagger
+ * /users/search:
+ *   get:
+ *     summary: Buscar usuário por email
+ *     description: Busca usuário específico por email (rota de compatibilidade)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Email do usuário
+ *     responses:
+ *       200:
+ *         description: Usuário encontrado
+ *       400:
+ *         description: Email obrigatório
+ *       403:
+ *         description: Sem permissão para buscar usuários
+ *       404:
+ *         description: Usuário não encontrado
+ */
+router.get(
+  "/users/search",
+  authenticateToken,
+  UserController.getUserByEmail
+);
+
+/**
+ * @swagger
+ * /users/list:
+ *   get:
+ *     summary: Listar usuários (compatibilidade legada)
+ *     description: Lista usuários com parâmetros simplificados para compatibilidade
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, all]
+ *           default: active
+ *     responses:
+ *       200:
+ *         description: Usuários listados com sucesso
+ */
+router.get(
+  "/users/list",
+  authenticateToken,
+  UserController.listUsers
+);
+
+// ========== 🎯 ROTAS DE DEMONSTRAÇÃO E TESTES ==========
 
 /**
  * @swagger
@@ -548,7 +1086,7 @@ router.get("/demo/protected", authenticateToken, (req, res) => {
   });
 });
 
-// ========== ROTA DE TESTE DE BANCO ==========
+// ========== 🏥 ROTAS DE MONITORAMENTO E SAÚDE ==========
 
 /**
  * @swagger
@@ -620,13 +1158,84 @@ router.get("/test/database", async (req, res) => {
   }
 });
 
-// ========== MIDDLEWARE DE ERRO PARA ROTAS DA API ==========
+// ==========================================
+// 🏢 ROTAS DE EMPRESAS (SUPER ADMIN)
+// ==========================================
+const companyRoutes = require("./routes/companies");
+router.use("/companies", companyRoutes);
+
+// ==========================================
+// 🎮 ROTAS DE GAMIFICAÇÃO
+// ==========================================
+const gamificationRoutes = require("./routes/gamification");
+router.use("/gamification", gamificationRoutes);
+
+// ==========================================
+// 📈 ROTAS CRM - LEADS, CLIENTES E VENDAS
+// ==========================================
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Leads
+ *     description: Gestão de leads/prospects para pipeline de vendas
+ *   - name: Clients  
+ *     description: Gestão de clientes com histórico e anotações
+ *   - name: Sales
+ *     description: Gestão de vendas com itens e controle de estoque
+ */
+
+const leadRoutes = require("./routes/leads");
+router.use("/leads", leadRoutes);
+
+const clientRoutes = require("./routes/clients");
+router.use("/clients", clientRoutes);
+
+const saleRoutes = require("./routes/sales");
+router.use("/sales", saleRoutes);
+
+// ==========================================
+// 🏪 ROTAS DE GESTÃO AVANÇADA - COPILOT_PROMPT_5
+// ==========================================
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Products
+ *     description: Gestão de produtos/serviços com estoque e categorias
+ *   - name: Finance
+ *     description: Gestão financeira com dashboard e análises  
+ *   - name: Schedule
+ *     description: Gestão de agenda com calendário e eventos
+ */
+
+const productRoutes = require("./routes/products");
+router.use("/products", productRoutes);
+
+const financeRoutes = require("./routes/finance");
+router.use("/finance", financeRoutes);
+
+const scheduleRoutes = require("./routes/schedule");
+router.use("/schedule", scheduleRoutes);
+
+// ========== ⚠️ MIDDLEWARE DE TRATAMENTO DE ERROS ==========
 router.use((error, req, res, next) => {
   console.error("Erro na API:", error);
+
+  // Erros customizados da aplicação
+  if (error.name === 'ApiError') {
+    return res.status(error.statusCode).json({
+      success: false,
+      error: error.message,
+      details: error.details || null,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   // Erros de validação do Joi
   if (error.name === "ValidationError") {
     return res.status(400).json({
+      success: false,
       error: "Dados inválidos",
       details: error.details || error.message,
       timestamp: new Date().toISOString(),
@@ -636,6 +1245,7 @@ router.use((error, req, res, next) => {
   // Erros de autenticação/autorização
   if (error.name === "UnauthorizedError" || error.statusCode === 401) {
     return res.status(401).json({
+      success: false,
       error: "Não autorizado",
       message: "Token inválido ou expirado",
       timestamp: new Date().toISOString(),
@@ -645,8 +1255,20 @@ router.use((error, req, res, next) => {
   // Erros de permissão
   if (error.statusCode === 403) {
     return res.status(403).json({
+      success: false,
       error: "Acesso negado",
       message: "Você não tem permissão para acessar este recurso",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Erros de rate limiting
+  if (error.statusCode === 429) {
+    return res.status(429).json({
+      success: false,
+      error: "Muitas tentativas",
+      message: "Aguarde antes de tentar novamente",
+      retryAfter: error.retryAfter || 60,
       timestamp: new Date().toISOString(),
     });
   }
@@ -654,12 +1276,13 @@ router.use((error, req, res, next) => {
   // Outros erros HTTP conhecidos
   if (error.statusCode) {
     return res.status(error.statusCode).json({
+      success: false,
       error: error.message || "Erro na requisição",
       timestamp: new Date().toISOString(),
     });
   }
 
-  // Erro genérico
+  // Erro genérico - passar para próximo middleware
   next(error);
 });
 
