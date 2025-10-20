@@ -1218,6 +1218,35 @@ router.use("/finance", financeRoutes);
 const scheduleRoutes = require("./routes/schedule");
 router.use("/schedule", scheduleRoutes);
 
+// ==========================================
+// 🏢 ROTAS ENTERPRISE AVANÇADAS - COPILOT_PROMPT_6
+// ==========================================
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Suppliers
+ *     description: Gestão de fornecedores com avaliações e contratos
+ *   - name: Tickets
+ *     description: Sistema de tickets com escalação automática
+ *   - name: Analytics
+ *     description: Dashboard de analytics com relatórios avançados
+ *   - name: Notifications
+ *     description: Sistema de notificações em tempo real
+ */
+
+const supplierRoutes = require("./routes/suppliers");
+router.use("/suppliers", supplierRoutes);
+
+const ticketRoutes = require("./routes/tickets");
+router.use("/tickets", ticketRoutes);
+
+const analyticsRoutes = require("./routes/analytics");
+router.use("/analytics", analyticsRoutes);
+
+const notificationRoutes = require("./routes/notifications");
+router.use("/notifications", notificationRoutes);
+
 // ========== ⚠️ MIDDLEWARE DE TRATAMENTO DE ERROS ==========
 router.use((error, req, res, next) => {
   console.error("Erro na API:", error);
