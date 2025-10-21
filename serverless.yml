@@ -2,6 +2,24 @@ service: api-app-polox
 
 frameworkVersion: "3"
 
+# Configurações de empacotamento para reduzir tamanho
+package:
+  exclude:
+    - node_modules/.aws-sam/**
+    - .aws-sam/**
+    - .serverless/**
+    - .git/**
+    - docs/**
+    - tests/**
+    - scripts/**
+    - migrations/**
+    - "*.md"
+    - ".env*"
+    - ".DS_Store"
+    - "*.log"
+    - coverage/**
+    - ".nyc_output/**"
+
 provider:
   name: aws
   runtime: nodejs18.x

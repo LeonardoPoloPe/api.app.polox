@@ -3,7 +3,7 @@
 /**
  * 🚀 POLOX CRM API - SERVER
  * 
- * Entry point para desenvolvimento local
+ * Entry point para desenvolvimento local seguindo COPILOT_PROMPT_1
  * Para produção, usar handler.js via Lambda
  */
 
@@ -13,11 +13,6 @@ const { createApp, configureProduction, configureErrorHandling } = require('./co
 const { healthCheck } = require('./config/database');
 const { logger } = require('./utils/logger');
 const { utils } = require('./config/auth');
-
-// Importar rotas (serão implementadas nos próximos prompts)
-// const authRoutes = require('./src/routes/auth');
-// const userRoutes = require('./src/routes/users');
-// const companyRoutes = require('./src/routes/companies');
 
 async function startServer() {
   try {
@@ -68,21 +63,32 @@ async function startServer() {
       });
     });
 
-    // Importar e usar as rotas da API enterprise
-    const apiRoutes = require('./routes');
-    app.use('/api', apiRoutes);
+    // TODO: Importar e usar as rotas da API enterprise
+    // const apiRoutes = require('./routes');
+    // app.use('/api', apiRoutes);
 
-    // Health check endpoint
+    // Health check endpoint expandido
     app.get('/health', async (req, res) => {
       try {
         const dbHealthy = await healthCheck();
-        res.json({
-          success: true,
-          status: 'healthy',
-          database: dbHealthy ? 'connected' : 'disconnected',
+        
+        const healthData = {
+          status: dbHealthy ? 'healthy' : 'unhealthy',
           timestamp: new Date().toISOString(),
           version: process.env.npm_package_version || '1.0.0',
-          environment: process.env.NODE_ENV || 'development'
+          environment: process.env.NODE_ENV || 'development',
+          uptime: process.uptime(),
+          memory: process.memoryUsage(),
+          checks: {
+            database: dbHealthy ? 'OK' : 'FAIL',
+            // Adicionar mais checks conforme necessário
+          }
+        };
+
+        const statusCode = dbHealthy ? 200 : 503;
+        res.status(statusCode).json({
+          success: dbHealthy,
+          ...healthData
         });
       } catch (error) {
         res.status(503).json({
@@ -116,14 +122,14 @@ async function startServer() {
     // INICIAR SERVIDOR
     // ==========================================
     
-    const PORT = process.env.PORT || 3000;
+    const PORT = process.env.PORT || 3001;
     const server = app.listen(PORT, () => {
       logger.info('🚀 Polox CRM API iniciada com sucesso!');
       logger.info(`📍 Servidor rodando na porta: ${PORT}`);
       logger.info(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`🔗 URL local: http://localhost:${PORT}`);
       logger.info(`❤️  Health check: http://localhost:${PORT}/health`);
-      logger.info(`📚 API info: http://localhost:${PORT}/api`);
+      logger.info(`📚 API info: http://localhost:${PORT}/`);
       
       if (process.env.ENABLE_SWAGGER === 'true') {
         logger.info(`📖 Swagger docs: http://localhost:${PORT}/api/docs`);
@@ -132,15 +138,17 @@ async function startServer() {
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       logger.info('🎯 COPILOT_PROMPT_1 - ESTRUTURA BASE IMPLEMENTADA');
       logger.info('');
-      logger.info('✅ Configurações de banco multi-tenant');
+      logger.info('✅ Express.js configurado com middleware de segurança');
+      logger.info('✅ Conexão PostgreSQL multi-tenant');
       logger.info('✅ Sistema de autenticação JWT');
-      logger.info('✅ Middleware de segurança crítico');
+      logger.info('✅ Middleware de isolamento multi-tenant');
+      logger.info('✅ Tratamento de erros padronizado');
       logger.info('✅ Sistema de logs estruturado');
-      logger.info('✅ Tratamento de erros empresarial');
-      logger.info('✅ Express.js configurado para produção');
+      logger.info('✅ Rate limiting configurado');
+      logger.info('✅ Health check funcionando');
       logger.info('');
       logger.info('📝 PRÓXIMO PASSO: COPILOT_PROMPT_2');
-      logger.info('   → Implementar AuthController e UserController');
+      logger.info('   → Implementar AuthController e rotas de autenticação');
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
 

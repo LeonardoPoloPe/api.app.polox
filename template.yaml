@@ -13,7 +13,7 @@ Conditions:
 
 Globals:
   Function:
-    Timeout: 60
+    Timeout: 90  # Aumentado para VPC Lambdas (cold start mais lento)
     MemorySize: 1024
     Runtime: nodejs18.x
     Environment:
@@ -41,6 +41,15 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/handler.handler
+      # Configurar Lambda para executar na mesma VPC do RDS
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-08caf7023512d2d69  # Security group que já tem acesso ao RDS
+        SubnetIds:
+          # Subnets onde o RDS está localizado
+          - subnet-09e31f88ffe864c21  # sa-east-1c
+          - subnet-05b6cbd90f2ca7c9d  # sa-east-1a
+          - subnet-0e39fb3446bf485c0  # sa-east-1b
       Events:
         ApiProxy:
           Type: Api
