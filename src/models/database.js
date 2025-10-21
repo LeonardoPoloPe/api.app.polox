@@ -36,16 +36,16 @@ const dbConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   ssl: getCurrentSSLConfig(), // ✅ Configuração SSL segura e flexível
-  // Configurações de pool para Lambda
-  max: 5, // Máximo de conexões
-  min: 0, // Mínimo de conexões
-  acquire: 30000, // Tempo máximo para obter conexão
-  idle: 10000, // Tempo máximo que uma conexão pode ficar idle
+  // Configurações de pool otimizadas para Lambda + VPC
+  max: 3, // Reduzido para Lambda (máximo de conexões simultâneas)
+  min: 0, // Sem conexões mínimas (Lambda é stateless)
+  acquire: 60000, // Tempo máximo para obter conexão (aumentado para VPC)
+  idle: 5000, // Tempo curto para idle (Lambda pode ser reciclada)
   evict: 1000, // Intervalo para verificar conexões expiradas
-  connectionTimeoutMillis: 30000,
-  idleTimeoutMillis: 30000,
-  statement_timeout: 30000,
-  query_timeout: 30000,
+  connectionTimeoutMillis: 60000, // Aumentado para VPC
+  idleTimeoutMillis: 10000, // Reduzido para Lambda
+  statement_timeout: 45000, // Timeout para statements
+  query_timeout: 45000, // Timeout para queries
 };
 
 // Pool de conexões

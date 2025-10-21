@@ -39,7 +39,9 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: true,
     ca: require('fs').readFileSync(__dirname + '/ssl/rds-ca-2019-root.pem'),
-  } : false,
+  } : {
+    rejectUnauthorized: false,
+  },
   
   // Configurações de pool otimizadas para multi-tenant
   max: parseInt(process.env.DB_POOL_MAX) || 20,

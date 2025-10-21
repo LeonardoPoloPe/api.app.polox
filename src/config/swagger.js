@@ -24,15 +24,15 @@ const swaggerOptions = {
         description: "Servidor de Desenvolvimento Local",
       },
       {
-        url: "https://api-dev.polox.com/api",
+        url: "https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api",
         description: "Servidor de Desenvolvimento AWS",
       },
       {
-        url: "https://api-sandbox.polox.com/api",
+        url: "https://6tyjc51bgl.execute-api.sa-east-1.amazonaws.com/sandbox/api",
         description: "Servidor de Sandbox/Testes",
       },
       {
-        url: "https://api.polox.com/api",
+        url: "https://te1b2dv2jd.execute-api.sa-east-1.amazonaws.com/prod/api",
         description: "Servidor de Produção",
       },
     ],
