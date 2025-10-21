@@ -4,21 +4,32 @@ frameworkVersion: "3"
 
 # Configurações de empacotamento para reduzir tamanho
 package:
-  exclude:
-    - node_modules/.aws-sam/**
-    - .aws-sam/**
-    - .serverless/**
-    - .git/**
-    - docs/**
-    - tests/**
-    - scripts/**
-    - migrations/**
-    - "*.md"
-    - ".env*"
-    - ".DS_Store"
-    - "*.log"
-    - coverage/**
-    - ".nyc_output/**"
+  patterns:
+    - "!node_modules/.aws-sam/**"
+    - "!.aws-sam/**"
+    - "!.serverless/**"
+    - "!.git/**"
+    - "!docs/**"
+    - "!tests/**"
+    - "!testes-internos/**"
+    - "!scripts/**"
+    - "!migrations/**"
+    - "!sql/**"
+    - "!*.md"
+    - "!.env*"
+    - "!.DS_Store"
+    - "!*.log"
+    - "!coverage/**"
+    - "!.nyc_output/**"
+    - "!jest.config.json"
+    - "!template.yaml"
+    - "!serverless-simple.yml"
+    - "!node_modules/@types/**"
+    - "!node_modules/jest/**"
+    - "!node_modules/supertest/**"
+    - "!node_modules/nodemon/**"
+    - "src/**"
+    - "package.json"
 
 provider:
   name: aws
@@ -35,6 +46,7 @@ provider:
     DB_USER: ${self:custom.dbConfig.${self:provider.stage}.dbUser}
     DB_PASSWORD: ${env:DB_PASSWORD, 'SenhaSeguraDev123!'}
     JWT_SECRET: ${env:JWT_SECRET, 'jwt_secret_dev_polox_2024_secure_key_development'}
+    SKIP_MIGRATIONS: "true"
     TZ: America/Sao_Paulo
 
 custom:

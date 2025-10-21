@@ -1,8 +1,7 @@
 # 📋 Resumo da Estrutura V2 - API Polox CRM
 
 > **Documentação técnica completa atualizada após implementação dos COPILOT_PROMPTs 1-6**  
-> **Última atualização**: 20/10/2025  
-> **Status**: Sistema CRM Enterprise Completo Implementado
+> **Última atualização**: 21/10/2025 - **Migração para Serverless Framework** > **Status**: Sistema CRM Enterprise Completo Implementado + Deploy AWS Atualizado
 
 ---
 
@@ -10,14 +9,22 @@
 
 **API Polox CRM** é um sistema **Enterprise Multi-Tenant** completo, com 16 controllers implementados, 120+ endpoints documentados, sistema de gamificação avançado, analytics completos e funcionalidades enterprise como fornecedores, tickets, notificações e muito mais.
 
+### 🌐 **Ambientes AWS (Atualizados 21/10/2025)**
+
+| Ambiente    | Status   | URL Base                                                          | Stack                 |
+| ----------- | -------- | ----------------------------------------------------------------- | --------------------- |
+| **DEV**     | ✅ Ativo | `https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/`     | api-app-polox-dev     |
+| **SANDBOX** | ✅ Ativo | `https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/` | api-app-polox-sandbox |
+| **PROD**    | ✅ Ativo | `https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/`    | api-app-polox-prod    |
+
 ### 🏷️ Tecnologias Principais
 
 - **Runtime**: Node.js 18+
 - **Framework**: Express.js
 - **Database**: PostgreSQL 13+ (AWS RDS)
-- **Cloud**: AWS Lambda + Serverless Framework
+- **Cloud**: AWS Lambda + **Serverless Framework v3.40.0** (Migrado 21/10/2025)
 - **Autenticação**: JWT + bcrypt
-- **Migrations**: Sistema customizado
+- **Migrations**: Sistema customizado (SKIP_MIGRATIONS=true no Lambda)
 - **Documentação**: Swagger/OpenAPI completo
 
 ---
@@ -26,30 +33,30 @@
 
 ### 🚀 Core Dependencies
 
-| Pacote                   | Versão    | Função                        |
-| ------------------------ | --------- | ----------------------------- |
-| `express`                | ^4.18.2   | Framework web principal       |
-| `pg`                     | ^8.11.3   | Driver PostgreSQL             |
-| `serverless-http`        | ^4.0.0    | Adapter Express→Lambda        |
-| `winston`                | ^3.11.0   | Logging estruturado           |
-| `dotenv`                 | ^16.3.1   | Variáveis de ambiente         |
-| `compression`            | ^1.7.4    | Compressão HTTP               |
-| `express-rate-limit`     | ^7.1.5    | Rate limiting                 |
-| `express-slow-down`      | ^2.0.1    | Slow down attacks             |
+| Pacote               | Versão  | Função                  |
+| -------------------- | ------- | ----------------------- |
+| `express`            | ^4.18.2 | Framework web principal |
+| `pg`                 | ^8.11.3 | Driver PostgreSQL       |
+| `serverless-http`    | ^4.0.0  | Adapter Express→Lambda  |
+| `winston`            | ^3.11.0 | Logging estruturado     |
+| `dotenv`             | ^16.3.1 | Variáveis de ambiente   |
+| `compression`        | ^1.7.4  | Compressão HTTP         |
+| `express-rate-limit` | ^7.1.5  | Rate limiting           |
+| `express-slow-down`  | ^2.0.1  | Slow down attacks       |
 
 ### 🔐 Segurança & Auth
 
-| Pacote                  | Versão   | Função                      |
-| ----------------------- | -------- | --------------------------- |
-| `jsonwebtoken`          | ^9.0.2   | Geração/validação JWT       |
-| `bcryptjs`              | ^2.4.3   | Hash de senhas              |
-| `helmet`                | ^7.1.0   | Headers de segurança        |
-| `cors`                  | ^2.8.5   | Controle de CORS            |
-| `joi`                   | ^17.11.0 | Validação de dados          |
-| `express-mongo-sanitize`| ^2.2.0   | Sanitização NoSQL injection |
-| `express-validator`     | ^7.0.1   | Validação de dados avançada |
-| `xss-clean`             | ^0.1.4   | Proteção XSS                |
-| `hpp`                   | ^0.2.3   | HTTP Parameter Pollution    |
+| Pacote                   | Versão   | Função                      |
+| ------------------------ | -------- | --------------------------- |
+| `jsonwebtoken`           | ^9.0.2   | Geração/validação JWT       |
+| `bcryptjs`               | ^2.4.3   | Hash de senhas              |
+| `helmet`                 | ^7.1.0   | Headers de segurança        |
+| `cors`                   | ^2.8.5   | Controle de CORS            |
+| `joi`                    | ^17.11.0 | Validação de dados          |
+| `express-mongo-sanitize` | ^2.2.0   | Sanitização NoSQL injection |
+| `express-validator`      | ^7.0.1   | Validação de dados avançada |
+| `xss-clean`              | ^0.1.4   | Proteção XSS                |
+| `hpp`                    | ^0.2.3   | HTTP Parameter Pollution    |
 
 ### 📡 AWS & Deploy
 
@@ -62,32 +69,32 @@
 
 ### 📚 Upload & Storage
 
-| Pacote        | Versão        | Função                |
-| ------------- | ------------- | --------------------- |
-| `multer`      | ^1.4.5-lts.1  | Upload de arquivos    |
-| `multer-s3`   | ^3.0.1        | Upload direto para S3 |
-| `uuid`        | ^9.0.1        | Geração de UUIDs      |
+| Pacote      | Versão       | Função                |
+| ----------- | ------------ | --------------------- |
+| `multer`    | ^1.4.5-lts.1 | Upload de arquivos    |
+| `multer-s3` | ^3.0.1       | Upload direto para S3 |
+| `uuid`      | ^9.0.1       | Geração de UUIDs      |
 
 ### 📊 Monitoring & Utils
 
-| Pacote               | Versão | Função                 |
-| -------------------- | ------ | ---------------------- |
-| `swagger-jsdoc`      | ^6.2.8 | Geração Swagger        |
-| `swagger-ui-express` | ^5.0.0 | Interface Swagger      |
-| `date-fns`           | ^4.1.0 | Manipulação de datas   |
-| `node-cron`          | ^3.0.2 | Tarefas agendadas      |
-| `prom-client`        | ^13.2.0| Métricas Prometheus    |
-| `redis`              | ^4.6.8 | Cache e sessões       |
+| Pacote               | Versão  | Função               |
+| -------------------- | ------- | -------------------- |
+| `swagger-jsdoc`      | ^6.2.8  | Geração Swagger      |
+| `swagger-ui-express` | ^5.0.0  | Interface Swagger    |
+| `date-fns`           | ^4.1.0  | Manipulação de datas |
+| `node-cron`          | ^3.0.2  | Tarefas agendadas    |
+| `prom-client`        | ^13.2.0 | Métricas Prometheus  |
+| `redis`              | ^4.6.8  | Cache e sessões      |
 
 ### 🧪 Desenvolvimento & Testes
 
-| Pacote       | Versão  | Função           |
-| ------------ | ------- | ---------------- |
-| `jest`       | ^29.7.0 | Testes unitários |
-| `supertest`  | ^6.3.4  | Testes de API    |
-| `nodemon`    | ^3.0.2  | Hot reload local |
-| `@types/jest`| ^29.5.8 | Types Jest       |
-| `@types/node`| ^20.8.10| Types Node.js    |
+| Pacote        | Versão   | Função           |
+| ------------- | -------- | ---------------- |
+| `jest`        | ^29.7.0  | Testes unitários |
+| `supertest`   | ^6.3.4   | Testes de API    |
+| `nodemon`     | ^3.0.2   | Hot reload local |
+| `@types/jest` | ^29.5.8  | Types Jest       |
+| `@types/node` | ^20.8.10 | Types Node.js    |
 
 ---
 
@@ -210,22 +217,22 @@ api.app.polox/
 
 ### **✅ MÓDULOS CORE ENTERPRISE**
 
-| Módulo | Controller | Routes | Endpoints | Status |
-|--------|------------|---------|-----------|---------|
-| **Autenticação** | AuthController | ✅ | 8+ | ✅ Completo |
-| **Usuários** | UserController | ✅ | 12+ | ✅ Completo |
-| **Empresas** | CompanyController | ✅ | 8+ | ✅ Completo |
-| **Gamificação** | GamificationController | ✅ | 10+ | ✅ Completo |
-| **Leads** | LeadController | ✅ | 11+ | ✅ Completo |
-| **Clientes** | ClientController | ✅ | 10+ | ✅ Completo |
-| **Vendas** | SaleController | ✅ | 9+ | ✅ Completo |
-| **Produtos** | ProductController | ✅ | 12+ | ✅ Completo |
-| **Financeiro** | FinanceController | ✅ | 11+ | ✅ Completo |
-| **Agenda** | ScheduleController | ✅ | 11+ | ✅ Completo |
-| **Fornecedores** | SupplierController | ✅ | 11+ | ✅ Completo |
-| **Tickets** | TicketController | ✅ | 10+ | ✅ Completo |
-| **Analytics** | AnalyticsController | ✅ | 8+ | ✅ Completo |
-| **Notificações** | NotificationController | ✅ | 9+ | ✅ Completo |
+| Módulo           | Controller             | Routes | Endpoints | Status      |
+| ---------------- | ---------------------- | ------ | --------- | ----------- |
+| **Autenticação** | AuthController         | ✅     | 8+        | ✅ Completo |
+| **Usuários**     | UserController         | ✅     | 12+       | ✅ Completo |
+| **Empresas**     | CompanyController      | ✅     | 8+        | ✅ Completo |
+| **Gamificação**  | GamificationController | ✅     | 10+       | ✅ Completo |
+| **Leads**        | LeadController         | ✅     | 11+       | ✅ Completo |
+| **Clientes**     | ClientController       | ✅     | 10+       | ✅ Completo |
+| **Vendas**       | SaleController         | ✅     | 9+        | ✅ Completo |
+| **Produtos**     | ProductController      | ✅     | 12+       | ✅ Completo |
+| **Financeiro**   | FinanceController      | ✅     | 11+       | ✅ Completo |
+| **Agenda**       | ScheduleController     | ✅     | 11+       | ✅ Completo |
+| **Fornecedores** | SupplierController     | ✅     | 11+       | ✅ Completo |
+| **Tickets**      | TicketController       | ✅     | 10+       | ✅ Completo |
+| **Analytics**    | AnalyticsController    | ✅     | 8+        | ✅ Completo |
+| **Notificações** | NotificationController | ✅     | 9+        | ✅ Completo |
 
 **TOTAL: 16 Controllers | 140+ Endpoints | 100% Implementado**
 
@@ -246,6 +253,7 @@ api.app.polox/
 ### **📊 FUNCIONALIDADES ENTERPRISE**
 
 #### **🎮 Sistema de Gamificação Completo**
+
 - ✅ XP, Coins, Levels (até 50+)
 - ✅ Missões dinâmicas
 - ✅ Conquistas e badges
@@ -254,6 +262,7 @@ api.app.polox/
 - ✅ Histórico detalhado
 
 #### **📈 Analytics Avançados**
+
 - ✅ Dashboard executivo
 - ✅ Análises de vendas
 - ✅ Segmentação de clientes
@@ -263,6 +272,7 @@ api.app.polox/
 - ✅ Exportação de relatórios
 
 #### **🏢 Gestão Enterprise**
+
 - ✅ Sistema de fornecedores com avaliações
 - ✅ Pedidos de compra automatizados
 - ✅ Sistema de tickets com escalação
@@ -271,6 +281,7 @@ api.app.polox/
 - ✅ Agenda com eventos recorrentes
 
 #### **💰 Sistema Financeiro**
+
 - ✅ Dashboard financeiro
 - ✅ Fluxo de caixa
 - ✅ Contas a pagar/receber
@@ -283,6 +294,7 @@ api.app.polox/
 ## 🚀 **COMANDOS DISPONÍVEIS**
 
 ### **⚡ Desenvolvimento**
+
 ```bash
 npm run dev              # Serverless offline (dev)
 npm run dev:local        # Servidor local com nodemon
@@ -292,13 +304,15 @@ npm run test:coverage    # Cobertura de testes
 ```
 
 ### **🌍 Deploy**
+
 ```bash
 npm run deploy:dev       # Deploy ambiente DEV
-npm run deploy:sandbox   # Deploy ambiente SANDBOX  
+npm run deploy:sandbox   # Deploy ambiente SANDBOX
 npm run deploy:prod      # Deploy ambiente PROD
 ```
 
 ### **📊 Monitoramento**
+
 ```bash
 npm run logs:dev         # Logs DEV em tempo real
 npm run logs:sandbox     # Logs SANDBOX em tempo real
@@ -306,6 +320,7 @@ npm run logs:prod        # Logs PROD em tempo real
 ```
 
 ### **🗄️ Migrations**
+
 ```bash
 npm run migrate          # Executar migrations
 npm run migrate:rollback # Reverter última migration
@@ -314,6 +329,7 @@ npm run migrate:create   # Criar nova migration
 ```
 
 ### **🔒 Segurança**
+
 ```bash
 npm run security:audit   # Auditoria dependências
 npm run security:check   # Verificação segurança
@@ -327,18 +343,19 @@ npm run lint:fix         # Fix automático lint
 
 ### **📈 Complexidade**
 
-| Métrica | Quantidade | Status |
-|---------|------------|---------|
-| **Controllers** | 16 | ✅ 100% |
-| **Endpoints** | 140+ | ✅ 100% |
+| Métrica             | Quantidade  | Status  |
+| ------------------- | ----------- | ------- |
+| **Controllers**     | 16          | ✅ 100% |
+| **Endpoints**       | 140+        | ✅ 100% |
 | **Rotas Modulares** | 12 arquivos | ✅ 100% |
-| **Middlewares** | 8+ | ✅ 100% |
-| **Dependencies** | 25+ | ✅ 100% |
-| **DevDependencies** | 8+ | ✅ 100% |
-| **Testes** | 6 suites | ✅ 100% |
-| **Migrations** | 2+ | ✅ 100% |
+| **Middlewares**     | 8+          | ✅ 100% |
+| **Dependencies**    | 25+         | ✅ 100% |
+| **DevDependencies** | 8+          | ✅ 100% |
+| **Testes**          | 6 suites    | ✅ 100% |
+| **Migrations**      | 2+          | ✅ 100% |
 
 ### **🏗️ Arquitetura**
+
 - ✅ **Clean Architecture**: Implementada
 - ✅ **Domain-Driven Design**: Aplicado
 - ✅ **RESTful API**: Padrões seguidos
@@ -348,6 +365,7 @@ npm run lint:fix         # Fix automático lint
 - ✅ **Enterprise Grade**: Recursos avançados
 
 ### **🔄 Integração**
+
 - ✅ **AWS Lambda**: Serverless deployment
 - ✅ **PostgreSQL RDS**: Database principal
 - ✅ **AWS S3**: Upload de arquivos
@@ -370,11 +388,12 @@ npm run lint:fix         # Fix automático lint
 🏆 **Segurança Enterprise-grade**  
 🏆 **Documentação Swagger Completa**  
 🏆 **Testes Automatizados Cobertos**  
-🏆 **Deploy AWS Lambda Ready**  
+🏆 **Deploy AWS Lambda Ready**
 
 ### **🚀 READY FOR PRODUCTION**
 
 O sistema está **100% implementado** e pronto para:
+
 - ✅ Deploy em produção AWS
 - ✅ Integração com frontend React
 - ✅ Escalabilidade para milhares de usuários
@@ -387,18 +406,21 @@ O sistema está **100% implementado** e pronto para:
 ## 📞 **PRÓXIMOS PASSOS**
 
 ### **🔧 Deployment**
+
 1. Configurar variáveis de ambiente AWS
 2. Executar migrations em produção
 3. Deploy com `npm run deploy:prod`
 4. Configurar DNS e certificados SSL
 
 ### **🎨 Frontend Integration**
+
 1. Conectar frontend React à API
 2. Configurar autenticação JWT
 3. Implementar chamadas aos 140+ endpoints
 4. Testar fluxos completos
 
 ### **📊 Monitoring**
+
 1. Configurar CloudWatch
 2. Implementar alertas
 3. Dashboard de métricas
@@ -408,4 +430,4 @@ O sistema está **100% implementado** e pronto para:
 
 **💡 O sistema API Polox CRM está 100% completo e pronto para uso enterprise!** 🚀
 
-*Documentação técnica completa disponível em `/docs/naocompartilhar/`*
+_Documentação técnica completa disponível em `/docs/naocompartilhar/`_
