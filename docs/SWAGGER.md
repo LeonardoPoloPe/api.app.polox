@@ -4,7 +4,16 @@
 
 ### 🌐 **URLs da Documentação:**
 
-- **Desenvolvimento Local**: [http://localhost:3000/dev/api/docs](http://localhost:3000/dev/api/docs)
+#### **🔗 Ambiente DEV (AWS):**
+- **Interface Swagger UI**: [https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/docs](https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/docs)
+- **JSON da Especificação**: [https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/api-docs.json](https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/api-docs.json)
+
+#### **🧪 Ambiente SANDBOX (AWS):**
+- **Interface Swagger UI**: [https://6tyjc51bgl.execute-api.sa-east-1.amazonaws.com/sandbox/api/docs](https://6tyjc51bgl.execute-api.sa-east-1.amazonaws.com/sandbox/api/docs)
+- **JSON da Especificação**: [https://6tyjc51bgl.execute-api.sa-east-1.amazonaws.com/sandbox/api/api-docs.json](https://6tyjc51bgl.execute-api.sa-east-1.amazonaws.com/sandbox/api/api-docs.json)
+
+#### **🏠 Desenvolvimento Local:**
+- **Interface Swagger UI**: [http://localhost:3000/dev/api/docs](http://localhost:3000/dev/api/docs)
 - **JSON da Especificação**: [http://localhost:3000/dev/api/api-docs.json](http://localhost:3000/dev/api/api-docs.json)
 
 ---
@@ -35,8 +44,9 @@ ENABLE_SWAGGER=false  # Desabilita Swagger
 
 ### 1. **Acessar a Documentação:**
 
-- Navegue para `http://localhost:3000/dev/api/docs`
-- A interface interativa será carregada
+- **AWS DEV**: Navegue para `https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/docs`
+- **Local**: Navegue para `http://localhost:3000/dev/api/docs`
+- A interface interativa será carregada automaticamente
 
 ### 2. **Testar Endpoints Públicos:**
 
@@ -197,3 +207,27 @@ Content-Type: application/json
 - ✅ **Interface customizada e profissional**
 
 **🎊 Swagger 100% funcional e pronto para uso!**
+
+---
+
+## 🚀 **ACESSO RÁPIDO - LINKS DIRETOS**
+
+### **🌐 Clique e Acesse Imediatamente:**
+
+| Ambiente | 🔗 Swagger UI | 📄 OpenAPI JSON |
+|----------|---------------|-----------------|
+| **DEV** | [**🚀 Abrir Swagger DEV**](https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/docs) | [JSON](https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/api-docs.json) |
+| **SANDBOX** | [**🧪 Abrir Swagger SANDBOX**](https://6tyjc51bgl.execute-api.sa-east-1.amazonaws.com/sandbox/api/docs) | [JSON](https://6tyjc51bgl.execute-api.sa-east-1.amazonaws.com/sandbox/api/api-docs.json) |
+| **PROD** | ❌ *Desabilitado por segurança* | ❌ *Não disponível* |
+
+### **⚡ Teste Rápido:**
+
+```bash
+# Testar se Swagger está ativo
+curl https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/docs
+
+# Obter especificação OpenAPI  
+curl https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api/api-docs.json
+```
+
+**💡 Dica**: Marque estes links nos favoritos do seu navegador para acesso rápido durante o desenvolvimento!
