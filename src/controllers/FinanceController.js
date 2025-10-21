@@ -1,7 +1,6 @@
 const { query, beginTransaction, commit, rollback } = require('../models/database');
-const { ApiError } = require('../utils/errors');
+const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
-const { asyncHandler } = require('../utils/auth');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
 
