@@ -245,7 +245,7 @@ const { authenticateToken, authorize } = require('../utils/auth');
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/', authenticateToken, NotificationController.getUserNotifications);
+router.get('/', authenticateToken, NotificationController.index);
 
 /**
  * @swagger
@@ -285,7 +285,7 @@ router.get('/', authenticateToken, NotificationController.getUserNotifications);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/', authenticateToken, authorize(['admin', 'manager']), NotificationController.createNotification);
+router.post('/', authenticateToken, authorize(['admin', 'manager']), NotificationController.create);
 
 /**
  * @swagger
@@ -332,7 +332,7 @@ router.post('/', authenticateToken, authorize(['admin', 'manager']), Notificatio
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/bulk', authenticateToken, authorize(['admin', 'manager']), NotificationController.createBulkNotifications);
+// router.post('/bulk', authenticateToken, authorize(['admin', 'manager']), NotificationController.createBulkNotifications);
 
 /**
  * @swagger
@@ -430,7 +430,7 @@ router.put('/:id/read', authenticateToken, NotificationController.markAsRead);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.put('/bulk-read', authenticateToken, NotificationController.markMultipleAsRead);
+// router.put('/bulk-read', authenticateToken, NotificationController.markMultipleAsRead);
 
 /**
  * @swagger
@@ -544,7 +544,7 @@ router.get('/stats', authenticateToken, NotificationController.getStats);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.delete('/cleanup', authenticateToken, authorize(['admin']), NotificationController.cleanup);
+router.delete('/cleanup', authenticateToken, authorize(['admin']), NotificationController.cleanupExpired);
 
 /**
  * @swagger
