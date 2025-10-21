@@ -8,6 +8,9 @@ Parameters:
     Default: dev
     AllowedValues: [dev, sandbox, prod]
 
+Conditions:
+  IsProductionStage: !Equals [!Ref Stage, "prod"]
+
 Globals:
   Function:
     Timeout: 60
@@ -26,6 +29,11 @@ Globals:
         TZ: America/Sao_Paulo
         # Desabilitar migrations na inicialização da Lambda
         SKIP_MIGRATIONS: true
+        # Habilitar Swagger apenas em dev e sandbox
+        ENABLE_SWAGGER: !If 
+          - IsProductionStage
+          - "false"
+          - "true"
 
 Resources:
   ApiFunction:
