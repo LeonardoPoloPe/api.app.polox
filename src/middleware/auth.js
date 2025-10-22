@@ -10,7 +10,7 @@ const { logger } = require('../utils/logger');
  */
 
 /**
- * Middleware principal de autenticação
+ * Middleware principal de autenticação (versão simplificada)
  * Verifica token JWT e carrega dados do usuário
  */
 const authMiddleware = async (req, res, next) => {
@@ -22,21 +22,11 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7); // Remove "Bearer "
-    
-    // Verificar se token não está em blacklist
-    const isBlacklisted = await checkTokenBlacklist(token);
-    if (isBlacklisted) {
-      throw new ApiError(401, 'Token inválido ou expirado');
-    }
 
-    // Verificar e decodificar token
+    // Verificar e decodificar token (versão simplificada)
     let decoded;
     try {
-      decoded = jwt.verify(token, jwtConfig.accessToken.secret, {
-        algorithms: [jwtConfig.accessToken.algorithm],
-        issuer: jwtConfig.accessToken.issuer,
-        audience: jwtConfig.accessToken.audience
-      });
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     } catch (jwtError) {
       if (jwtError.name === 'TokenExpiredError') {
         throw new ApiError(401, 'Token expirado');
@@ -47,26 +37,13 @@ const authMiddleware = async (req, res, next) => {
       }
     }
 
-    // Buscar dados completos do usuário
+    // Buscar dados do usuário (versão simplificada)
     const userResult = await query(`
       SELECT 
-        u.id,
-        u.company_id,
-        u.name,
-        u.email,
-        u.role,
-        u.permissions,
-        u.status,
-        u.last_login_at,
-        c.name as company_name,
-        c.domain as company_domain,
-        c.plan as company_plan,
-        c.enabled_modules as company_modules,
-        c.status as company_status
-      FROM users u
-      JOIN companies c ON u.company_id = c.id
-      WHERE u.id = $1 AND u.status = 'active' AND c.status = 'active'
-    `, [decoded.userId]);
+        id, name, email, role, company_id, created_at
+      FROM users
+      WHERE id = $1 AND deleted_at IS NULL
+    `, [decoded.id]);
 
     if (userResult.rows.length === 0) {
       throw new ApiError(401, 'Usuário não encontrado ou inativo');
@@ -74,92 +51,28 @@ const authMiddleware = async (req, res, next) => {
 
     const user = userResult.rows[0];
 
-    // Verificar se o token ainda é válido na sessão
-    const sessionResult = await query(`
-      SELECT id, expires_at, last_activity_at
-      FROM user_sessions 
-      WHERE user_id = $1 AND token_id = $2 AND status = 'active'
-    `, [user.id, decoded.jti]);
-
-    if (sessionResult.rows.length === 0) {
-      throw new ApiError(401, 'Sessão inválida ou expirada');
-    }
-
-    const session = sessionResult.rows[0];
-
-    // Verificar se sessão não expirou
-    if (new Date() > new Date(session.expires_at)) {
-      // Marcar sessão como expirada
-      await query(`
-        UPDATE user_sessions 
-        SET status = 'expired' 
-        WHERE id = $1
-      `, [session.id]);
-      
-      throw new ApiError(401, 'Sessão expirada');
-    }
-
-    // Atualizar última atividade se configurado
-    if (security.session.extendOnActivity) {
-      await query(`
-        UPDATE user_sessions 
-        SET last_activity_at = NOW(),
-            expires_at = NOW() + INTERVAL '${security.session.sessionTimeout} milliseconds'
-        WHERE id = $1
-      `, [session.id]);
-    }
-
-    // Adicionar dados do usuário e empresa ao request
+    // Adicionar dados do usuário ao request
     req.user = {
       id: user.id,
       companyId: user.company_id,
       name: user.name,
       email: user.email,
       role: user.role,
-      permissions: user.permissions || [],
-      status: user.status,
-      lastLoginAt: user.last_login_at,
-      company: {
-        id: user.company_id,
-        name: user.company_name,
-        domain: user.company_domain,
-        plan: user.company_plan,
-        modules: user.company_modules || [],
-        status: user.company_status
-      },
-      session: {
-        id: session.id,
-        tokenId: decoded.jti,
-        lastActivity: session.last_activity_at
-      }
+      createdAt: user.created_at
     };
 
-    // Log de atividade se habilitado
-    if (security.audit.logTokenRefresh || process.env.NODE_ENV === 'development') {
+    // Log de atividade se em desenvolvimento
+    if (process.env.NODE_ENV === 'dev') {
       logger.info('Usuário autenticado:', {
         userId: user.id,
-        companyId: user.company_id,
+        email: user.email,
         role: user.role,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        endpoint: `${req.method} ${req.path}`,
-        timestamp: new Date().toISOString()
+        endpoint: `${req.method} ${req.path}`
       });
     }
 
     next();
   } catch (error) {
-    // Log de tentativa de acesso negado
-    if (security.audit.logPermissionDenied) {
-      logger.warn('Tentativa de acesso negado:', {
-        error: error.message,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        endpoint: `${req.method} ${req.path}`,
-        timestamp: new Date().toISOString()
-      });
-    }
-
     // Retornar erro padronizado
     if (error instanceof ApiError) {
       return res.status(error.statusCode).json({
@@ -197,44 +110,23 @@ const optionalAuthMiddleware = async (req, res, next) => {
 };
 
 /**
- * Verifica se token está em blacklist
+ * Verifica se token está em blacklist (versão simplificada)
  * @param {string} token - Token JWT
- * @returns {boolean} True se está em blacklist
+ * @returns {boolean} False por enquanto (não implementado)
  */
 const checkTokenBlacklist = async (token) => {
-  try {
-    const result = await query(`
-      SELECT id FROM token_blacklist 
-      WHERE token_hash = $1 AND expires_at > NOW()
-    `, [require('crypto').createHash('sha256').update(token).digest('hex')]);
-    
-    return result.rows.length > 0;
-  } catch (error) {
-    logger.error('Erro ao verificar blacklist de token:', error);
-    return false; // Em caso de erro, permitir (fail open)
-  }
+  // Por enquanto, não verificamos blacklist até termos a tabela
+  return false;
 };
 
 /**
- * Adiciona token à blacklist (usado no logout)
+ * Adiciona token à blacklist (versão simplificada)
  * @param {string} token - Token JWT
  * @param {number} expiresAt - Timestamp de expiração
  */
 const blacklistToken = async (token, expiresAt) => {
-  try {
-    const tokenHash = require('crypto').createHash('sha256').update(token).digest('hex');
-    
-    await query(`
-      INSERT INTO token_blacklist (token_hash, expires_at, created_at)
-      VALUES ($1, $2, NOW())
-      ON CONFLICT (token_hash) DO NOTHING
-    `, [tokenHash, new Date(expiresAt * 1000)]);
-    
-    logger.info('Token adicionado à blacklist', { tokenHash });
-  } catch (error) {
-    logger.error('Erro ao adicionar token à blacklist:', error);
-    throw error;
-  }
+  // Por enquanto, não implementamos blacklist
+  logger.info('Blacklist de token não implementado ainda');
 };
 
 /**

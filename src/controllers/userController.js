@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
 // Importar módulos internos
-const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
+const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../config/database');
 const { logger, auditLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { cache } = require('../config/cache');

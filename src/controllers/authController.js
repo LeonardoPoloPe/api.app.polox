@@ -30,233 +30,63 @@ const {
 class AuthController {
   
   /**
-   * 🔑 LOGIN - Autenticação de usuário
+   * 🔑 LOGIN - Autenticação de usuário (versão simplificada)
    */
   static login = asyncHandler(async (req, res) => {
     const { email, password, rememberMe = false } = req.body;
-    const startTime = Date.now();
 
     try {
-      logger.info('Tentativa de login', { 
-        email: email?.toLowerCase(),
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-
-      // 1. Buscar usuário por email
+      // 1. Buscar usuário por email (versão simplificada)
       const userResult = await query(`
         SELECT 
-          u.id, u.email, u.password, u.name, u.role, u.company_id,
-          u.is_active, u.failed_attempts, u.locked_until, u.last_login,
-          u.permissions, u.department, u.position, u.phone,
-          c.name as company_name, c.plan as company_plan, c.is_active as company_active,
-          c.modules as company_modules
-        FROM users u
-        INNER JOIN companies c ON u.company_id = c.id
-        WHERE u.email = $1 AND u.deleted_at IS NULL
+          id, email, password_hash, name, role, company_id, created_at
+        FROM users 
+        WHERE email = $1 AND deleted_at IS NULL
       `, [email.toLowerCase()]);
 
       if (userResult.rows.length === 0) {
-        // Log tentativa com email inexistente
-        securityLogger('Tentativa de login com email inexistente', {
-          email: email?.toLowerCase(),
-          ip: req.ip,
-          userAgent: req.get('User-Agent')
-        });
-
-        trackAuth.login('unknown', 'failure', 'password');
-        
         throw new ApiError(401, 'Credenciais inválidas');
       }
 
       const user = userResult.rows[0];
 
-      // 2. Verificar se usuário está ativo
-      if (!user.is_active) {
-        securityLogger('Tentativa de login com usuário inativo', {
-          userId: user.id,
-          email: user.email,
-          ip: req.ip
-        });
-
-        trackAuth.login(user.company_id, 'failure', 'password');
-        throw new ApiError(401, 'Usuário inativo');
-      }
-
-      // 3. Verificar se empresa está ativa
-      if (!user.company_active) {
-        securityLogger('Tentativa de login com empresa inativa', {
-          userId: user.id,
-          companyId: user.company_id,
-          ip: req.ip
-        });
-
-        trackAuth.login(user.company_id, 'failure', 'password');
-        throw new ApiError(401, 'Empresa inativa');
-      }
-
-      // 4. Verificar se conta está bloqueada
-      if (user.locked_until && new Date(user.locked_until) > new Date()) {
-        const unlockTime = new Date(user.locked_until).toLocaleString('pt-BR');
-        
-        securityLogger('Tentativa de login com conta bloqueada', {
-          userId: user.id,
-          email: user.email,
-          lockedUntil: user.locked_until,
-          ip: req.ip
-        });
-
-        trackAuth.login(user.company_id, 'failure', 'password');
-        throw new ApiError(423, `Conta bloqueada até ${unlockTime}`);
-      }
-
-      // 5. Verificar senha
-      const isValidPassword = await comparePassword(password, user.password);
+      // 2. Verificar senha
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
 
       if (!isValidPassword) {
-        // Incrementar tentativas falhadas
-        const newFailedAttempts = (user.failed_attempts || 0) + 1;
-        const maxAttempts = parseInt(process.env.MAX_FAILED_ATTEMPTS) || 5;
-        const lockoutDuration = parseInt(process.env.LOCKOUT_DURATION) || 30; // minutos
-
-        let updateQuery = 'UPDATE users SET failed_attempts = $1';
-        let updateParams = [newFailedAttempts];
-
-        // Bloquear conta se exceder máximo de tentativas
-        if (newFailedAttempts >= maxAttempts) {
-          const lockUntil = new Date(Date.now() + lockoutDuration * 60 * 1000);
-          updateQuery += ', locked_until = $2';
-          updateParams.push(lockUntil);
-
-          securityLogger('Conta bloqueada por excesso de tentativas', {
-            userId: user.id,
-            email: user.email,
-            attempts: newFailedAttempts,
-            lockedUntil: lockUntil,
-            ip: req.ip
-          });
-        }
-
-        updateQuery += ' WHERE id = $' + (updateParams.length + 1);
-        updateParams.push(user.id);
-
-        await query(updateQuery, updateParams);
-
-        securityLogger('Tentativa de login com senha inválida', {
-          userId: user.id,
-          email: user.email,
-          attempts: newFailedAttempts,
-          ip: req.ip
-        });
-
-        trackAuth.login(user.company_id, 'failure', 'password');
         throw new ApiError(401, 'Credenciais inválidas');
       }
 
-      // 6. Login bem-sucedido - Resetar tentativas e gerar tokens
-      await query(`
-        UPDATE users SET 
-          failed_attempts = 0, 
-          locked_until = NULL, 
-          last_login = NOW()
-        WHERE id = $1
-      `, [user.id]);
+      // 3. Gerar token JWT simples
+      const token = jwt.sign(
+        {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          companyId: user.company_id
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      );
 
-      // 7. Gerar tokens JWT
-      const sessionId = uuidv4();
-      const { accessToken, refreshToken } = generateTokens({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        companyId: user.company_id,
-        permissions: user.permissions || [],
-        sessionId
-      }, rememberMe);
-
-      // 8. Salvar sessão no banco
-      const expiresAt = new Date(Date.now() + (rememberMe ? 30 : 7) * 24 * 60 * 60 * 1000);
-      
-      await query(`
-        INSERT INTO user_sessions (
-          id, user_id, refresh_token, ip_address, user_agent, 
-          expires_at, created_at, last_activity
-        ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-      `, [
-        sessionId,
-        user.id,
-        refreshToken,
-        req.ip,
-        req.get('User-Agent') || 'Unknown',
-        expiresAt
-      ]);
-
-      // 9. Limpar sessões antigas se exceder limite
-      const maxSessions = parseInt(process.env.MAX_SESSIONS_PER_USER) || 5;
-      await query(`
-        DELETE FROM user_sessions 
-        WHERE user_id = $1 
-        AND id NOT IN (
-          SELECT id FROM user_sessions 
-          WHERE user_id = $1 
-          ORDER BY created_at DESC 
-          LIMIT $2
-        )
-      `, [user.id, maxSessions]);
-
-      // 10. Cachear dados do usuário
-      const userData = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        companyId: user.company_id,
-        companyName: user.company_name,
-        companyPlan: user.company_plan,
-        permissions: user.permissions || [],
-        department: user.department,
-        position: user.position,
-        modules: user.company_modules || []
-      };
-
-      await cache.set(`user:${user.id}`, userData, 3600, user.company_id); // 1 hora
-
-      // 11. Log de auditoria
-      auditLogger('Usuário logado com sucesso', {
-        userId: user.id,
-        email: user.email,
-        companyId: user.company_id,
-        sessionId,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        rememberMe,
-        duration: Date.now() - startTime
-      });
-
-      // 12. Métricas
-      trackAuth.login(user.company_id, 'success', 'password');
-
-      // 13. Resposta de sucesso
+      // 4. Resposta de sucesso
       res.json({
         success: true,
         message: 'Login realizado com sucesso',
         data: {
-          user: userData,
-          tokens: {
-            accessToken,
-            refreshToken,
-            expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-            tokenType: 'Bearer'
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            companyId: user.company_id
           },
-          session: {
-            id: sessionId,
-            expiresAt,
-            rememberMe
-          }
+          token,
+          expiresIn: process.env.JWT_EXPIRES_IN || '24h'
         }
       });
 
     } catch (error) {
-      trackAuth.login(req.body.companyId || 'unknown', 'failure', 'password');
       throw error;
     }
   });
