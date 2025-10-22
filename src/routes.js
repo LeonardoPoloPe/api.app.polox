@@ -6,7 +6,7 @@
 
 const express = require("express");
 const AuthController = require("./controllers/authController");
-const UserController = require("./controllers/userController-simple");
+const UserController = require("./controllers/userController");
 
 // Middleware e validações
 const { authenticateToken } = require("./middleware/auth");
