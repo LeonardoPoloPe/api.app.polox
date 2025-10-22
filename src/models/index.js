@@ -3,12 +3,19 @@
 // Core Models
 const UserModel = require("./User");
 const CompanyModel = require("./Company");
+const UserSessionModel = require("./UserSession");
 
 // Business Models
 const LeadModel = require("./Lead");
 const ClientModel = require("./Client");
 const SaleModel = require("./Sale");
+const SaleItemModel = require("./SaleItem");
 const ProductModel = require("./Product");
+const ProductCategoryModel = require("./ProductCategory");
+
+// Sales Pipeline Models
+const PipelineModel = require("./Pipeline");
+const DealModel = require("./Deal");
 
 // Financial Models
 const FinancialAccountModel = require("./FinancialAccount");
@@ -22,8 +29,12 @@ const MissionModel = require("./Mission");
 
 // CRM Support Models
 const TicketModel = require("./Ticket");
+const TicketCommentModel = require("./TicketComment");
 const EventModel = require("./Event");
 const SupplierModel = require("./Supplier");
+
+// Project Management Models
+const ProjectModel = require("./Project");
 
 // Communication Models
 const NotificationModel = require("./Notification");
@@ -49,12 +60,19 @@ module.exports = {
   // Core Models
   UserModel,
   CompanyModel,
+  UserSessionModel,
 
   // Business Models
   LeadModel,
   ClientModel,
   SaleModel,
+  SaleItemModel,
   ProductModel,
+  ProductCategoryModel,
+
+  // Sales Pipeline Models
+  PipelineModel,
+  DealModel,
 
   // Financial Models
   FinancialAccountModel,
@@ -68,8 +86,12 @@ module.exports = {
 
   // CRM Support Models
   TicketModel,
+  TicketCommentModel,
   EventModel,
   SupplierModel,
+
+  // Project Management Models
+  ProjectModel,
 
   // Communication Models
   NotificationModel,

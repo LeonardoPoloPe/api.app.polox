@@ -21,6 +21,7 @@ class UserModel {
       password,
       role = 'user',
       permissions = [],
+      avatar_url = null,
       phone,
       position,
       department,
@@ -38,27 +39,28 @@ class UserModel {
     const passwordHash = await bcrypt.hash(password, bcryptConfig.rounds);
 
     const insertQuery = `
-      INSERT INTO users (
+      INSERT INTO polox.users (
         company_id, name, email, password_hash, role, permissions,
-        phone, position, department, language, timezone, preferences,
-        status, created_at, updated_at
+        avatar_url, phone, position, department, language, timezone, 
+        preferences, status, failed_login_attempts, created_at, updated_at
       )
       VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10, $11, $12,
-        'active', NOW(), NOW()
+        $13, 'active', 0, NOW(), NOW()
       )
       RETURNING 
         id, company_id, name, email, role, permissions,
-        phone, position, department, language, timezone, preferences,
-        status, created_at, updated_at
+        avatar_url, phone, position, department, language, timezone, 
+        preferences, status, created_at, updated_at
     `;
 
     try {
       const result = await query(insertQuery, [
         company_id, name, email, passwordHash, role, JSON.stringify(permissions),
-        phone, position, department, language, timezone, JSON.stringify(preferences)
-      ]);
+        avatar_url, phone, position, department, language, timezone, 
+        JSON.stringify(preferences)
+      ], { companyId: company_id });
 
       return result.rows[0];
     } catch (error) {
@@ -87,14 +89,15 @@ class UserModel {
       selectQuery = `
         SELECT 
           u.id, u.company_id, u.name, u.email, u.password_hash, u.role, 
-          u.permissions, u.status, u.phone, u.position, u.department,
-          u.language, u.timezone, u.preferences, u.last_login_at,
+          u.permissions, u.status, u.avatar_url, u.phone, u.position, u.department,
+          u.language, u.timezone, u.preferences, u.last_login_at, u.last_login_ip,
+          u.failed_login_attempts, u.locked_until, u.email_verified_at,
           u.created_at, u.updated_at,
           c.name as company_name, c.domain as company_domain, 
           c.plan as company_plan, c.enabled_modules as company_modules,
           c.status as company_status
-        FROM users u
-        JOIN companies c ON u.company_id = c.id
+        FROM polox.users u
+        JOIN polox.companies c ON u.company_id = c.id
         WHERE u.email = $1 AND u.company_id = $2 
           AND u.status = 'active' AND u.deleted_at IS NULL
           AND c.status = 'active' AND c.deleted_at IS NULL
@@ -590,14 +593,192 @@ class UserModel {
     }
 
     const selectQuery = `
-      SELECT id FROM users WHERE ${whereClause} LIMIT 1
+      SELECT id FROM polox.users WHERE ${whereClause} LIMIT 1
     `;
 
     try {
-      const result = await query(selectQuery, params);
+      const result = await query(selectQuery, params, { companyId });
       return result.rows.length > 0;
     } catch (error) {
       throw new ApiError(500, `Erro ao verificar email: ${error.message}`);
+    }
+  }
+
+  /**
+   * Atualiza último login do usuário
+   * @param {number} userId - ID do usuário
+   * @param {string} ipAddress - IP do login
+   * @returns {Promise<boolean>} True se atualizado
+   */
+  static async updateLastLogin(userId, ipAddress = null) {
+    const updateQuery = `
+      UPDATE polox.users 
+      SET last_login_at = NOW(), last_login_ip = $2, failed_login_attempts = 0
+      WHERE id = $1
+    `;
+
+    try {
+      const result = await query(updateQuery, [userId, ipAddress]);
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao atualizar último login: ${error.message}`);
+    }
+  }
+
+  /**
+   * Incrementa tentativas de login falhadas
+   * @param {number} userId - ID do usuário
+   * @returns {Promise<number>} Número atual de tentativas
+   */
+  static async incrementFailedAttempts(userId) {
+    const updateQuery = `
+      UPDATE polox.users 
+      SET failed_login_attempts = failed_login_attempts + 1
+      WHERE id = $1
+      RETURNING failed_login_attempts
+    `;
+
+    try {
+      const result = await query(updateQuery, [userId]);
+      return result.rows[0]?.failed_login_attempts || 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao incrementar tentativas: ${error.message}`);
+    }
+  }
+
+  /**
+   * Bloqueia usuário por tentativas excessivas
+   * @param {number} userId - ID do usuário
+   * @param {number} minutes - Minutos para bloquear
+   * @returns {Promise<boolean>} True se bloqueado
+   */
+  static async lockUser(userId, minutes = 30) {
+    const updateQuery = `
+      UPDATE polox.users 
+      SET locked_until = NOW() + INTERVAL '${minutes} minutes'
+      WHERE id = $1
+    `;
+
+    try {
+      const result = await query(updateQuery, [userId]);
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao bloquear usuário: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gera token de verificação de email
+   * @param {number} userId - ID do usuário
+   * @returns {Promise<string>} Token gerado
+   */
+  static async generateVerificationToken(userId) {
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+
+    const updateQuery = `
+      UPDATE polox.users 
+      SET verification_token = $2
+      WHERE id = $1
+    `;
+
+    try {
+      await query(updateQuery, [userId, token]);
+      return token;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao gerar token: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verifica email do usuário
+   * @param {string} token - Token de verificação
+   * @returns {Promise<boolean>} True se verificado
+   */
+  static async verifyEmail(token) {
+    const updateQuery = `
+      UPDATE polox.users 
+      SET email_verified_at = NOW(), verification_token = NULL
+      WHERE verification_token = $1 AND email_verified_at IS NULL
+    `;
+
+    try {
+      const result = await query(updateQuery, [token]);
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao verificar email: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gera token de reset de senha
+   * @param {string} email - Email do usuário
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<string|null>} Token gerado ou null se usuário não encontrado
+   */
+  static async generatePasswordResetToken(email, companyId) {
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    const updateQuery = `
+      UPDATE polox.users 
+      SET reset_password_token = $3, reset_password_expires_at = $4
+      WHERE email = $1 AND company_id = $2 AND deleted_at IS NULL
+    `;
+
+    try {
+      const result = await query(updateQuery, [email, companyId, token, expiresAt], { companyId });
+      return result.rowCount > 0 ? token : null;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao gerar token de reset: ${error.message}`);
+    }
+  }
+
+  /**
+   * Reseta senha usando token
+   * @param {string} token - Token de reset
+   * @param {string} newPassword - Nova senha
+   * @returns {Promise<boolean>} True se resetado
+   */
+  static async resetPassword(token, newPassword) {
+    const passwordHash = await bcrypt.hash(newPassword, bcryptConfig.rounds);
+
+    const updateQuery = `
+      UPDATE polox.users 
+      SET password_hash = $2, reset_password_token = NULL, reset_password_expires_at = NULL
+      WHERE reset_password_token = $1 
+        AND reset_password_expires_at > NOW()
+        AND deleted_at IS NULL
+    `;
+
+    try {
+      const result = await query(updateQuery, [token, passwordHash]);
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao resetar senha: ${error.message}`);
+    }
+  }
+
+  /**
+   * Atualiza avatar do usuário
+   * @param {number} userId - ID do usuário
+   * @param {string} avatarUrl - URL do avatar
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<boolean>} True se atualizado
+   */
+  static async updateAvatar(userId, avatarUrl, companyId) {
+    const updateQuery = `
+      UPDATE polox.users 
+      SET avatar_url = $2, updated_at = NOW()
+      WHERE id = $1 AND company_id = $3 AND deleted_at IS NULL
+    `;
+
+    try {
+      const result = await query(updateQuery, [userId, avatarUrl, companyId], { companyId });
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao atualizar avatar: ${error.message}`);
     }
   }
 }
