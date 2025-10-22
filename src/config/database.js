@@ -1,9 +1,10 @@
-const { Pool } = require('pg');
-const winston = require('winston');
+const { Pool } = require("pg");
+const winston = require("winston");
+const secretsManager = require("./secrets");
 
 // Configuração do logger
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || "info",
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
@@ -16,70 +17,111 @@ const logger = winston.createLogger({
   ],
 });
 
-// Determina qual host usar baseado no ambiente
-const getDbHost = () => {
-  if (process.env.NODE_ENV === 'prod') {
-    // Usar RDS Proxy em produção
-    return process.env.DB_PROXY_HOST || 'polox-app-proxy.proxy-cd2em8e0a6ot.sa-east-1.rds.amazonaws.com';
-  } else {
-    // Usar conexão direta para dev, sandbox e outros ambientes
-    return process.env.DB_HOST || 'database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com';
+// Variável global para armazenar a configuração do banco e pool
+let dbConfig = null;
+let pool = null;
+
+/**
+ * Função assíncrona para inicializar a configuração do banco
+ */
+async function initializeDatabase() {
+  if (dbConfig) return dbConfig;
+
+  try {
+    console.log("🔐 Inicializando configuração do banco de dados...");
+    dbConfig = await secretsManager.getDatabaseConfig();
+
+    console.log(`✅ Configuração carregada via: ${dbConfig.source}`);
+    console.log(`📍 Database: ${dbConfig.database}`);
+    console.log(`🌐 Host: ${dbConfig.host}`);
+
+    return dbConfig;
+  } catch (error) {
+    console.error("❌ Erro ao inicializar configuração do banco:", error);
+    throw error;
   }
-};
+}
 
-// Configuração do pool PostgreSQL com suporte multi-tenant
-const pool = new Pool({
-  host: getDbHost(),
-  port: parseInt(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME || 'app_polox_dev',
-  user: process.env.DB_USER || 'polox_dev_user',
-  password: process.env.DB_PASSWORD,
-  
-  // Configurações SSL para AWS RDS
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: true,
-    ca: require('fs').readFileSync(__dirname + '/ssl/rds-ca-2019-root.pem'),
-  } : {
-    rejectUnauthorized: false,
-  },
-  
-  // Configurações de pool otimizadas para multi-tenant
-  max: parseInt(process.env.DB_POOL_MAX) || 20,
-  min: parseInt(process.env.DB_POOL_MIN) || 0,
-  acquire: 30000,
-  idle: 10000,
-  evict: 1000,
-  connectionTimeoutMillis: 30000,
-  idleTimeoutMillis: 30000,
-  statement_timeout: 30000,
-  query_timeout: 30000,
-});
+/**
+ * Função assíncrona para criar o pool de conexões
+ */
+async function createPool() {
+  if (pool) return pool;
 
-// Configurar schema padrão para multi-tenancy
-pool.on('connect', (client) => {
-  // Definir search_path para incluir schema polox
-  client.query('SET search_path TO polox, public');
-  
-  // Log de conexão
-  logger.info('Nova conexão PostgreSQL estabelecida', {
-    database: process.env.DB_NAME,
-    host: getDbHost(),
-    timestamp: new Date().toISOString()
+  const config = await initializeDatabase();
+
+  // Determinar host correto baseado no ambiente
+  let finalHost = config.host;
+  if (
+    process.env.NODE_ENV === "prod" ||
+    process.env.NODE_ENV === "production"
+  ) {
+    finalHost =
+      process.env.DB_PROXY_HOST ||
+      "polox-app-proxy.proxy-cd2em8e0a6ot.sa-east-1.rds.amazonaws.com";
+  }
+
+  pool = new Pool({
+    host: finalHost,
+    port: config.port,
+    database: config.database,
+    user: config.user,
+    password: config.password,
+
+    // Configurações SSL para AWS RDS
+    ssl:
+      process.env.NODE_ENV === "production"
+        ? {
+            rejectUnauthorized: true,
+            ca: require("fs").readFileSync(
+              __dirname + "/ssl/rds-ca-2019-root.pem"
+            ),
+          }
+        : {
+            rejectUnauthorized: false,
+          },
+
+    // Configurações de pool otimizadas para multi-tenant
+    max: parseInt(process.env.DB_POOL_MAX) || 20,
+    min: parseInt(process.env.DB_POOL_MIN) || 0,
+    acquire: 30000,
+    idle: 10000,
+    evict: 1000,
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
+    statement_timeout: 30000,
+    query_timeout: 30000,
   });
-});
 
-// Event listeners para monitoramento
-pool.on('error', (err, client) => {
-  logger.error('Erro no pool PostgreSQL:', {
-    error: err.message,
-    stack: err.stack,
-    timestamp: new Date().toISOString()
+  // Configurar schema padrão para multi-tenancy
+  pool.on("connect", (client) => {
+    // Definir search_path para incluir schema polox
+    client.query("SET search_path TO polox, public");
+
+    // Log de conexão
+    logger.info("Nova conexão PostgreSQL estabelecida", {
+      database: config.database,
+      host: finalHost,
+      source: config.source,
+      timestamp: new Date().toISOString(),
+    });
   });
-});
 
-pool.on('remove', (client) => {
-  logger.info('Cliente removido do pool PostgreSQL');
-});
+  // Event listeners para monitoramento
+  pool.on("error", (err, client) => {
+    logger.error("Erro no pool PostgreSQL:", {
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  pool.on("remove", (client) => {
+    logger.info("Cliente removido do pool PostgreSQL");
+  });
+
+  return pool;
+}
 
 /**
  * Executa query com isolamento multi-tenant automático
@@ -90,39 +132,45 @@ pool.on('remove', (client) => {
  * @returns {Promise} Resultado da query
  */
 const query = async (text, params = [], options = {}) => {
+  // Garantir que o pool foi inicializado
+  await createPool();
+
   const client = await pool.connect();
-  
+
   try {
     const start = Date.now();
-    
+
     // Aplicar isolamento multi-tenant se companyId fornecido
     if (options.companyId) {
-      await client.query('SET LOCAL app.current_company_id = $1', [options.companyId]);
+      await client.query("SET LOCAL app.current_company_id = $1", [
+        options.companyId,
+      ]);
     }
-    
+
     const result = await client.query(text, params);
     const duration = Date.now() - start;
 
     // Log da query (não logar senhas ou dados sensíveis)
-    const sanitizedQuery = text.toLowerCase().includes('password') ? 
-      '[QUERY WITH SENSITIVE DATA]' : text.substring(0, 100);
-      
-    logger.info('Query executada:', {
+    const sanitizedQuery = text.toLowerCase().includes("password")
+      ? "[QUERY WITH SENSITIVE DATA]"
+      : text.substring(0, 100);
+
+    logger.info("Query executada:", {
       query: sanitizedQuery,
       duration: `${duration}ms`,
       rows: result.rowCount,
       companyId: options.companyId || null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return result;
   } catch (error) {
-    logger.error('Erro na query:', {
+    logger.error("Erro na query:", {
       error: error.message,
       query: text.substring(0, 100),
       params: params.length,
       companyId: options.companyId || null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     throw error;
   } finally {
@@ -141,31 +189,33 @@ const transaction = async (callback, options = {}) => {
   const client = await pool.connect();
 
   try {
-    await client.query('BEGIN');
-    
+    await client.query("BEGIN");
+
     // Aplicar isolamento multi-tenant
     if (options.companyId) {
-      await client.query('SET LOCAL app.current_company_id = $1', [options.companyId]);
+      await client.query("SET LOCAL app.current_company_id = $1", [
+        options.companyId,
+      ]);
     }
-    
-    const result = await callback(client);
-    await client.query('COMMIT');
 
-    logger.info('Transação commitada com sucesso', {
+    const result = await callback(client);
+    await client.query("COMMIT");
+
+    logger.info("Transação commitada com sucesso", {
       companyId: options.companyId || null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
-    
-    logger.error('Transação cancelada:', {
+    await client.query("ROLLBACK");
+
+    logger.error("Transação cancelada:", {
       error: error.message,
       companyId: options.companyId || null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     throw error;
   } finally {
     client.release();
@@ -178,19 +228,21 @@ const transaction = async (callback, options = {}) => {
  */
 const healthCheck = async () => {
   try {
-    const result = await query('SELECT NOW() as current_time, version() as pg_version');
-    
-    logger.info('Health check realizado com sucesso', {
+    const result = await query(
+      "SELECT NOW() as current_time, version() as pg_version"
+    );
+
+    logger.info("Health check realizado com sucesso", {
       time: result.rows[0].current_time,
-      version: result.rows[0].pg_version.split(' ')[0],
-      timestamp: new Date().toISOString()
+      version: result.rows[0].pg_version.split(" ")[0],
+      timestamp: new Date().toISOString(),
     });
-    
+
     return true;
   } catch (error) {
-    logger.error('Health check falhou:', {
+    logger.error("Health check falhou:", {
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     return false;
   }
@@ -202,10 +254,49 @@ const healthCheck = async () => {
  */
 const closePool = async () => {
   try {
-    await pool.end();
-    logger.info('Pool PostgreSQL fechado com sucesso');
+    if (pool) {
+      await pool.end();
+      pool = null;
+      logger.info("Pool PostgreSQL fechado com sucesso");
+    }
   } catch (error) {
-    logger.error('Erro ao fechar pool:', error);
+    logger.error("Erro ao fechar pool:", error);
+    throw error;
+  }
+};
+
+/**
+ * Função para iniciar transação
+ */
+const beginTransaction = async () => {
+  await createPool();
+  const client = await pool.connect();
+  await client.query("BEGIN");
+  return client;
+};
+
+/**
+ * Função para commit da transação
+ */
+const commitTransaction = async (client) => {
+  try {
+    await client.query("COMMIT");
+    client.release();
+  } catch (error) {
+    client.release();
+    throw error;
+  }
+};
+
+/**
+ * Função para rollback da transação
+ */
+const rollbackTransaction = async (client) => {
+  try {
+    await client.query("ROLLBACK");
+    client.release();
+  } catch (error) {
+    client.release();
     throw error;
   }
 };
@@ -215,20 +306,26 @@ const closePool = async () => {
  * @returns {Object} Estatísticas do pool
  */
 const getPoolStats = () => {
+  if (!pool) return null;
+
   return {
     totalCount: pool.totalCount,
     idleCount: pool.idleCount,
     waitingCount: pool.waitingCount,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 };
 
 module.exports = {
-  pool,
   query,
   transaction,
   healthCheck,
   closePool,
+  beginTransaction,
+  commitTransaction,
+  rollbackTransaction,
   getPoolStats,
-  logger
+  // Exportar função para inicialização manual se necessário
+  initializeDatabase,
+  logger,
 };

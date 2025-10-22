@@ -18,9 +18,8 @@ const {
 } = require("../models/database");
 const { logger, auditLogger, securityLogger } = require("../utils/logger");
 const { ApiError, asyncHandler } = require("../utils/errors");
-const { successResponse, paginatedResponse } = require("../utils/formatters");
+const { successResponse, paginatedResponse } = require("../utils/response");
 const bcrypt = require("bcryptjs");
-const { v4: uuidv4 } = require("uuid");
 const Joi = require("joi");
 
 class CompanyController {
@@ -235,23 +234,27 @@ class CompanyController {
 
     // 🔐 INICIAR TRANSAÇÃO
     const client = await beginTransaction();
+    let committed = false;
 
     try {
       // 1️⃣ CRIAR EMPRESA
+      const companySlug = companyData.domain
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "");
+
       const createCompanyQuery = `
         INSERT INTO polox.companies (
-          id, name, domain, plan, industry, company_size,
+          name, domain, slug, plan, industry, company_size,
           admin_name, admin_email, admin_phone,
           enabled_modules, settings, status, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', NOW(), NOW())
         RETURNING *
       `;
 
-      const companyId = uuidv4();
       const companyResult = await client.query(createCompanyQuery, [
-        companyId,
         companyData.name,
         companyData.domain,
+        companySlug,
         companyData.plan,
         companyData.industry,
         companyData.company_size,
@@ -269,15 +272,13 @@ class CompanyController {
 
       const createAdminQuery = `
         INSERT INTO polox.users (
-          id, company_id, name, email, password_hash, role, 
+          company_id, name, email, password_hash, role, 
           phone, status, permissions, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, 'company_admin', $6, 'active', $7, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, 'company_admin', $5, 'active', $6, NOW(), NOW())
         RETURNING id, name, email, role, status
       `;
 
-      const adminId = uuidv4();
       const adminResult = await client.query(createAdminQuery, [
-        adminId,
         newCompany.id,
         companyData.admin_name,
         companyData.admin_email,
@@ -292,11 +293,11 @@ class CompanyController {
       await client.query(
         `
         INSERT INTO user_gamification_profiles (
-          id, user_id, company_id, current_level, total_xp, current_coins, 
-          lifetime_coins, created_at, updated_at
-        ) VALUES ($1, $2, $3, 1, 0, 100, 100, NOW(), NOW())
+          user_id, company_id, current_level, total_xp, total_coins, 
+          available_coins, created_at, updated_at
+        ) VALUES ($1, $2, 1, 0, 100, 100, NOW(), NOW())
       `,
-        [uuidv4(), newAdmin.id, newCompany.id]
+        [newAdmin.id, newCompany.id]
       );
 
       // 4️⃣ CRIAR CONQUISTAS PADRÃO DA EMPRESA
@@ -304,7 +305,6 @@ class CompanyController {
         {
           name: "Primeiro Login",
           description: "Fez login pela primeira vez no sistema",
-          icon: "🎉",
           category: "onboarding",
           unlock_criteria: JSON.stringify({ action: "first_login" }),
           xp_reward: 10,
@@ -313,7 +313,6 @@ class CompanyController {
         {
           name: "Primeiro Cliente",
           description: "Cadastrou o primeiro cliente",
-          icon: "👥",
           category: "business",
           unlock_criteria: JSON.stringify({ action: "first_client" }),
           xp_reward: 50,
@@ -322,7 +321,6 @@ class CompanyController {
         {
           name: "Vendedor Iniciante",
           description: "Realizou sua primeira venda",
-          icon: "💰",
           category: "sales",
           unlock_criteria: JSON.stringify({ action: "first_sale" }),
           xp_reward: 75,
@@ -334,16 +332,14 @@ class CompanyController {
         await client.query(
           `
           INSERT INTO achievements (
-            id, company_id, name, description, icon, category,
-            unlock_criteria, xp_reward, coin_reward, is_active, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW())
+            company_id, name, description, category,
+            criteria, xp_reward, coin_reward, is_active, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW())
         `,
           [
-            uuidv4(),
             newCompany.id,
             achievement.name,
             achievement.description,
-            achievement.icon,
             achievement.category,
             achievement.unlock_criteria,
             achievement.xp_reward,
@@ -352,48 +348,8 @@ class CompanyController {
         );
       }
 
-      // 5️⃣ CRIAR MISSÕES PADRÃO
-      const defaultMissions = [
-        {
-          name: "Login Diário",
-          description: "Faça login no sistema",
-          type: "daily",
-          target_count: 1,
-          xp_reward: 5,
-          coin_reward: 2,
-        },
-        {
-          name: "Meta Semanal",
-          description: "Complete 5 logins esta semana",
-          type: "weekly",
-          target_count: 5,
-          xp_reward: 50,
-          coin_reward: 25,
-        },
-      ];
-
-      for (const mission of defaultMissions) {
-        await client.query(
-          `
-          INSERT INTO missions (
-            id, company_id, name, description, type, target_count,
-            xp_reward, coin_reward, is_active, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())
-        `,
-          [
-            uuidv4(),
-            newCompany.id,
-            mission.name,
-            mission.description,
-            mission.type,
-            mission.target_count,
-            mission.xp_reward,
-            mission.coin_reward,
-          ]
-        );
-      }
-
       await commitTransaction(client);
+      committed = true;
 
       // 📝 LOG DE AUDITORIA
       auditLogger("Company created", {
@@ -419,8 +375,14 @@ class CompanyController {
         {
           company: {
             ...newCompany,
-            enabled_modules: JSON.parse(newCompany.enabled_modules),
-            settings: JSON.parse(newCompany.settings),
+            enabled_modules:
+              typeof newCompany.enabled_modules === "string"
+                ? JSON.parse(newCompany.enabled_modules)
+                : newCompany.enabled_modules,
+            settings:
+              typeof newCompany.settings === "string"
+                ? JSON.parse(newCompany.settings)
+                : newCompany.settings,
           },
           admin: newAdmin,
           temp_password: "admin123", // Informar senha temporária
@@ -430,7 +392,9 @@ class CompanyController {
         201
       );
     } catch (error) {
-      await rollbackTransaction(client);
+      if (!committed) {
+        await rollbackTransaction(client);
+      }
       throw error;
     }
   });
