@@ -164,6 +164,105 @@ const swaggerOptions = {
             },
           },
         },
+        Company: {
+          type: "object",
+          required: ["name", "domain"],
+          properties: {
+            id: {
+              type: "string",
+              format: "uuid",
+              description: "ID único da empresa",
+              example: "550e8400-e29b-41d4-a716-446655440000",
+            },
+            name: {
+              type: "string",
+              description: "Nome da empresa",
+              example: "TechCorp Solutions",
+            },
+            domain: {
+              type: "string",
+              description: "Domínio único da empresa",
+              example: "techcorp",
+            },
+            plan: {
+              type: "string",
+              enum: ["starter", "professional", "enterprise"],
+              description: "Plano da empresa",
+              example: "professional",
+            },
+            status: {
+              type: "string",
+              enum: ["active", "inactive", "trial"],
+              description: "Status da empresa",
+              example: "active",
+            },
+            industry: {
+              type: "string",
+              description: "Setor da empresa",
+              example: "Tecnologia",
+            },
+            company_size: {
+              type: "string",
+              description: "Tamanho da empresa",
+              example: "21-50 funcionários",
+            },
+            admin_name: {
+              type: "string",
+              description: "Nome do administrador",
+              example: "João Silva",
+            },
+            admin_email: {
+              type: "string",
+              format: "email",
+              description: "Email do administrador",
+              example: "joao@techcorp.com",
+            },
+            admin_phone: {
+              type: "string",
+              description: "Telefone do administrador",
+              example: "+55 11 99999-1234",
+            },
+            enabled_modules: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              description: "Módulos habilitados",
+              example: ["dashboard", "users", "leads", "sales"],
+            },
+            settings: {
+              type: "object",
+              description: "Configurações da empresa",
+              example: {
+                maxUploadSize: "5MB",
+                maxTextLength: 40,
+                supportEmail: "suporte@techcorp.com",
+              },
+            },
+            users_count: {
+              type: "integer",
+              description: "Quantidade de usuários",
+              example: 15,
+            },
+            active_users: {
+              type: "integer",
+              description: "Usuários ativos",
+              example: 12,
+            },
+            created_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação",
+              example: "2025-10-18T22:30:00Z",
+            },
+            updated_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de atualização",
+              example: "2025-10-22T14:15:00Z",
+            },
+          },
+        },
         HealthCheck: {
           type: "object",
           properties: {
@@ -205,7 +304,12 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ["./src/routes.js", "./src/controllers/*.js", "./src/handler.js"],
+  apis: [
+    "./src/routes.js",
+    "./src/routes/*.js",
+    "./src/controllers/*.js",
+    "./src/handler.js",
+  ],
 };
 
 // Gera a especificação Swagger

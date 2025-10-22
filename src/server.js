@@ -72,6 +72,23 @@ async function startServer() {
     const apiRoutes = require("./routes");
     app.use("/api", apiRoutes);
 
+    // ==========================================
+    // CONFIGURAÇÃO DO SWAGGER
+    // ==========================================
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        const swaggerUi = require("swagger-ui-express");
+        const { swaggerSpec, swaggerUiOptions } = require("./config/swagger");
+
+        app.use("/api/docs", swaggerUi.serve);
+        app.get("/api/docs", swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+
+        console.log("📚 Swagger UI configurado em /api/docs");
+      } catch (error) {
+        console.warn("Swagger não pôde ser carregado:", error.message);
+      }
+    }
+
     // Health check endpoint expandido
     app.get("/health", async (req, res) => {
       try {

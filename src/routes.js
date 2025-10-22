@@ -11,82 +11,14 @@ const UserController = require("./controllers/userController");
 // Middleware e validações
 const { authenticateToken } = require("./middleware/auth");
 
+// Importar rotas específicas
+const companiesRoutes = require("./routes/companies");
+
 const router = express.Router();
 
 // ==========================================
-// 📖 SWAGGER/OPENAPI DOCUMENTATION
+// � CONFIGURAÇÃO DO SWAGGER MOVIDA PARA /config/swagger.js
 // ==========================================
-
-// Configurar Swagger apenas em desenvolvimento
-if (process.env.NODE_ENV !== "production") {
-  try {
-    const swaggerUi = require("swagger-ui-express");
-    const swaggerJsdoc = require("swagger-jsdoc");
-
-    const swaggerOptions = {
-      definition: {
-        openapi: "3.0.0",
-        info: {
-          title: "Polox CRM API",
-          version: "1.0.0",
-          description: "API Enterprise Multi-Tenant para CRM completo",
-          contact: {
-            name: "Polox Team",
-            email: "contato@polox.com",
-          },
-        },
-        servers: [
-          {
-            url: "http://localhost:3000/api",
-            description: "Servidor de Desenvolvimento",
-          },
-        ],
-        components: {
-          securitySchemes: {
-            bearerAuth: {
-              type: "http",
-              scheme: "bearer",
-              bearerFormat: "JWT",
-            },
-          },
-        },
-        security: [
-          {
-            bearerAuth: [],
-          },
-        ],
-      },
-      apis: ["./src/routes.js", "./src/controllers/*.js"],
-    };
-
-    const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-    // Configurar rota do Swagger UI
-    router.use("/docs", swaggerUi.serve);
-    router.get(
-      "/docs",
-      swaggerUi.setup(swaggerSpec, {
-        customCss: `
-        .swagger-ui .topbar { display: none }
-        .swagger-ui .info { margin: 20px 0 }
-        .swagger-ui .scheme-container { background: #fafafa; padding: 10px; border-radius: 5px; }
-      `,
-        customSiteTitle: "Polox CRM API Documentation",
-        swaggerOptions: {
-          persistAuthorization: true,
-          displayRequestDuration: true,
-          filter: true,
-          showExtensions: true,
-          showCommonExtensions: true,
-        },
-      })
-    );
-
-    console.log("📚 Swagger UI habilitado em /api/docs");
-  } catch (error) {
-    console.warn("Swagger não pôde ser carregado:", error.message);
-  }
-}
 
 // ==========================================
 // 🔐 ROTAS DE AUTENTICAÇÃO
@@ -224,7 +156,12 @@ router.get("/users/profile", authenticateToken, UserController.getProfile);
 router.put("/users/profile", authenticateToken, UserController.updateProfile);
 
 // ==========================================
-// 🎯 ROTAS DE DEMONSTRAÇÃO E TESTES
+// � ROTAS DE EMPRESAS (SUPER ADMIN)
+// ==========================================
+router.use("/companies", companiesRoutes);
+
+// ==========================================
+// �🎯 ROTAS DE DEMONSTRAÇÃO E TESTES
 // ==========================================
 
 /**

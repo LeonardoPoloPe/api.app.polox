@@ -2,7 +2,7 @@
  * ==========================================
  * 🏢 COMPANY CONTROLLER ENTERPRISE
  * ==========================================
- * 
+ *
  * Gestão completa de empresas para Super Admin
  * - CRUD de empresas
  * - Gestão de módulos e status
@@ -10,29 +10,36 @@
  * - Criação automática de admin
  */
 
-const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
-const { logger, auditLogger, securityLogger } = require('../utils/logger');
-const { ApiError, asyncHandler } = require('../utils/errors');
-const { successResponse, paginatedResponse } = require('../utils/formatters');
-const bcrypt = require('bcryptjs');
-const { v4: uuidv4 } = require('uuid');
-const Joi = require('joi');
+const {
+  query,
+  beginTransaction,
+  commitTransaction,
+  rollbackTransaction,
+} = require("../models/database");
+const { logger, auditLogger, securityLogger } = require("../utils/logger");
+const { ApiError, asyncHandler } = require("../utils/errors");
+const { successResponse, paginatedResponse } = require("../utils/formatters");
+const bcrypt = require("bcryptjs");
+const { v4: uuidv4 } = require("uuid");
+const Joi = require("joi");
 
 class CompanyController {
-
   /**
    * 🔒 MIDDLEWARE - Verificar se é Super Admin
    */
   static requireSuperAdmin = asyncHandler(async (req, res, next) => {
-    if (req.user.role !== 'super_admin') {
-      securityLogger('Tentativa de acesso não autorizado ao CompanyController', {
-        userId: req.user.id,
-        userRole: req.user.role,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-      
-      throw new ApiError(403, 'Super Admin access required');
+    if (req.user.role !== "super_admin") {
+      securityLogger(
+        "Tentativa de acesso não autorizado ao CompanyController",
+        {
+          userId: req.user.id,
+          userRole: req.user.role,
+          ip: req.ip,
+          userAgent: req.get("User-Agent"),
+        }
+      );
+
+      throw new ApiError(403, "Super Admin access required");
     }
     next();
   });
@@ -41,47 +48,53 @@ class CompanyController {
    * 📝 VALIDAÇÕES JOI
    */
   static createCompanySchema = Joi.object({
-    name: Joi.string().min(2).max(255).required()
+    name: Joi.string().min(2).max(255).required().messages({
+      "string.min": "Nome da empresa deve ter pelo menos 2 caracteres",
+      "any.required": "Nome da empresa é obrigatório",
+    }),
+    domain: Joi.string()
+      .min(2)
+      .max(100)
+      .pattern(/^[a-zA-Z0-9-]+$/)
+      .required()
       .messages({
-        'string.min': 'Nome da empresa deve ter pelo menos 2 caracteres',
-        'any.required': 'Nome da empresa é obrigatório'
+        "string.pattern.base":
+          "Domínio deve conter apenas letras, números e hífens",
+        "any.required": "Domínio é obrigatório",
       }),
-    domain: Joi.string().min(2).max(100).pattern(/^[a-zA-Z0-9-]+$/).required()
-      .messages({
-        'string.pattern.base': 'Domínio deve conter apenas letras, números e hífens',
-        'any.required': 'Domínio é obrigatório'
-      }),
-    plan: Joi.string().valid('starter', 'professional', 'enterprise').default('starter'),
-    industry: Joi.string().max(100).allow('').default(''),
-    company_size: Joi.string().max(50).allow('').default(''),
-    admin_name: Joi.string().min(2).max(255).required()
-      .messages({
-        'any.required': 'Nome do administrador é obrigatório'
-      }),
-    admin_email: Joi.string().email().required()
-      .messages({
-        'string.email': 'Email do administrador deve ser válido',
-        'any.required': 'Email do administrador é obrigatório'
-      }),
-    admin_phone: Joi.string().max(20).allow('').default(''),
-    enabled_modules: Joi.array().items(Joi.string()).default(['dashboard', 'users']),
+    plan: Joi.string()
+      .valid("starter", "professional", "enterprise")
+      .default("starter"),
+    industry: Joi.string().max(100).allow("").default(""),
+    company_size: Joi.string().max(50).allow("").default(""),
+    admin_name: Joi.string().min(2).max(255).required().messages({
+      "any.required": "Nome do administrador é obrigatório",
+    }),
+    admin_email: Joi.string().email().required().messages({
+      "string.email": "Email do administrador deve ser válido",
+      "any.required": "Email do administrador é obrigatório",
+    }),
+    admin_phone: Joi.string().max(20).allow("").default(""),
+    enabled_modules: Joi.array()
+      .items(Joi.string())
+      .default(["dashboard", "users"]),
     settings: Joi.object().default({
-      maxUploadSize: '5MB',
+      maxUploadSize: "5MB",
       maxTextLength: 40,
-      supportEmail: ''
-    })
+      supportEmail: "",
+    }),
   });
 
   static updateCompanySchema = Joi.object({
     name: Joi.string().min(2).max(255),
-    plan: Joi.string().valid('starter', 'professional', 'enterprise'),
+    plan: Joi.string().valid("starter", "professional", "enterprise"),
     industry: Joi.string().max(100),
     company_size: Joi.string().max(50),
     admin_name: Joi.string().min(2).max(255),
     admin_email: Joi.string().email(),
     admin_phone: Joi.string().max(20),
     enabled_modules: Joi.array().items(Joi.string()),
-    settings: Joi.object()
+    settings: Joi.object(),
   });
 
   /**
@@ -92,8 +105,8 @@ class CompanyController {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const offset = (page - 1) * limit;
-    
-    let whereClause = 'WHERE c.deleted_at IS NULL';
+
+    let whereClause = "WHERE c.deleted_at IS NULL";
     let queryParams = [];
     let paramCount = 0;
 
@@ -137,46 +150,48 @@ class CompanyController {
           WHERE ugp.company_id = c.id
           LIMIT 5
         ) as top_players
-      FROM companies c
-      LEFT JOIN users u ON c.id = u.company_id AND u.deleted_at IS NULL
+      FROM polox.companies c
+      LEFT JOIN polox.users u ON c.id = u.company_id AND u.deleted_at IS NULL
       ${whereClause}
       GROUP BY c.id
       ORDER BY 
         CASE WHEN $${paramCount + 3} = 'name' THEN c.name END ASC,
         CASE WHEN $${paramCount + 3} = 'created_at' THEN c.created_at END DESC,
-        CASE WHEN $${paramCount + 3} = 'users_count' THEN COUNT(DISTINCT u.id) END DESC,
+        CASE WHEN $${
+          paramCount + 3
+        } = 'users_count' THEN COUNT(DISTINCT u.id) END DESC,
         c.name ASC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
-    
-    queryParams.push(limit, offset, req.query.sort || 'name');
+
+    queryParams.push(limit, offset, req.query.sort || "name");
 
     // 📊 QUERY DE CONTAGEM
     const countQuery = `
       SELECT COUNT(DISTINCT c.id) as total 
-      FROM companies c 
+      FROM polox.companies c 
       ${whereClause}
     `;
 
     const [companiesResult, countResult] = await Promise.all([
       query(companiesQuery, queryParams),
-      query(countQuery, queryParams.slice(0, -3))
+      query(countQuery, queryParams.slice(0, -3)),
     ]);
 
-    logger.info('Empresas listadas pelo Super Admin', {
+    logger.info("Empresas listadas pelo Super Admin", {
       superAdminId: req.user.id,
       companiesFound: companiesResult.rows.length,
       filters: {
         status: req.query.status,
         plan: req.query.plan,
-        search: req.query.search
-      }
+        search: req.query.search,
+      },
     });
 
     return paginatedResponse(res, companiesResult.rows, {
       page,
       limit,
-      total: parseInt(countResult.rows[0].total)
+      total: parseInt(countResult.rows[0].total),
     });
   });
 
@@ -185,38 +200,46 @@ class CompanyController {
    * POST /api/companies
    */
   static create = asyncHandler(async (req, res) => {
-    const { error, value } = CompanyController.createCompanySchema.validate(req.body);
+    const { error, value } = CompanyController.createCompanySchema.validate(
+      req.body
+    );
     if (error) throw new ApiError(400, error.details[0].message);
 
     const companyData = value;
 
     // 🔍 VERIFICAR SE DOMÍNIO JÁ EXISTE
     const domainCheck = await query(
-      'SELECT id, name FROM companies WHERE domain = $1 AND deleted_at IS NULL',
+      "SELECT id, name FROM polox.companies WHERE domain = $1 AND deleted_at IS NULL",
       [companyData.domain]
     );
 
     if (domainCheck.rows.length > 0) {
-      throw new ApiError(400, `Domínio '${companyData.domain}' já está em uso pela empresa: ${domainCheck.rows[0].name}`);
+      throw new ApiError(
+        400,
+        `Domínio '${companyData.domain}' já está em uso pela empresa: ${domainCheck.rows[0].name}`
+      );
     }
 
     // 🔍 VERIFICAR SE EMAIL DO ADMIN JÁ EXISTE
     const emailCheck = await query(
-      'SELECT id, name FROM users WHERE email = $1 AND deleted_at IS NULL',
+      "SELECT id, name FROM polox.users WHERE email = $1 AND deleted_at IS NULL",
       [companyData.admin_email]
     );
 
     if (emailCheck.rows.length > 0) {
-      throw new ApiError(400, `Email '${companyData.admin_email}' já está em uso por outro usuário`);
+      throw new ApiError(
+        400,
+        `Email '${companyData.admin_email}' já está em uso por outro usuário`
+      );
     }
 
     // 🔐 INICIAR TRANSAÇÃO
     const client = await beginTransaction();
-    
+
     try {
       // 1️⃣ CRIAR EMPRESA
       const createCompanyQuery = `
-        INSERT INTO companies (
+        INSERT INTO polox.companies (
           id, name, domain, plan, industry, company_size,
           admin_name, admin_email, admin_phone,
           enabled_modules, settings, status, created_at, updated_at
@@ -236,16 +259,16 @@ class CompanyController {
         companyData.admin_email,
         companyData.admin_phone,
         JSON.stringify(companyData.enabled_modules),
-        JSON.stringify(companyData.settings)
+        JSON.stringify(companyData.settings),
       ]);
 
       const newCompany = companyResult.rows[0];
 
       // 2️⃣ CRIAR USUÁRIO ADMIN DA EMPRESA
-      const hashedPassword = await bcrypt.hash('admin123', 12); // Senha temporária
-      
+      const hashedPassword = await bcrypt.hash("admin123", 12); // Senha temporária
+
       const createAdminQuery = `
-        INSERT INTO users (
+        INSERT INTO polox.users (
           id, company_id, name, email, password_hash, role, 
           phone, status, permissions, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, 'company_admin', $6, 'active', $7, NOW(), NOW())
@@ -260,139 +283,152 @@ class CompanyController {
         companyData.admin_email,
         hashedPassword,
         companyData.admin_phone,
-        JSON.stringify(['*']) // Admin tem todas as permissões
+        JSON.stringify(["*"]), // Admin tem todas as permissões
       ]);
 
       const newAdmin = adminResult.rows[0];
 
       // 3️⃣ CRIAR PERFIL DE GAMIFICAÇÃO PARA O ADMIN
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO user_gamification_profiles (
           id, user_id, company_id, current_level, total_xp, current_coins, 
           lifetime_coins, created_at, updated_at
         ) VALUES ($1, $2, $3, 1, 0, 100, 100, NOW(), NOW())
-      `, [uuidv4(), newAdmin.id, newCompany.id]);
+      `,
+        [uuidv4(), newAdmin.id, newCompany.id]
+      );
 
       // 4️⃣ CRIAR CONQUISTAS PADRÃO DA EMPRESA
       const defaultAchievements = [
         {
-          name: 'Primeiro Login',
-          description: 'Fez login pela primeira vez no sistema',
-          icon: '🎉',
-          category: 'onboarding',
-          unlock_criteria: JSON.stringify({ action: 'first_login' }),
+          name: "Primeiro Login",
+          description: "Fez login pela primeira vez no sistema",
+          icon: "🎉",
+          category: "onboarding",
+          unlock_criteria: JSON.stringify({ action: "first_login" }),
           xp_reward: 10,
-          coin_reward: 5
+          coin_reward: 5,
         },
         {
-          name: 'Primeiro Cliente',
-          description: 'Cadastrou o primeiro cliente',
-          icon: '👥',
-          category: 'business',
-          unlock_criteria: JSON.stringify({ action: 'first_client' }),
+          name: "Primeiro Cliente",
+          description: "Cadastrou o primeiro cliente",
+          icon: "👥",
+          category: "business",
+          unlock_criteria: JSON.stringify({ action: "first_client" }),
           xp_reward: 50,
-          coin_reward: 25
+          coin_reward: 25,
         },
         {
-          name: 'Vendedor Iniciante',
-          description: 'Realizou sua primeira venda',
-          icon: '💰',
-          category: 'sales',
-          unlock_criteria: JSON.stringify({ action: 'first_sale' }),
+          name: "Vendedor Iniciante",
+          description: "Realizou sua primeira venda",
+          icon: "💰",
+          category: "sales",
+          unlock_criteria: JSON.stringify({ action: "first_sale" }),
           xp_reward: 75,
-          coin_reward: 50
-        }
+          coin_reward: 50,
+        },
       ];
 
       for (const achievement of defaultAchievements) {
-        await client.query(`
+        await client.query(
+          `
           INSERT INTO achievements (
             id, company_id, name, description, icon, category,
             unlock_criteria, xp_reward, coin_reward, is_active, created_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW())
-        `, [
-          uuidv4(),
-          newCompany.id,
-          achievement.name,
-          achievement.description,
-          achievement.icon,
-          achievement.category,
-          achievement.unlock_criteria,
-          achievement.xp_reward,
-          achievement.coin_reward
-        ]);
+        `,
+          [
+            uuidv4(),
+            newCompany.id,
+            achievement.name,
+            achievement.description,
+            achievement.icon,
+            achievement.category,
+            achievement.unlock_criteria,
+            achievement.xp_reward,
+            achievement.coin_reward,
+          ]
+        );
       }
 
       // 5️⃣ CRIAR MISSÕES PADRÃO
       const defaultMissions = [
         {
-          name: 'Login Diário',
-          description: 'Faça login no sistema',
-          type: 'daily',
+          name: "Login Diário",
+          description: "Faça login no sistema",
+          type: "daily",
           target_count: 1,
           xp_reward: 5,
-          coin_reward: 2
+          coin_reward: 2,
         },
         {
-          name: 'Meta Semanal',
-          description: 'Complete 5 logins esta semana',
-          type: 'weekly',
+          name: "Meta Semanal",
+          description: "Complete 5 logins esta semana",
+          type: "weekly",
           target_count: 5,
           xp_reward: 50,
-          coin_reward: 25
-        }
+          coin_reward: 25,
+        },
       ];
 
       for (const mission of defaultMissions) {
-        await client.query(`
+        await client.query(
+          `
           INSERT INTO missions (
             id, company_id, name, description, type, target_count,
             xp_reward, coin_reward, is_active, created_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW())
-        `, [
-          uuidv4(),
-          newCompany.id,
-          mission.name,
-          mission.description,
-          mission.type,
-          mission.target_count,
-          mission.xp_reward,
-          mission.coin_reward
-        ]);
+        `,
+          [
+            uuidv4(),
+            newCompany.id,
+            mission.name,
+            mission.description,
+            mission.type,
+            mission.target_count,
+            mission.xp_reward,
+            mission.coin_reward,
+          ]
+        );
       }
 
       await commitTransaction(client);
 
       // 📝 LOG DE AUDITORIA
-      auditLogger('Company created', {
+      auditLogger("Company created", {
         superAdminId: req.user.id,
         companyId: newCompany.id,
         companyName: newCompany.name,
         adminEmail: newAdmin.email,
         plan: newCompany.plan,
         modules: companyData.enabled_modules,
-        ip: req.ip
+        ip: req.ip,
       });
 
-      logger.info('Nova empresa criada com sucesso', {
+      logger.info("Nova empresa criada com sucesso", {
         superAdminId: req.user.id,
         companyId: newCompany.id,
         companyName: newCompany.name,
         domain: newCompany.domain,
-        adminEmail: newAdmin.email
+        adminEmail: newAdmin.email,
       });
 
-      return successResponse(res, {
-        company: {
-          ...newCompany,
-          enabled_modules: JSON.parse(newCompany.enabled_modules),
-          settings: JSON.parse(newCompany.settings)
+      return successResponse(
+        res,
+        {
+          company: {
+            ...newCompany,
+            enabled_modules: JSON.parse(newCompany.enabled_modules),
+            settings: JSON.parse(newCompany.settings),
+          },
+          admin: newAdmin,
+          temp_password: "admin123", // Informar senha temporária
+          login_url: `https://${newCompany.domain}.crm.ze9.com.br`,
         },
-        admin: newAdmin,
-        temp_password: 'admin123', // Informar senha temporária
-        login_url: `https://${newCompany.domain}.crm.ze9.com.br`
-      }, 'Empresa criada com sucesso', 201);
-
+        "Empresa criada com sucesso",
+        201
+      );
     } catch (error) {
       await rollbackTransaction(client);
       throw error;
@@ -443,28 +479,28 @@ class CompanyController {
           WHERE ugp.company_id = c.id
           LIMIT 5
         ) as top_players
-      FROM companies c
-      LEFT JOIN users u ON c.id = u.company_id AND u.deleted_at IS NULL
+      FROM polox.companies c
+      LEFT JOIN polox.users u ON c.id = u.company_id AND u.deleted_at IS NULL
       WHERE c.id = $1 AND c.deleted_at IS NULL
       GROUP BY c.id
     `;
 
     const result = await query(companyQuery, [companyId]);
-    
+
     if (result.rows.length === 0) {
-      throw new ApiError(404, 'Empresa não encontrada');
+      throw new ApiError(404, "Empresa não encontrada");
     }
 
     const company = result.rows[0];
-    
-    // Parse JSON fields
-    company.enabled_modules = JSON.parse(company.enabled_modules || '[]');
-    company.settings = JSON.parse(company.settings || '{}');
 
-    logger.info('Detalhes da empresa visualizados', {
+    // Parse JSON fields
+    company.enabled_modules = JSON.parse(company.enabled_modules || "[]");
+    company.settings = JSON.parse(company.settings || "{}");
+
+    logger.info("Detalhes da empresa visualizados", {
       superAdminId: req.user.id,
       companyId: company.id,
-      companyName: company.name
+      companyName: company.name,
     });
 
     return successResponse(res, company);
@@ -494,11 +530,11 @@ class CompanyController {
         COUNT(DISTINCT CASE WHEN c.plan = 'starter' THEN c.id END) as starter_companies,
         COUNT(DISTINCT CASE WHEN c.plan = 'professional' THEN c.id END) as professional_companies,
         COUNT(DISTINCT CASE WHEN c.plan = 'enterprise' THEN c.id END) as enterprise_companies
-      FROM companies c
-      LEFT JOIN users u ON c.id = u.company_id AND u.deleted_at IS NULL
+      FROM polox.companies c
+      LEFT JOIN polox.users u ON c.id = u.company_id AND u.deleted_at IS NULL
       LEFT JOIN (
         SELECT company_id, COUNT(*) as user_count
-        FROM users 
+        FROM polox.users 
         WHERE deleted_at IS NULL
         GROUP BY company_id
       ) user_counts ON c.id = user_counts.company_id
@@ -509,7 +545,7 @@ class CompanyController {
     const stats = result.rows[0];
 
     // Converter para números
-    Object.keys(stats).forEach(key => {
+    Object.keys(stats).forEach((key) => {
       if (stats[key] !== null) {
         stats[key] = parseFloat(stats[key]);
       }
@@ -520,7 +556,7 @@ class CompanyController {
       SELECT 
         DATE_TRUNC('month', created_at) as month,
         COUNT(*) as new_companies
-      FROM companies 
+      FROM polox.companies 
       WHERE deleted_at IS NULL 
         AND created_at >= NOW() - INTERVAL '12 months'
       GROUP BY DATE_TRUNC('month', created_at)
@@ -529,14 +565,14 @@ class CompanyController {
 
     const growthResult = await query(growthQuery);
 
-    logger.info('Estatísticas globais consultadas', {
+    logger.info("Estatísticas globais consultadas", {
       superAdminId: req.user.id,
-      totalCompanies: stats.total_companies
+      totalCompanies: stats.total_companies,
     });
 
     return successResponse(res, {
       ...stats,
-      growth_by_month: growthResult.rows
+      growth_by_month: growthResult.rows,
     });
   });
 
@@ -546,20 +582,22 @@ class CompanyController {
    */
   static update = asyncHandler(async (req, res) => {
     const companyId = req.params.id;
-    
-    const { error, value } = CompanyController.updateCompanySchema.validate(req.body);
+
+    const { error, value } = CompanyController.updateCompanySchema.validate(
+      req.body
+    );
     if (error) throw new ApiError(400, error.details[0].message);
 
     const updateData = value;
 
     // Verificar se empresa existe
     const existingCompany = await query(
-      'SELECT * FROM companies WHERE id = $1 AND deleted_at IS NULL',
+      "SELECT * FROM polox.companies WHERE id = $1 AND deleted_at IS NULL",
       [companyId]
     );
 
     if (existingCompany.rows.length === 0) {
-      throw new ApiError(404, 'Empresa não encontrada');
+      throw new ApiError(404, "Empresa não encontrada");
     }
 
     // Construir query de atualização dinamicamente
@@ -569,7 +607,7 @@ class CompanyController {
 
     Object.entries(updateData).forEach(([key, value]) => {
       if (value !== undefined) {
-        if (key === 'enabled_modules' || key === 'settings') {
+        if (key === "enabled_modules" || key === "settings") {
           setClause.push(`${key} = $${++paramCount}`);
           queryParams.push(JSON.stringify(value));
         } else {
@@ -580,15 +618,15 @@ class CompanyController {
     });
 
     if (setClause.length === 0) {
-      throw new ApiError(400, 'Nenhum campo para atualizar');
+      throw new ApiError(400, "Nenhum campo para atualizar");
     }
 
     setClause.push(`updated_at = NOW()`);
     queryParams.push(companyId);
 
     const updateQuery = `
-      UPDATE companies 
-      SET ${setClause.join(', ')}
+      UPDATE polox.companies 
+      SET ${setClause.join(", ")}
       WHERE id = $${++paramCount} AND deleted_at IS NULL
       RETURNING *
     `;
@@ -597,19 +635,25 @@ class CompanyController {
     const updatedCompany = result.rows[0];
 
     // Parse JSON fields
-    updatedCompany.enabled_modules = JSON.parse(updatedCompany.enabled_modules || '[]');
-    updatedCompany.settings = JSON.parse(updatedCompany.settings || '{}');
+    updatedCompany.enabled_modules = JSON.parse(
+      updatedCompany.enabled_modules || "[]"
+    );
+    updatedCompany.settings = JSON.parse(updatedCompany.settings || "{}");
 
     // Log de auditoria
-    auditLogger('Company updated', {
+    auditLogger("Company updated", {
       superAdminId: req.user.id,
       companyId: updatedCompany.id,
       companyName: updatedCompany.name,
       changedFields: Object.keys(updateData),
-      ip: req.ip
+      ip: req.ip,
     });
 
-    return successResponse(res, updatedCompany, 'Empresa atualizada com sucesso');
+    return successResponse(
+      res,
+      updatedCompany,
+      "Empresa atualizada com sucesso"
+    );
   });
 
   /**
@@ -619,53 +663,52 @@ class CompanyController {
   static destroy = asyncHandler(async (req, res) => {
     const companyId = req.params.id;
 
-    // Verificar se empresa existe
+    // Verificar empresa existe
     const existingCompany = await query(
-      'SELECT * FROM companies WHERE id = $1 AND deleted_at IS NULL',
+      "SELECT * FROM polox.companies WHERE id = $1 AND deleted_at IS NULL",
       [companyId]
     );
 
     if (existingCompany.rows.length === 0) {
-      throw new ApiError(404, 'Empresa não encontrada');
+      throw new ApiError(404, "Empresa não encontrada");
     }
 
     const company = existingCompany.rows[0];
 
     // Soft delete da empresa e todos os usuários
     const client = await beginTransaction();
-    
+
     try {
       // Deletar empresa
       await client.query(
-        'UPDATE companies SET deleted_at = NOW() WHERE id = $1',
+        "UPDATE polox.companies SET deleted_at = NOW() WHERE id = $1",
         [companyId]
       );
 
       // Deletar todos os usuários da empresa
       await client.query(
-        'UPDATE users SET deleted_at = NOW() WHERE company_id = $1 AND deleted_at IS NULL',
+        "UPDATE users SET deleted_at = NOW() WHERE company_id = $1 AND deleted_at IS NULL",
         [companyId]
       );
 
       await commitTransaction(client);
 
       // Log de auditoria
-      auditLogger('Company deleted', {
+      auditLogger("Company deleted", {
         superAdminId: req.user.id,
         companyId: company.id,
         companyName: company.name,
-        ip: req.ip
+        ip: req.ip,
       });
 
-      securityLogger('Empresa deletada pelo Super Admin', {
+      securityLogger("Empresa deletada pelo Super Admin", {
         superAdminId: req.user.id,
         companyId: company.id,
         companyName: company.name,
-        ip: req.ip
+        ip: req.ip,
       });
 
-      return successResponse(res, null, 'Empresa deletada com sucesso');
-
+      return successResponse(res, null, "Empresa deletada com sucesso");
     } catch (error) {
       await rollbackTransaction(client);
       throw error;
@@ -681,37 +724,54 @@ class CompanyController {
     const { enabled_modules } = req.body;
 
     if (!Array.isArray(enabled_modules)) {
-      throw new ApiError(400, 'enabled_modules deve ser um array');
+      throw new ApiError(400, "enabled_modules deve ser um array");
     }
 
-    const validModules = ['dashboard', 'users', 'leads', 'clients', 'sales', 'reports', 'gamification'];
-    const invalidModules = enabled_modules.filter(module => !validModules.includes(module));
-    
+    const validModules = [
+      "dashboard",
+      "users",
+      "leads",
+      "clients",
+      "sales",
+      "reports",
+      "gamification",
+    ];
+    const invalidModules = enabled_modules.filter(
+      (module) => !validModules.includes(module)
+    );
+
     if (invalidModules.length > 0) {
-      throw new ApiError(400, `Módulos inválidos: ${invalidModules.join(', ')}`);
+      throw new ApiError(
+        400,
+        `Módulos inválidos: ${invalidModules.join(", ")}`
+      );
     }
 
     const result = await query(
-      'UPDATE companies SET enabled_modules = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL RETURNING *',
+      "UPDATE polox.companies SET enabled_modules = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL RETURNING *",
       [JSON.stringify(enabled_modules), companyId]
     );
 
     if (result.rows.length === 0) {
-      throw new ApiError(404, 'Empresa não encontrada');
+      throw new ApiError(404, "Empresa não encontrada");
     }
 
     const updatedCompany = result.rows[0];
     updatedCompany.enabled_modules = JSON.parse(updatedCompany.enabled_modules);
 
-    auditLogger('Company modules updated', {
+    auditLogger("Company modules updated", {
       superAdminId: req.user.id,
       companyId: updatedCompany.id,
       companyName: updatedCompany.name,
       newModules: enabled_modules,
-      ip: req.ip
+      ip: req.ip,
     });
 
-    return successResponse(res, updatedCompany, 'Módulos atualizados com sucesso');
+    return successResponse(
+      res,
+      updatedCompany,
+      "Módulos atualizados com sucesso"
+    );
   });
 
   /**
@@ -722,30 +782,34 @@ class CompanyController {
     const companyId = req.params.id;
     const { status } = req.body;
 
-    if (!['active', 'inactive', 'trial'].includes(status)) {
-      throw new ApiError(400, 'Status deve ser: active, inactive ou trial');
+    if (!["active", "inactive", "trial"].includes(status)) {
+      throw new ApiError(400, "Status deve ser: active, inactive ou trial");
     }
 
     const result = await query(
-      'UPDATE companies SET status = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL RETURNING *',
+      "UPDATE polox.companies SET status = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL RETURNING *",
       [status, companyId]
     );
 
     if (result.rows.length === 0) {
-      throw new ApiError(404, 'Empresa não encontrada');
+      throw new ApiError(404, "Empresa não encontrada");
     }
 
     const updatedCompany = result.rows[0];
 
-    auditLogger('Company status updated', {
+    auditLogger("Company status updated", {
       superAdminId: req.user.id,
       companyId: updatedCompany.id,
       companyName: updatedCompany.name,
       newStatus: status,
-      ip: req.ip
+      ip: req.ip,
     });
 
-    return successResponse(res, updatedCompany, 'Status atualizado com sucesso');
+    return successResponse(
+      res,
+      updatedCompany,
+      "Status atualizado com sucesso"
+    );
   });
 
   /**
@@ -754,15 +818,15 @@ class CompanyController {
    */
   static getAnalytics = asyncHandler(async (req, res) => {
     const companyId = req.params.id;
-    
+
     // Verificar se empresa existe
     const companyCheck = await query(
-      'SELECT name FROM companies WHERE id = $1 AND deleted_at IS NULL',
+      "SELECT name FROM polox.companies WHERE id = $1 AND deleted_at IS NULL",
       [companyId]
     );
 
     if (companyCheck.rows.length === 0) {
-      throw new ApiError(404, 'Empresa não encontrada');
+      throw new ApiError(404, "Empresa não encontrada");
     }
 
     const analyticsQuery = `
@@ -783,11 +847,11 @@ class CompanyController {
         COUNT(DISTINCT ua.id) as total_achievements_unlocked,
         COUNT(DISTINCT a.id) as total_achievements_available
         
-      FROM companies c
-      LEFT JOIN users u ON c.id = u.company_id AND u.deleted_at IS NULL
-      LEFT JOIN user_gamification_profiles ugp ON u.id = ugp.user_id
-      LEFT JOIN user_achievements ua ON u.id = ua.user_id
-      LEFT JOIN achievements a ON c.id = a.company_id AND a.is_active = true
+      FROM polox.companies c
+      LEFT JOIN polox.users u ON c.id = u.company_id AND u.deleted_at IS NULL
+      LEFT JOIN polox.user_gamification_profiles ugp ON u.id = ugp.user_id
+      LEFT JOIN polox.user_achievements ua ON u.id = ua.user_id
+      LEFT JOIN polox.achievements a ON c.id = a.company_id AND a.is_active = true
       WHERE c.id = $1
       GROUP BY c.id
     `;
@@ -800,7 +864,7 @@ class CompanyController {
       SELECT 
         DATE_TRUNC('month', u.last_login_at) as month,
         COUNT(DISTINCT u.id) as active_users
-      FROM users u
+      FROM polox.users u
       WHERE u.company_id = $1 
         AND u.deleted_at IS NULL
         AND u.last_login_at >= NOW() - INTERVAL '12 months'
@@ -819,9 +883,9 @@ class CompanyController {
         ugp.total_xp,
         ugp.current_coins,
         COUNT(ua.id) as achievements_count
-      FROM users u
-      JOIN user_gamification_profiles ugp ON u.id = ugp.user_id
-      LEFT JOIN user_achievements ua ON u.id = ua.user_id
+      FROM polox.users u
+      JOIN polox.user_gamification_profiles ugp ON u.id = ugp.user_id
+      LEFT JOIN polox.user_achievements ua ON u.id = ua.user_id
       WHERE u.company_id = $1 AND u.deleted_at IS NULL
       GROUP BY u.id, u.name, u.email, ugp.current_level, ugp.total_xp, ugp.current_coins
       ORDER BY ugp.total_xp DESC
@@ -834,7 +898,7 @@ class CompanyController {
       ...analytics,
       activity_by_month: activityResult.rows,
       top_users: topUsersResult.rows,
-      company_name: companyCheck.rows[0].name
+      company_name: companyCheck.rows[0].name,
     });
   });
 }

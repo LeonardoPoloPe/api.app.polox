@@ -13,6 +13,10 @@ _Última atualização: 21/10/2025_
 - [🔧 AWS_SETUP_INSTRUCTIONS.md](./AWS_SETUP_INSTRUCTIONS.md) - Configuração AWS
 - [📊 ATUALIZACAO_21_10_2025.md](./ATUALIZACAO_21_10_2025.md) - **LOG DE MUDANÇAS RECENTES**
 
+### 🔐 **Segurança** ✅ **IMPLEMENTADO COM SUCESSO**
+
+- [🔐 POLITICAS_SEGURANCA_CREDENCIAIS.md](./POLITICAS_SEGURANCA_CREDENCIAIS.md) - **✅ Políticas implementadas - ZERO credenciais expostas (LEITURA OBRIGATÓRIA)**
+
 ### 🏗️ **Arquitetura**
 
 - [📋 resumo-estrutura-v02.md](./resumo-estrutura-v02.md) - Resumo técnico completo
