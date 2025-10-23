@@ -1,10 +1,35 @@
-# 📚 Índice da Documentação - API Polox
+# 📚 Índice de Documentação - API Polox
 
-_Última atualização: 21/10/2025_
+**Última Atualização:** 23 de outubro de 2025
 
 ---
 
-## 🚀 **Documentação Principal**
+## 🆕 Sistema de Campos Customizados (EAV)
+
+### Documentação Principal
+- **[CUSTOM_FIELDS.md](./CUSTOM_FIELDS.md)** ⭐ **NOVO**
+  - Guia completo de 43 páginas
+  - Arquitetura EAV detalhada
+  - 15+ exemplos de código
+  - Troubleshooting e boas práticas
+
+### Status e Acompanhamento
+- **[STATUS_EAV_CUSTOM_FIELDS.md](./STATUS_EAV_CUSTOM_FIELDS.md)** ⭐ **NOVO**
+  - Status do projeto (Fase 1 completa)
+  - Estatísticas consolidadas
+  - Próximos passos (Fases 2-5)
+  - Checklist de implementação
+
+### Resumo Executivo
+- **[RESUMO_EXECUTIVO_EAV.md](./RESUMO_EXECUTIVO_EAV.md)** ⭐ **NOVO**
+  - Visão geral do projeto
+  - Entregáveis e estatísticas
+  - Quick start guide
+  - Resultado final
+
+---
+
+## 📖 Documentação Geral
 
 ### 📋 **Setup e Deploy**
 
