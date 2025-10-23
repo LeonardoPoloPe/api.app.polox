@@ -13,8 +13,92 @@ const { authenticateToken } = require("./middleware/auth");
 
 // Importar rotas específicas
 const companiesRoutes = require("./routes/companies");
+const gamificationRoutes = require("./routes/gamification");
+const leadsRoutes = require("./routes/leads");
+const clientsRoutes = require("./routes/clients");
+const salesRoutes = require("./routes/sales");
+const productsRoutes = require("./routes/products");
+const financeRoutes = require("./routes/finance");
+const ticketsRoutes = require("./routes/tickets");
+const notificationsRoutes = require("./routes/notifications");
+const scheduleRoutes = require("./routes/schedule");
+const suppliersRoutes = require("./routes/suppliers");
+const analyticsRoutes = require("./routes/analytics");
 
 const router = express.Router();
+
+// ==========================================
+// 📚 CONFIGURAÇÃO DO SWAGGER
+// ==========================================
+if (process.env.NODE_ENV !== "production") {
+  try {
+    const swaggerUi = require("swagger-ui-express");
+    const swaggerJsdoc = require("swagger-jsdoc");
+    
+    const swaggerOptions = {
+      definition: {
+        openapi: "3.0.0",
+        info: {
+          title: "Polox CRM API",
+          version: "1.0.0",
+          description: "API Enterprise Multi-Tenant para CRM com Gamificação",
+          contact: {
+            name: "Polox Team",
+            email: "suporte@polox.com.br",
+          },
+        },
+        servers: [
+          {
+            url: "http://localhost:3000/dev/api",
+            description: "Servidor de Desenvolvimento (Serverless Offline)",
+          },
+          {
+            url: "http://localhost:3000/api",
+            description: "Servidor Local (Node.js)",
+          },
+        ],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: "http",
+              scheme: "bearer",
+              bearerFormat: "JWT",
+            },
+          },
+        },
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+      },
+      apis: [
+        "./src/routes.js",
+        "./src/routes/*.js",
+        "./src/controllers/*.js",
+      ],
+    };
+
+    const swaggerSpec = swaggerJsdoc(swaggerOptions);
+    
+    // Rota para a UI do Swagger
+    router.use("/docs", swaggerUi.serve);
+    router.get("/docs", swaggerUi.setup(swaggerSpec, {
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: "Polox API Docs",
+    }));
+    
+    // Rota para o JSON do Swagger
+    router.get("/docs.json", (req, res) => {
+      res.setHeader("Content-Type", "application/json");
+      res.send(swaggerSpec);
+    });
+    
+    console.log("📚 Swagger configurado em /api/docs");
+  } catch (error) {
+    console.warn("⚠️  Swagger não pôde ser carregado:", error.message);
+  }
+}
 
 // ==========================================
 // � CONFIGURAÇÃO DO SWAGGER MOVIDA PARA /config/swagger.js
@@ -156,12 +240,67 @@ router.get("/users/profile", authenticateToken, UserController.getProfile);
 router.put("/users/profile", authenticateToken, UserController.updateProfile);
 
 // ==========================================
-// � ROTAS DE EMPRESAS (SUPER ADMIN)
+// 🏢 ROTAS DE EMPRESAS (SUPER ADMIN)
 // ==========================================
 router.use("/companies", companiesRoutes);
 
 // ==========================================
-// �🎯 ROTAS DE DEMONSTRAÇÃO E TESTES
+// 🎮 ROTAS DE GAMIFICAÇÃO
+// ==========================================
+router.use("/gamification", gamificationRoutes);
+
+// ==========================================
+// 📈 ROTAS DE LEADS (CRM)
+// ==========================================
+router.use("/leads", leadsRoutes);
+
+// ==========================================
+// 👥 ROTAS DE CLIENTES
+// ==========================================
+router.use("/clients", clientsRoutes);
+
+// ==========================================
+// 💰 ROTAS DE VENDAS
+// ==========================================
+router.use("/sales", salesRoutes);
+
+// ==========================================
+// 📦 ROTAS DE PRODUTOS
+// ==========================================
+router.use("/products", productsRoutes);
+
+// ==========================================
+// 💳 ROTAS DE FINANÇAS
+// ==========================================
+router.use("/finance", financeRoutes);
+
+// ==========================================
+// 🎫 ROTAS DE TICKETS/SUPORTE
+// ==========================================
+router.use("/tickets", ticketsRoutes);
+
+// ==========================================
+// 🔔 ROTAS DE NOTIFICAÇÕES
+// ==========================================
+router.use("/notifications", notificationsRoutes);
+
+// ==========================================
+// 📅 ROTAS DE AGENDAMENTOS
+// ==========================================
+router.use("/schedule", scheduleRoutes);
+
+// ==========================================
+// 🏭 ROTAS DE FORNECEDORES
+// ==========================================
+router.use("/suppliers", suppliersRoutes);
+
+// ==========================================
+// 📊 ROTAS DE ANALYTICS/RELATÓRIOS
+// ==========================================
+router.use("/analytics", analyticsRoutes);
+
+// ==========================================
+// 🎯 ROTAS DE DEMONSTRAÇÃO E TESTES
 // ==========================================
 
 /**

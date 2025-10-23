@@ -79,7 +79,7 @@ class ScheduleController {
     const offset = (page - 1) * limit;
     
     let whereClause = 'WHERE e.company_id = $1 AND e.deleted_at IS NULL';
-    let queryParams = [req.user.company.id];
+    let queryParams = [req.user.companyId];
     let paramCount = 1;
 
     // Filtros
@@ -199,7 +199,7 @@ class ScheduleController {
     const [eventsResult, countResult, statsResult] = await Promise.all([
       query(eventsQuery, queryParams),
       query(countQuery, queryParams.slice(0, -2)),
-      query(statsQuery, [req.user.company.id])
+      query(statsQuery, [req.user.companyId])
     ]);
 
     return res.status(200).json({
@@ -227,7 +227,7 @@ class ScheduleController {
     if (req.query.check_conflicts === 'true') {
       const conflictUsers = [req.user.id, ...eventData.attendees].filter(Boolean);
       const conflicts = await ScheduleController.checkConflicts(
-        req.user.company.id,
+        req.user.companyId,
         eventData.start_date,
         eventData.end_date,
         conflictUsers
@@ -259,7 +259,7 @@ class ScheduleController {
 
       const newEventResult = await client.query(createEventQuery, [
         eventId,
-        req.user.company.id,
+        req.user.companyId,
         eventData.title,
         eventData.description,
         eventData.start_date,
@@ -314,7 +314,7 @@ class ScheduleController {
         UPDATE user_gamification_profiles 
         SET total_xp = total_xp + $1, current_coins = current_coins + $2
         WHERE user_id = $3 AND company_id = $4
-      `, [xpReward, coinReward, req.user.id, req.user.company.id]);
+      `, [xpReward, coinReward, req.user.id, req.user.companyId]);
 
       // Registrar no histórico de gamificação
       await client.query(`
@@ -322,7 +322,7 @@ class ScheduleController {
         VALUES 
           ($1, $2, $3, 'xp', $4, 'Evento agendado', 'event_created'),
           ($5, $2, $3, 'coins', $6, 'Evento agendado', 'event_created')
-      `, [uuidv4(), req.user.id, req.user.company.id, xpReward, uuidv4(), coinReward]);
+      `, [uuidv4(), req.user.id, req.user.companyId, xpReward, uuidv4(), coinReward]);
 
       // Log de auditoria
       await client.query(`
@@ -331,7 +331,7 @@ class ScheduleController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         newEvent.id,
         `Evento criado: ${newEvent.title} (${eventData.type})`,
         req.ip
@@ -394,7 +394,7 @@ class ScheduleController {
       GROUP BY e.id, c.name, c.email, c.phone, l.name, l.email, l.phone, u.name, u.email, parent_event.title
     `;
 
-    const eventResult = await query(eventQuery, [eventId, req.user.company.id]);
+    const eventResult = await query(eventQuery, [eventId, req.user.companyId]);
 
     if (eventResult.rows.length === 0) {
       throw new ApiError(404, 'Evento não encontrado');
@@ -427,7 +427,7 @@ class ScheduleController {
     // Verificar se evento existe e se usuário tem permissão
     const existingEvent = await query(
       'SELECT * FROM schedule_events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [eventId, req.user.company.id]
+      [eventId, req.user.companyId]
     );
 
     if (existingEvent.rows.length === 0) {
@@ -458,7 +458,7 @@ class ScheduleController {
 
       const conflictUsers = [req.user.id, ...attendeeIds].filter(Boolean);
       const conflicts = await ScheduleController.checkConflicts(
-        req.user.company.id,
+        req.user.companyId,
         startDate,
         endDate,
         conflictUsers,
@@ -519,7 +519,7 @@ class ScheduleController {
       // Atualizar evento se há campos para atualizar
       if (fieldsToUpdate.length > 0) {
         fieldsToUpdate.push(`updated_at = NOW()`);
-        values.push(eventId, req.user.company.id);
+        values.push(eventId, req.user.companyId);
 
         const updateQuery = `
           UPDATE schedule_events 
@@ -557,7 +557,7 @@ class ScheduleController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         eventId,
         `Evento atualizado: ${updateData.title || event.title}`,
         req.ip
@@ -588,7 +588,7 @@ class ScheduleController {
         GROUP BY e.id
       `;
 
-      const finalEventResult = await query(updatedEventQuery, [eventId, req.user.company.id]);
+      const finalEventResult = await query(updatedEventQuery, [eventId, req.user.companyId]);
 
       return res.status(200).json({
         success: true,
@@ -609,7 +609,7 @@ class ScheduleController {
     // Verificar se evento existe e se usuário tem permissão
     const existingEvent = await query(
       'SELECT * FROM schedule_events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [eventId, req.user.company.id]
+      [eventId, req.user.companyId]
     );
 
     if (existingEvent.rows.length === 0) {
@@ -629,7 +629,7 @@ class ScheduleController {
       // Soft delete do evento
       await client.query(
         'UPDATE schedule_events SET deleted_at = NOW() WHERE id = $1 AND company_id = $2',
-        [eventId, req.user.company.id]
+        [eventId, req.user.companyId]
       );
 
       // Soft delete dos participantes
@@ -645,7 +645,7 @@ class ScheduleController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         eventId,
         `Evento deletado: ${event.title}`,
         req.ip
@@ -825,7 +825,7 @@ class ScheduleController {
     `;
 
     const eventsResult = await query(calendarQuery, [
-      req.user.company.id,
+      req.user.companyId,
       start_date,
       end_date,
       req.user.id
@@ -898,7 +898,7 @@ class ScheduleController {
     // Verificar se evento existe
     const existingEvent = await query(
       'SELECT * FROM schedule_events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [eventId, req.user.company.id]
+      [eventId, req.user.companyId]
     );
 
     if (existingEvent.rows.length === 0) {
@@ -915,7 +915,7 @@ class ScheduleController {
       RETURNING *
     `;
 
-    const updatedEventResult = await query(updateQuery, [status, eventId, req.user.company.id]);
+    const updatedEventResult = await query(updateQuery, [status, eventId, req.user.companyId]);
     const updatedEvent = updatedEventResult.rows[0];
 
     // Conceder XP/Coins por completar evento
@@ -927,7 +927,7 @@ class ScheduleController {
         UPDATE user_gamification_profiles 
         SET total_xp = total_xp + $1, current_coins = current_coins + $2
         WHERE user_id = $3 AND company_id = $4
-      `, [xpReward, coinReward, req.user.id, req.user.company.id]);
+      `, [xpReward, coinReward, req.user.id, req.user.companyId]);
 
       // Registrar no histórico de gamificação
       await query(`
@@ -935,7 +935,7 @@ class ScheduleController {
         VALUES 
           ($1, $2, $3, 'xp', $4, 'Evento completado', 'event_completed'),
           ($5, $2, $3, 'coins', $6, 'Evento completado', 'event_completed')
-      `, [uuidv4(), req.user.id, req.user.company.id, xpReward, uuidv4(), coinReward]);
+      `, [uuidv4(), req.user.id, req.user.companyId, xpReward, uuidv4(), coinReward]);
     }
 
     // Log de auditoria
@@ -945,7 +945,7 @@ class ScheduleController {
     `, [
       uuidv4(),
       req.user.id,
-      req.user.company.id,
+      req.user.companyId,
       eventId,
       `Status do evento alterado para: ${status}${notes ? ` - ${notes}` : ''}`,
       req.ip

@@ -104,7 +104,7 @@ class ProductController {
     const offset = (page - 1) * limit;
     
     let whereClause = 'WHERE p.company_id = $1 AND p.deleted_at IS NULL';
-    let queryParams = [req.user.company.id];
+    let queryParams = [req.user.companyId];
     let paramCount = 1;
 
     // Filtros
@@ -187,7 +187,7 @@ class ProductController {
     const [productsResult, countResult, statsResult] = await Promise.all([
       query(productsQuery, queryParams),
       query(countQuery, queryParams.slice(0, -2)),
-      query(statsQuery, [req.user.company.id])
+      query(statsQuery, [req.user.companyId])
     ]);
 
     return res.status(200).json({
@@ -219,7 +219,7 @@ class ProductController {
     if (productData.sku) {
       const skuCheck = await query(
         'SELECT id FROM products WHERE sku = $1 AND company_id = $2 AND deleted_at IS NULL',
-        [productData.sku, req.user.company.id]
+        [productData.sku, req.user.companyId]
       );
 
       if (skuCheck.rows.length > 0) {
@@ -237,7 +237,7 @@ class ProductController {
         // Tentar encontrar categoria existente
         const existingCategory = await client.query(
           'SELECT id FROM product_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
-          [productData.category_name, req.user.company.id]
+          [productData.category_name, req.user.companyId]
         );
 
         if (existingCategory.rows.length > 0) {
@@ -246,7 +246,7 @@ class ProductController {
           // Criar nova categoria
           const newCategoryResult = await client.query(
             'INSERT INTO product_categories (id, company_id, name, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
-            [uuidv4(), req.user.company.id, productData.category_name, req.user.id]
+            [uuidv4(), req.user.companyId, productData.category_name, req.user.id]
           );
           categoryId = newCategoryResult.rows[0].id;
         }
@@ -265,7 +265,7 @@ class ProductController {
 
       const newProductResult = await client.query(createProductQuery, [
         productId,
-        req.user.company.id,
+        req.user.companyId,
         productData.name,
         productData.description,
         productData.sku || null,
@@ -297,7 +297,7 @@ class ProductController {
           ) VALUES ($1, $2, $3, 'in', $4, 'Estoque inicial', 0, $5, $6, $7)
         `, [
           uuidv4(),
-          req.user.company.id,
+          req.user.companyId,
           newProduct.id,
           productData.current_stock,
           productData.current_stock,
@@ -311,7 +311,7 @@ class ProductController {
         UPDATE user_gamification_profiles 
         SET total_xp = total_xp + 15, current_coins = current_coins + 8
         WHERE user_id = $1 AND company_id = $2
-      `, [req.user.id, req.user.company.id]);
+      `, [req.user.id, req.user.companyId]);
 
       // Registrar no histórico de gamificação
       await client.query(`
@@ -319,7 +319,7 @@ class ProductController {
         VALUES 
           ($1, $2, $3, 'xp', 15, 'Produto criado', 'product_created'),
           ($4, $2, $3, 'coins', 8, 'Produto criado', 'product_created')
-      `, [uuidv4(), req.user.id, req.user.company.id, uuidv4()]);
+      `, [uuidv4(), req.user.id, req.user.companyId, uuidv4()]);
 
       // Log de auditoria
       await client.query(`
@@ -328,7 +328,7 @@ class ProductController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         newProduct.id,
         `Produto criado: ${newProduct.name} (${productData.type})`,
         req.ip
@@ -399,7 +399,7 @@ class ProductController {
       WHERE p.id = $1 AND p.company_id = $2 AND p.deleted_at IS NULL
     `;
 
-    const productResult = await query(productQuery, [productId, req.user.company.id]);
+    const productResult = await query(productQuery, [productId, req.user.companyId]);
 
     if (productResult.rows.length === 0) {
       throw new ApiError(404, 'Produto não encontrado');
@@ -429,7 +429,7 @@ class ProductController {
     // Verificar se produto existe
     const existingProduct = await query(
       'SELECT * FROM products WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [productId, req.user.company.id]
+      [productId, req.user.companyId]
     );
 
     if (existingProduct.rows.length === 0) {
@@ -442,7 +442,7 @@ class ProductController {
     if (updateData.sku && updateData.sku !== product.sku) {
       const skuCheck = await query(
         'SELECT id FROM products WHERE sku = $1 AND company_id = $2 AND id != $3 AND deleted_at IS NULL',
-        [updateData.sku, req.user.company.id, productId]
+        [updateData.sku, req.user.companyId, productId]
       );
 
       if (skuCheck.rows.length > 0) {
@@ -459,7 +459,7 @@ class ProductController {
       if (updateData.category_name && !updateData.category_id) {
         const existingCategory = await client.query(
           'SELECT id FROM product_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
-          [updateData.category_name, req.user.company.id]
+          [updateData.category_name, req.user.companyId]
         );
 
         if (existingCategory.rows.length > 0) {
@@ -468,7 +468,7 @@ class ProductController {
           // Criar nova categoria
           const newCategoryResult = await client.query(
             'INSERT INTO product_categories (id, company_id, name, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
-            [uuidv4(), req.user.company.id, updateData.category_name, req.user.id]
+            [uuidv4(), req.user.companyId, updateData.category_name, req.user.id]
           );
           categoryId = newCategoryResult.rows[0].id;
         }
@@ -512,7 +512,7 @@ class ProductController {
       // Adicionar campos de controle
       fieldsToUpdate.push(`updated_at = NOW()`);
 
-      values.push(productId, req.user.company.id);
+      values.push(productId, req.user.companyId);
 
       const updateQuery = `
         UPDATE products 
@@ -531,7 +531,7 @@ class ProductController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         updatedProduct.id,
         `Produto atualizado: ${updatedProduct.name}`,
         req.ip
@@ -558,7 +558,7 @@ class ProductController {
     // Verificar se produto existe
     const existingProduct = await query(
       'SELECT * FROM products WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [productId, req.user.company.id]
+      [productId, req.user.companyId]
     );
 
     if (existingProduct.rows.length === 0) {
@@ -570,7 +570,7 @@ class ProductController {
     // Verificar se produto tem vendas associadas
     const salesCheck = await query(
       'SELECT COUNT(*) as count FROM sale_items si INNER JOIN sales s ON si.sale_id = s.id WHERE si.product_id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL',
-      [productId, req.user.company.id]
+      [productId, req.user.companyId]
     );
 
     if (parseInt(salesCheck.rows[0].count) > 0) {
@@ -583,7 +583,7 @@ class ProductController {
       // Soft delete do produto
       await client.query(
         'UPDATE products SET deleted_at = NOW() WHERE id = $1 AND company_id = $2',
-        [productId, req.user.company.id]
+        [productId, req.user.companyId]
       );
 
       // Log de auditoria
@@ -593,7 +593,7 @@ class ProductController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         productId,
         `Produto deletado: ${product.name}`,
         req.ip
@@ -626,7 +626,7 @@ class ProductController {
       WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL AND track_stock = true
     `;
     
-    const productResult = await query(productQuery, [productId, req.user.company.id]);
+    const productResult = await query(productQuery, [productId, req.user.companyId]);
     
     if (productResult.rows.length === 0) {
       throw new ApiError(404, 'Produto não encontrado ou controle de estoque desabilitado');
@@ -670,7 +670,7 @@ class ProductController {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `, [
         uuidv4(),
-        req.user.company.id,
+        req.user.companyId,
         productId,
         adjustmentData.type,
         adjustmentData.quantity,
@@ -699,7 +699,7 @@ class ProductController {
           ) VALUES ($1, $2, $3, 'low_stock', 'Alerta de Estoque Baixo', $4, $5)
         `, [
           uuidv4(),
-          req.user.company.id,
+          req.user.companyId,
           req.user.id,
           alert.message,
           JSON.stringify({ 
@@ -759,7 +759,7 @@ class ProductController {
         (p.current_stock / NULLIF(p.min_stock, 0)) ASC
     `;
 
-    const lowStockResult = await query(lowStockQuery, [req.user.company.id]);
+    const lowStockResult = await query(lowStockQuery, [req.user.companyId]);
 
     return res.status(200).json({
       success: true,
@@ -787,7 +787,7 @@ class ProductController {
       ORDER BY pc.name ASC
     `;
 
-    const categoriesResult = await query(categoriesQuery, [req.user.company.id]);
+    const categoriesResult = await query(categoriesQuery, [req.user.companyId]);
 
     return res.status(200).json({
       success: true,
@@ -805,7 +805,7 @@ class ProductController {
     // Verificar se categoria já existe
     const existingCategory = await query(
       'SELECT id FROM product_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [categoryData.name, req.user.company.id]
+      [categoryData.name, req.user.companyId]
     );
 
     if (existingCategory.rows.length > 0) {
@@ -821,7 +821,7 @@ class ProductController {
 
     const newCategoryResult = await query(createCategoryQuery, [
       uuidv4(),
-      req.user.company.id,
+      req.user.companyId,
       categoryData.name,
       categoryData.description,
       categoryData.parent_id,
@@ -928,7 +928,7 @@ class ProductController {
       `;
     }
 
-    const reportResult = await query(reportQuery, [req.user.company.id]);
+    const reportResult = await query(reportQuery, [req.user.companyId]);
 
     // Estatísticas gerais
     const statsQuery = `
@@ -944,7 +944,7 @@ class ProductController {
       WHERE p.company_id = $1 AND p.deleted_at IS NULL
     `;
 
-    const statsResult = await query(statsQuery, [req.user.company.id]);
+    const statsResult = await query(statsQuery, [req.user.companyId]);
 
     return res.status(200).json({
       success: true,

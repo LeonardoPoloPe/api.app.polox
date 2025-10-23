@@ -8,6 +8,7 @@ const UserSessionModel = require("./UserSession");
 // Business Models
 const LeadModel = require("./Lead");
 const ClientModel = require("./Client");
+const ClientNoteModel = require("./ClientNote");
 const SaleModel = require("./Sale");
 const SaleItemModel = require("./SaleItem");
 const ProductModel = require("./Product");
@@ -65,6 +66,7 @@ module.exports = {
   // Business Models
   LeadModel,
   ClientModel,
+  ClientNoteModel,
   SaleModel,
   SaleItemModel,
   ProductModel,

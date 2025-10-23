@@ -16,7 +16,6 @@ const { logger, auditLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
 const Joi = require('joi');
-const { v4: uuidv4 } = require('uuid');
 
 class LeadController {
 
@@ -90,7 +89,7 @@ class LeadController {
     const offset = (page - 1) * limit;
     
     let whereClause = 'WHERE l.company_id = $1 AND l.deleted_at IS NULL';
-    let queryParams = [req.user.company.id];
+    let queryParams = [req.user.companyId];
     let paramCount = 1;
 
     // 🔍 FILTROS AVANÇADOS
@@ -192,7 +191,7 @@ class LeadController {
     const [leadsResult, countResult, statsResult] = await Promise.all([
       query(leadsQuery, queryParams),
       query(countQuery, queryParams.slice(0, -2)),
-      query(statsQuery, [req.user.company.id])
+      query(statsQuery, [req.user.companyId])
     ]);
 
     const stats = statsResult.rows[0];
@@ -227,7 +226,7 @@ class LeadController {
     if (leadData.email) {
       const emailCheck = await query(
         'SELECT id FROM leads WHERE email = $1 AND company_id = $2 AND deleted_at IS NULL',
-        [leadData.email, req.user.company.id]
+        [leadData.email, req.user.companyId]
       );
 
       if (emailCheck.rows.length > 0) {
@@ -238,16 +237,14 @@ class LeadController {
     // 🆕 CRIAR LEAD
     const createLeadQuery = `
       INSERT INTO leads (
-        id, company_id, created_by_id, assigned_to_id, name, email, phone, 
-        company, position, source, status, estimated_value, description, 
-        tags, custom_fields
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        company_id, user_id, assigned_to_id, name, email, phone, 
+        company_name, position, source, status, notes, tags
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
     const newLeadResult = await query(createLeadQuery, [
-      uuidv4(),
-      req.user.company.id,
+      req.user.companyId,
       req.user.id,
       req.user.id, // Por padrão, quem cria fica responsável
       leadData.name,
@@ -257,10 +254,8 @@ class LeadController {
       leadData.position,
       leadData.source,
       leadData.status,
-      leadData.value,
       leadData.description,
-      JSON.stringify(leadData.tags),
-      JSON.stringify(leadData.custom_fields)
+      JSON.stringify(leadData.tags)
     ]);
 
     const newLead = newLeadResult.rows[0];
@@ -270,7 +265,7 @@ class LeadController {
       UPDATE user_gamification_profiles 
       SET total_xp = total_xp + 10, current_coins = current_coins + 5
       WHERE user_id = $1 AND company_id = $2
-    `, [req.user.id, req.user.company.id]);
+    `, [req.user.id, req.user.companyId]);
 
     // 📈 Registrar no histórico de gamificação
     await query(`
@@ -278,22 +273,22 @@ class LeadController {
       VALUES 
         ($1, $2, 'xp', 10, $3, 'lead_created'),
         ($1, $2, 'coins', 5, $3, 'lead_created')
-    `, [req.user.id, req.user.company.id, `Lead created: ${leadData.name}`]);
+    `, [req.user.id, req.user.companyId, `Lead created: ${leadData.name}`]);
 
     // 🏆 Verificar conquista "Primeiro Lead"
     const leadCountQuery = await query(
-      'SELECT COUNT(*) as count FROM leads WHERE created_by_id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [req.user.id, req.user.company.id]
+      'SELECT COUNT(*) as count FROM leads WHERE user_id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      [req.user.id, req.user.companyId]
     );
 
     if (parseInt(leadCountQuery.rows[0].count) === 1) {
-      await LeadController.unlockAchievement(req.user.id, req.user.company.id, 'first_lead');
+      await LeadController.unlockAchievement(req.user.id, req.user.companyId, 'first_lead');
     }
 
     // 📋 Log de auditoria
     auditLogger('Lead created', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'lead',
       entityId: newLead.id,
       action: 'create',
@@ -326,7 +321,7 @@ class LeadController {
       WHERE l.id = $1 AND l.company_id = $2 AND l.deleted_at IS NULL
     `;
     
-    const leadResult = await query(leadQuery, [leadId, req.user.company.id]);
+    const leadResult = await query(leadQuery, [leadId, req.user.companyId]);
     
     if (leadResult.rows.length === 0) {
       throw new ApiError(404, 'Lead not found');
@@ -349,7 +344,7 @@ class LeadController {
     // Verificar se lead existe
     const leadCheck = await query(
       'SELECT * FROM leads WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [leadId, req.user.company.id]
+      [leadId, req.user.companyId]
     );
 
     if (leadCheck.rows.length === 0) {
@@ -362,7 +357,7 @@ class LeadController {
     if (updateData.email && updateData.email !== currentLead.email) {
       const emailCheck = await query(
         'SELECT id FROM leads WHERE email = $1 AND company_id = $2 AND id != $3 AND deleted_at IS NULL',
-        [updateData.email, req.user.company.id, leadId]
+        [updateData.email, req.user.companyId, leadId]
       );
 
       if (emailCheck.rows.length > 0) {
@@ -389,7 +384,7 @@ class LeadController {
     });
 
     updateFields.push(`updated_at = NOW()`);
-    updateValues.push(leadId, req.user.company.id);
+    updateValues.push(leadId, req.user.companyId);
 
     const updateQuery = `
       UPDATE leads 
@@ -403,7 +398,7 @@ class LeadController {
     // 📋 Log de auditoria
     auditLogger('Lead updated', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'lead',
       entityId: leadId,
       action: 'update',
@@ -427,7 +422,7 @@ class LeadController {
       WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
     `;
     
-    const leadResult = await query(leadQuery, [leadId, req.user.company.id]);
+    const leadResult = await query(leadQuery, [leadId, req.user.companyId]);
     
     if (leadResult.rows.length === 0) {
       throw new ApiError(404, 'Lead not found');
@@ -446,24 +441,22 @@ class LeadController {
       // 1️⃣ CRIAR CLIENTE baseado no lead
       const createClientQuery = `
         INSERT INTO clients (
-          id, company_id, name, email, phone, company, position,
-          source, status, description, tags, custom_fields
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, $10, $11)
+          company_id, name, email, phone, company_name, position,
+          source, status, notes, tags
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'ativo', $8, $9)
         RETURNING *
       `;
 
       const newClientResult = await query(createClientQuery, [
-        uuidv4(),
-        req.user.company.id,
+        req.user.companyId,
         lead.name,
         lead.email,
         lead.phone,
-        lead.company,
+        lead.company_name,
         lead.position,
         lead.source,
-        lead.description,
-        lead.tags,
-        lead.custom_fields
+        lead.notes,
+        lead.tags
       ], transaction);
 
       const newClient = newClientResult.rows[0];
@@ -483,7 +476,7 @@ class LeadController {
         UPDATE user_gamification_profiles 
         SET total_xp = total_xp + 50, current_coins = current_coins + 25
         WHERE user_id = $1 AND company_id = $2
-      `, [lead.assigned_to_id || req.user.id, req.user.company.id], transaction);
+      `, [lead.assigned_to_id || req.user.id, req.user.companyId], transaction);
 
       // 4️⃣ Registrar no histórico
       await query(`
@@ -493,21 +486,21 @@ class LeadController {
           ($1, $2, 'coins', 25, $3, 'lead_converted')
       `, [
         lead.assigned_to_id || req.user.id, 
-        req.user.company.id,
+        req.user.companyId,
         `Lead converted to client: ${lead.name}`
       ], transaction);
 
       // 5️⃣ Verificar conquista "Primeiro Cliente"
       const clientCountQuery = await query(
         'SELECT COUNT(*) as count FROM clients WHERE company_id = $1 AND deleted_at IS NULL',
-        [req.user.company.id],
+        [req.user.companyId],
         transaction
       );
 
       if (parseInt(clientCountQuery.rows[0].count) === 1) {
         await LeadController.unlockAchievement(
           lead.assigned_to_id || req.user.id, 
-          req.user.company.id, 
+          req.user.companyId, 
           'first_client',
           transaction
         );
@@ -518,7 +511,7 @@ class LeadController {
       // 📋 Log de auditoria
       auditLogger('Lead converted to client', {
         userId: req.user.id,
-        companyId: req.user.company.id,
+        companyId: req.user.companyId,
         entityType: 'lead',
         entityId: leadId,
         action: 'convert',
@@ -553,7 +546,7 @@ class LeadController {
     // Verificar se usuário existe na empresa
     const userCheck = await query(
       'SELECT id, name FROM users WHERE id = $1 AND company_id = $2 AND status = $3',
-      [user_id, req.user.company.id, 'active']
+      [user_id, req.user.companyId, 'active']
     );
 
     if (userCheck.rows.length === 0) {
@@ -563,7 +556,7 @@ class LeadController {
     // Verificar se lead existe
     const leadCheck = await query(
       'SELECT id, name, assigned_to_id FROM leads WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [leadId, req.user.company.id]
+      [leadId, req.user.companyId]
     );
 
     if (leadCheck.rows.length === 0) {
@@ -582,7 +575,7 @@ class LeadController {
     // 📋 Log de auditoria
     auditLogger('Lead assigned', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'lead',
       entityId: leadId,
       action: 'assign',

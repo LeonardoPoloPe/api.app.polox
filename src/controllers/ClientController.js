@@ -16,7 +16,6 @@ const { logger, auditLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
 const Joi = require('joi');
-const { v4: uuidv4 } = require('uuid');
 
 class ClientController {
 
@@ -73,7 +72,7 @@ class ClientController {
     const offset = (page - 1) * limit;
     
     let whereClause = 'WHERE c.company_id = $1 AND c.deleted_at IS NULL';
-    let queryParams = [req.user.company.id];
+    let queryParams = [req.user.companyId];
     let paramCount = 1;
 
     // 🔍 FILTROS AVANÇADOS
@@ -165,7 +164,7 @@ class ClientController {
     const [clientsResult, countResult, statsResult] = await Promise.all([
       query(clientsQuery, queryParams),
       query(countQuery, queryParams.slice(0, -2)),
-      query(statsQuery, [req.user.company.id])
+      query(statsQuery, [req.user.companyId])
     ]);
 
     return paginatedResponse(res, clientsResult.rows, {
@@ -190,7 +189,7 @@ class ClientController {
     if (clientData.email) {
       const emailCheck = await query(
         'SELECT id FROM clients WHERE email = $1 AND company_id = $2 AND deleted_at IS NULL',
-        [clientData.email, req.user.company.id]
+        [clientData.email, req.user.companyId]
       );
 
       if (emailCheck.rows.length > 0) {
@@ -201,15 +200,14 @@ class ClientController {
     // 🆕 CRIAR CLIENTE
     const createClientQuery = `
       INSERT INTO clients (
-        id, company_id, name, email, phone, company, position,
+        company_id, name, email, phone, company, position,
         source, status, category, description, tags, custom_fields
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
     const newClientResult = await query(createClientQuery, [
-      uuidv4(),
-      req.user.company.id,
+      req.user.companyId,
       clientData.name,
       clientData.email,
       clientData.phone,
@@ -230,7 +228,7 @@ class ClientController {
       UPDATE user_gamification_profiles 
       SET total_xp = total_xp + 20, current_coins = current_coins + 10
       WHERE user_id = $1 AND company_id = $2
-    `, [req.user.id, req.user.company.id]);
+    `, [req.user.id, req.user.companyId]);
 
     // 📈 Registrar no histórico
     await query(`
@@ -238,12 +236,12 @@ class ClientController {
       VALUES 
         ($1, $2, 'xp', 20, $3, 'client_created'),
         ($1, $2, 'coins', 10, $3, 'client_created')
-    `, [req.user.id, req.user.company.id, `Client created: ${clientData.name}`]);
+    `, [req.user.id, req.user.companyId, `Client created: ${clientData.name}`]);
 
     // 📋 Log de auditoria
     auditLogger('Client created', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'client',
       entityId: newClient.id,
       action: 'create',
@@ -276,7 +274,7 @@ class ClientController {
       GROUP BY c.id
     `;
     
-    const clientResult = await query(clientQuery, [clientId, req.user.company.id]);
+    const clientResult = await query(clientQuery, [clientId, req.user.companyId]);
     
     if (clientResult.rows.length === 0) {
       throw new ApiError(404, 'Client not found');
@@ -316,7 +314,7 @@ class ClientController {
     // Verificar se cliente existe
     const clientCheck = await query(
       'SELECT * FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [clientId, req.user.company.id]
+      [clientId, req.user.companyId]
     );
 
     if (clientCheck.rows.length === 0) {
@@ -329,7 +327,7 @@ class ClientController {
     if (updateData.email && updateData.email !== currentClient.email) {
       const emailCheck = await query(
         'SELECT id FROM clients WHERE email = $1 AND company_id = $2 AND id != $3 AND deleted_at IS NULL',
-        [updateData.email, req.user.company.id, clientId]
+        [updateData.email, req.user.companyId, clientId]
       );
 
       if (emailCheck.rows.length > 0) {
@@ -356,7 +354,7 @@ class ClientController {
     });
 
     updateFields.push(`updated_at = NOW()`);
-    updateValues.push(clientId, req.user.company.id);
+    updateValues.push(clientId, req.user.companyId);
 
     const updateQuery = `
       UPDATE clients 
@@ -370,7 +368,7 @@ class ClientController {
     // 📋 Log de auditoria
     auditLogger('Client updated', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'client',
       entityId: clientId,
       action: 'update',
@@ -391,7 +389,7 @@ class ClientController {
     // Verificar se cliente existe
     const clientCheck = await query(
       'SELECT id, name FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [clientId, req.user.company.id]
+      [clientId, req.user.companyId]
     );
 
     if (clientCheck.rows.length === 0) {
@@ -420,7 +418,7 @@ class ClientController {
     // 📋 Log de auditoria
     auditLogger('Client deleted', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'client',
       entityId: clientId,
       action: 'delete',
@@ -441,7 +439,7 @@ class ClientController {
     // Verificar se cliente existe e pertence à empresa
     const clientCheck = await query(
       'SELECT id, name FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [clientId, req.user.company.id]
+      [clientId, req.user.companyId]
     );
 
     if (clientCheck.rows.length === 0) {
@@ -472,7 +470,7 @@ class ClientController {
       ORDER BY s.sale_date DESC
     `;
 
-    const salesResult = await query(salesQuery, [clientId, req.user.company.id]);
+    const salesResult = await query(salesQuery, [clientId, req.user.companyId]);
 
     // 📈 Estatísticas do cliente
     const statsQuery = `
@@ -488,7 +486,7 @@ class ClientController {
       WHERE client_id = $1 AND company_id = $2 AND deleted_at IS NULL AND status != 'cancelled'
     `;
 
-    const statsResult = await query(statsQuery, [clientId, req.user.company.id]);
+    const statsResult = await query(statsQuery, [clientId, req.user.companyId]);
 
     return successResponse(res, {
       client: clientCheck.rows[0],
@@ -511,7 +509,7 @@ class ClientController {
     // Verificar se cliente existe
     const clientCheck = await query(
       'SELECT id, name FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [clientId, req.user.company.id]
+      [clientId, req.user.companyId]
     );
 
     if (clientCheck.rows.length === 0) {
@@ -521,13 +519,12 @@ class ClientController {
     // 📝 Criar anotação
     const createNoteQuery = `
       INSERT INTO client_notes (
-        id, client_id, created_by_id, note, type
-      ) VALUES ($1, $2, $3, $4, $5)
+        client_id, created_by_id, note, type
+      ) VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
 
     const noteResult = await query(createNoteQuery, [
-      uuidv4(),
       clientId,
       req.user.id,
       note,
@@ -539,12 +536,12 @@ class ClientController {
       UPDATE user_gamification_profiles 
       SET total_xp = total_xp + 2, current_coins = current_coins + 1
       WHERE user_id = $1 AND company_id = $2
-    `, [req.user.id, req.user.company.id]);
+    `, [req.user.id, req.user.companyId]);
 
     // 📋 Log de auditoria
     auditLogger('Client note added', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'client_note',
       entityId: noteResult.rows[0].id,
       relatedEntityType: 'client',
@@ -606,9 +603,9 @@ class ClientController {
     `;
 
     const [generalResult, financialResult, topClientsResult] = await Promise.all([
-      query(generalStatsQuery, [req.user.company.id]),
-      query(financialStatsQuery, [req.user.company.id]),
-      query(topClientsQuery, [req.user.company.id])
+      query(generalStatsQuery, [req.user.companyId]),
+      query(financialStatsQuery, [req.user.companyId]),
+      query(topClientsQuery, [req.user.companyId])
     ]);
 
     return successResponse(res, {
@@ -633,7 +630,7 @@ class ClientController {
     // Verificar se cliente existe
     const clientCheck = await query(
       'SELECT id, name, tags as current_tags FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [clientId, req.user.company.id]
+      [clientId, req.user.companyId]
     );
 
     if (clientCheck.rows.length === 0) {
@@ -650,7 +647,7 @@ class ClientController {
     // 📋 Log de auditoria
     auditLogger('Client tags updated', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'client',
       entityId: clientId,
       action: 'update_tags',

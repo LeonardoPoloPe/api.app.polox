@@ -170,11 +170,11 @@ class FinanceController {
     `;
 
     const [summaryResult, evolutionResult, topExpensesResult, upcomingResult, cashFlowResult] = await Promise.all([
-      query(summaryQuery, [req.user.company.id]),
-      query(evolutionQuery, [req.user.company.id]),
-      query(topExpensesQuery, [req.user.company.id]),
-      query(upcomingQuery, [req.user.company.id]),
-      query(cashFlowQuery, [req.user.company.id])
+      query(summaryQuery, [req.user.companyId]),
+      query(evolutionQuery, [req.user.companyId]),
+      query(topExpensesQuery, [req.user.companyId]),
+      query(upcomingQuery, [req.user.companyId]),
+      query(cashFlowQuery, [req.user.companyId])
     ]);
 
     const summary = summaryResult.rows[0];
@@ -233,7 +233,7 @@ class FinanceController {
     const offset = (page - 1) * limit;
     
     let whereClause = 'WHERE ft.company_id = $1 AND ft.deleted_at IS NULL';
-    let queryParams = [req.user.company.id];
+    let queryParams = [req.user.companyId];
     let paramCount = 1;
 
     // Filtros
@@ -346,7 +346,7 @@ class FinanceController {
       if (transactionData.category_name && !categoryId) {
         const existingCategory = await client.query(
           'SELECT id FROM financial_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
-          [transactionData.category_name, req.user.company.id]
+          [transactionData.category_name, req.user.companyId]
         );
 
         if (existingCategory.rows.length > 0) {
@@ -355,7 +355,7 @@ class FinanceController {
           // Criar nova categoria
           const newCategoryResult = await client.query(
             'INSERT INTO financial_categories (id, company_id, name, type, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-            [uuidv4(), req.user.company.id, transactionData.category_name, transactionData.type, req.user.id]
+            [uuidv4(), req.user.companyId, transactionData.category_name, transactionData.type, req.user.id]
           );
           categoryId = newCategoryResult.rows[0].id;
         }
@@ -374,7 +374,7 @@ class FinanceController {
 
       const newTransactionResult = await client.query(createTransactionQuery, [
         transactionId,
-        req.user.company.id,
+        req.user.companyId,
         transactionData.type,
         transactionData.amount,
         transactionData.description,
@@ -402,7 +402,7 @@ class FinanceController {
         UPDATE user_gamification_profiles 
         SET total_xp = total_xp + $1, current_coins = current_coins + $2
         WHERE user_id = $3 AND company_id = $4
-      `, [xpReward, coinReward, req.user.id, req.user.company.id]);
+      `, [xpReward, coinReward, req.user.id, req.user.companyId]);
 
       // Registrar no histórico de gamificação
       await client.query(`
@@ -413,7 +413,7 @@ class FinanceController {
       `, [
         uuidv4(),
         req.user.id, 
-        req.user.company.id, 
+        req.user.companyId, 
         xpReward, 
         `Transação financeira: ${transactionData.type} R$ ${transactionData.amount}`,
         uuidv4(),
@@ -427,7 +427,7 @@ class FinanceController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         newTransaction.id,
         `Transação criada: ${transactionData.type} R$ ${transactionData.amount} - ${transactionData.description}`,
         req.ip
@@ -461,7 +461,7 @@ class FinanceController {
     // Verificar se transação existe
     const existingTransaction = await query(
       'SELECT * FROM financial_transactions WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [transactionId, req.user.company.id]
+      [transactionId, req.user.companyId]
     );
 
     if (existingTransaction.rows.length === 0) {
@@ -479,7 +479,7 @@ class FinanceController {
       if (updateData.category_name && !updateData.category_id) {
         const existingCategory = await client.query(
           'SELECT id FROM financial_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
-          [updateData.category_name, req.user.company.id]
+          [updateData.category_name, req.user.companyId]
         );
 
         if (existingCategory.rows.length > 0) {
@@ -488,7 +488,7 @@ class FinanceController {
           // Criar nova categoria
           const newCategoryResult = await client.query(
             'INSERT INTO financial_categories (id, company_id, name, type, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-            [uuidv4(), req.user.company.id, updateData.category_name, updateData.type || transaction.type, req.user.id]
+            [uuidv4(), req.user.companyId, updateData.category_name, updateData.type || transaction.type, req.user.id]
           );
           categoryId = newCategoryResult.rows[0].id;
         }
@@ -530,7 +530,7 @@ class FinanceController {
       // Adicionar campos de controle
       fieldsToUpdate.push(`updated_at = NOW()`);
 
-      values.push(transactionId, req.user.company.id);
+      values.push(transactionId, req.user.companyId);
 
       const updateQuery = `
         UPDATE financial_transactions 
@@ -549,7 +549,7 @@ class FinanceController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         updatedTransaction.id,
         `Transação atualizada: ${updatedTransaction.description}`,
         req.ip
@@ -579,7 +579,7 @@ class FinanceController {
     // Verificar se transação existe
     const existingTransaction = await query(
       'SELECT * FROM financial_transactions WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [transactionId, req.user.company.id]
+      [transactionId, req.user.companyId]
     );
 
     if (existingTransaction.rows.length === 0) {
@@ -594,7 +594,7 @@ class FinanceController {
       // Soft delete da transação
       await client.query(
         'UPDATE financial_transactions SET deleted_at = NOW() WHERE id = $1 AND company_id = $2',
-        [transactionId, req.user.company.id]
+        [transactionId, req.user.companyId]
       );
 
       // Log de auditoria
@@ -604,7 +604,7 @@ class FinanceController {
       `, [
         uuidv4(),
         req.user.id,
-        req.user.company.id,
+        req.user.companyId,
         transactionId,
         `Transação deletada: ${transaction.description} - R$ ${transaction.amount}`,
         req.ip
@@ -653,7 +653,7 @@ class FinanceController {
       ORDER BY date ASC
     `;
 
-    const cashFlowResult = await query(cashFlowQuery, [req.user.company.id]);
+    const cashFlowResult = await query(cashFlowQuery, [req.user.companyId]);
 
     // Calcular saldo acumulado
     let accumulatedBalance = 0;
@@ -704,7 +704,7 @@ class FinanceController {
     const { type } = req.query;
     
     let whereClause = 'WHERE fc.company_id = $1 AND fc.deleted_at IS NULL';
-    let queryParams = [req.user.company.id];
+    let queryParams = [req.user.companyId];
     
     if (type && ['income', 'expense'].includes(type)) {
       whereClause += ` AND (fc.type = $2 OR fc.type = 'both')`;
@@ -746,7 +746,7 @@ class FinanceController {
     // Verificar se categoria já existe
     const existingCategory = await query(
       'SELECT id FROM financial_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [categoryData.name, req.user.company.id]
+      [categoryData.name, req.user.companyId]
     );
 
     if (existingCategory.rows.length > 0) {
@@ -762,7 +762,7 @@ class FinanceController {
 
     const newCategoryResult = await query(createCategoryQuery, [
       uuidv4(),
-      req.user.company.id,
+      req.user.companyId,
       categoryData.name,
       categoryData.description,
       categoryData.type,
@@ -785,7 +785,7 @@ class FinanceController {
     const { period = 'month', year, month } = req.query;
     
     let dateFilter;
-    let params = [req.user.company.id];
+    let params = [req.user.companyId];
     
     if (year && month) {
       dateFilter = "AND EXTRACT(YEAR FROM ft.created_at) = $2 AND EXTRACT(MONTH FROM ft.created_at) = $3";

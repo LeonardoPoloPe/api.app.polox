@@ -82,7 +82,7 @@ class SaleController {
     const offset = (page - 1) * limit;
     
     let whereClause = 'WHERE s.company_id = $1 AND s.deleted_at IS NULL';
-    let queryParams = [req.user.company.id];
+    let queryParams = [req.user.companyId];
     let paramCount = 1;
 
     // 🔍 FILTROS AVANÇADOS
@@ -194,7 +194,7 @@ class SaleController {
     const [salesResult, countResult, statsResult] = await Promise.all([
       query(salesQuery, queryParams),
       query(countQuery, queryParams.slice(0, -2)),
-      query(statsQuery, [req.user.company.id])
+      query(statsQuery, [req.user.companyId])
     ]);
 
     return paginatedResponse(res, salesResult.rows, {
@@ -218,7 +218,7 @@ class SaleController {
     // 🔍 Verificar se cliente existe
     const clientCheck = await query(
       'SELECT id, name, email FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [saleData.client_id, req.user.company.id]
+      [saleData.client_id, req.user.companyId]
     );
 
     if (clientCheck.rows.length === 0) {
@@ -250,7 +250,7 @@ class SaleController {
 
       const newSaleResult = await query(createSaleQuery, [
         uuidv4(),
-        req.user.company.id,
+        req.user.companyId,
         saleData.client_id,
         req.user.id,
         saleData.description,
@@ -288,7 +288,7 @@ class SaleController {
             SET current_stock = current_stock - $1, updated_at = NOW()
             WHERE id = $2 AND company_id = $3 AND track_stock = true
             RETURNING current_stock, min_stock_level
-          `, [item.quantity, item.product_id, req.user.company.id], transaction);
+          `, [item.quantity, item.product_id, req.user.companyId], transaction);
 
           // 🚨 Verificar se estoque ficou abaixo do mínimo
           if (stockUpdate.rows.length > 0) {
@@ -299,7 +299,7 @@ class SaleController {
                 productId: item.product_id,
                 currentStock: current_stock,
                 minLevel: min_stock_level,
-                companyId: req.user.company.id
+                companyId: req.user.companyId
               });
             }
           }
@@ -328,7 +328,7 @@ class SaleController {
           current_coins = current_coins + $2,
           updated_at = NOW()
         WHERE user_id = $3 AND company_id = $4
-      `, [xpReward, coinReward, req.user.id, req.user.company.id], transaction);
+      `, [xpReward, coinReward, req.user.id, req.user.companyId], transaction);
 
       // 5️⃣ Registrar no histórico de gamificação
       await query(`
@@ -338,14 +338,14 @@ class SaleController {
           ($1, $2, 'coins', $5, $4, 'sale_completed')
       `, [
         req.user.id, 
-        req.user.company.id, 
+        req.user.companyId, 
         xpReward, 
         `Sale completed: ${client.name} - R$ ${totalAmount.toFixed(2)}`,
         coinReward
       ], transaction);
 
       // 6️⃣ VERIFICAR CONQUISTAS relacionadas a vendas
-      await SaleController.checkSaleAchievements(transaction, req.user.id, req.user.company.id, totalAmount);
+      await SaleController.checkSaleAchievements(transaction, req.user.id, req.user.companyId, totalAmount);
 
       await commitTransaction(transaction);
 
@@ -377,7 +377,7 @@ class SaleController {
       // 📋 Log de auditoria
       auditLogger('Sale created', {
         userId: req.user.id,
-        companyId: req.user.company.id,
+        companyId: req.user.companyId,
         entityType: 'sale',
         entityId: newSale.id,
         action: 'create',
@@ -432,7 +432,7 @@ class SaleController {
       GROUP BY s.id, c.name, c.email, c.phone, c.company, u.name, u.email
     `;
     
-    const saleResult = await query(saleQuery, [saleId, req.user.company.id]);
+    const saleResult = await query(saleQuery, [saleId, req.user.companyId]);
     
     if (saleResult.rows.length === 0) {
       throw new ApiError(404, 'Sale not found');
@@ -455,7 +455,7 @@ class SaleController {
     // Verificar se venda existe e pode ser editada
     const saleCheck = await query(
       'SELECT * FROM sales WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [saleId, req.user.company.id]
+      [saleId, req.user.companyId]
     );
 
     if (saleCheck.rows.length === 0) {
@@ -482,7 +482,7 @@ class SaleController {
     });
 
     updateFields.push(`updated_at = NOW()`);
-    updateValues.push(saleId, req.user.company.id);
+    updateValues.push(saleId, req.user.companyId);
 
     const updateQuery = `
       UPDATE sales 
@@ -496,7 +496,7 @@ class SaleController {
     // 📋 Log de auditoria
     auditLogger('Sale updated', {
       userId: req.user.id,
-      companyId: req.user.company.id,
+      companyId: req.user.companyId,
       entityType: 'sale',
       entityId: saleId,
       action: 'update',
@@ -520,7 +520,7 @@ class SaleController {
        FROM sales s 
        LEFT JOIN clients c ON s.client_id = c.id
        WHERE s.id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL`,
-      [saleId, req.user.company.id]
+      [saleId, req.user.companyId]
     );
 
     if (saleCheck.rows.length === 0) {
@@ -555,7 +555,7 @@ class SaleController {
           UPDATE products 
           SET current_stock = current_stock + $1, updated_at = NOW()
           WHERE id = $2 AND company_id = $3 AND track_stock = true
-        `, [item.quantity, item.product_id, req.user.company.id], transaction);
+        `, [item.quantity, item.product_id, req.user.companyId], transaction);
       }
 
       // 3️⃣ REVERTER ESTATÍSTICAS DO CLIENTE
@@ -573,7 +573,7 @@ class SaleController {
       // 📋 Log de auditoria
       auditLogger('Sale cancelled', {
         userId: req.user.id,
-        companyId: req.user.company.id,
+        companyId: req.user.companyId,
         entityType: 'sale',
         entityId: saleId,
         action: 'cancel',
