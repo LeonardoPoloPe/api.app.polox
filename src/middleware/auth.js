@@ -1,8 +1,8 @@
-const jwt = require('jsonwebtoken');
-const { query } = require('../config/database');
-const { jwt: jwtConfig, security } = require('../config/auth');
-const { ApiError } = require('../utils/errors');
-const { logger } = require('../utils/logger');
+const jwt = require("jsonwebtoken");
+const { query } = require("../config/database");
+const { jwt: jwtConfig, security } = require("../config/auth");
+const { ApiError } = require("../utils/errors");
+const { logger } = require("../utils/logger");
 
 /**
  * Middleware de autenticação JWT para sistema multi-tenant
@@ -17,8 +17,8 @@ const authMiddleware = async (req, res, next) => {
   try {
     // Extrair token do header Authorization
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new ApiError(401, 'Token de acesso requerido');
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new ApiError(401, "Token de acesso requerido");
     }
 
     const token = authHeader.substring(7); // Remove "Bearer "
@@ -26,27 +26,36 @@ const authMiddleware = async (req, res, next) => {
     // Verificar e decodificar token (versão simplificada)
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+      decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET ||
+          (() => {
+            throw new Error("JWT_SECRET não configurado!");
+          })()
+      );
     } catch (jwtError) {
-      if (jwtError.name === 'TokenExpiredError') {
-        throw new ApiError(401, 'Token expirado');
-      } else if (jwtError.name === 'JsonWebTokenError') {
-        throw new ApiError(401, 'Token inválido');
+      if (jwtError.name === "TokenExpiredError") {
+        throw new ApiError(401, "Token expirado");
+      } else if (jwtError.name === "JsonWebTokenError") {
+        throw new ApiError(401, "Token inválido");
       } else {
-        throw new ApiError(401, 'Falha na verificação do token');
+        throw new ApiError(401, "Falha na verificação do token");
       }
     }
 
     // Buscar dados do usuário (versão simplificada)
-    const userResult = await query(`
+    const userResult = await query(
+      `
       SELECT 
         id, name, email, role, company_id, created_at
       FROM users
       WHERE id = $1 AND deleted_at IS NULL
-    `, [decoded.id]);
+    `,
+      [decoded.id]
+    );
 
     if (userResult.rows.length === 0) {
-      throw new ApiError(401, 'Usuário não encontrado ou inativo');
+      throw new ApiError(401, "Usuário não encontrado ou inativo");
     }
 
     const user = userResult.rows[0];
@@ -58,16 +67,16 @@ const authMiddleware = async (req, res, next) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      createdAt: user.created_at
+      createdAt: user.created_at,
     };
 
     // Log de atividade se em desenvolvimento
-    if (process.env.NODE_ENV === 'dev') {
-      logger.info('Usuário autenticado:', {
+    if (process.env.NODE_ENV === "dev") {
+      logger.info("Usuário autenticado:", {
         userId: user.id,
         email: user.email,
         role: user.role,
-        endpoint: `${req.method} ${req.path}`
+        endpoint: `${req.method} ${req.path}`,
       });
     }
 
@@ -78,16 +87,16 @@ const authMiddleware = async (req, res, next) => {
       return res.status(error.statusCode).json({
         success: false,
         error: error.message,
-        code: 'AUTH_ERROR',
-        timestamp: new Date().toISOString()
+        code: "AUTH_ERROR",
+        timestamp: new Date().toISOString(),
       });
     }
 
     return res.status(500).json({
       success: false,
-      error: 'Erro interno de autenticação',
-      code: 'INTERNAL_AUTH_ERROR',
-      timestamp: new Date().toISOString()
+      error: "Erro interno de autenticação",
+      code: "INTERNAL_AUTH_ERROR",
+      timestamp: new Date().toISOString(),
     });
   }
 };
@@ -98,8 +107,8 @@ const authMiddleware = async (req, res, next) => {
  */
 const optionalAuthMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     // Sem token, continuar sem usuário
     req.user = null;
     return next();
@@ -126,7 +135,7 @@ const checkTokenBlacklist = async (token) => {
  */
 const blacklistToken = async (token, expiresAt) => {
   // Por enquanto, não implementamos blacklist
-  logger.info('Blacklist de token não implementado ainda');
+  logger.info("Blacklist de token não implementado ainda");
 };
 
 /**
@@ -135,31 +144,31 @@ const blacklistToken = async (token, expiresAt) => {
  */
 const requireRole = (requiredRoles) => {
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-  
+
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        error: 'Autenticação requerida',
-        code: 'AUTH_REQUIRED',
-        timestamp: new Date().toISOString()
+        error: "Autenticação requerida",
+        code: "AUTH_REQUIRED",
+        timestamp: new Date().toISOString(),
       });
     }
 
     if (!roles.includes(req.user.role)) {
-      logger.warn('Acesso negado por role:', {
+      logger.warn("Acesso negado por role:", {
         userId: req.user.id,
         userRole: req.user.role,
         requiredRoles: roles,
         endpoint: `${req.method} ${req.path}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       return res.status(403).json({
         success: false,
-        error: 'Permissão insuficiente',
-        code: 'INSUFFICIENT_ROLE',
-        timestamp: new Date().toISOString()
+        error: "Permissão insuficiente",
+        code: "INSUFFICIENT_ROLE",
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -174,19 +183,19 @@ const requireCompanyAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      error: 'Autenticação requerida',
-      code: 'AUTH_REQUIRED',
-      timestamp: new Date().toISOString()
+      error: "Autenticação requerida",
+      code: "AUTH_REQUIRED",
+      timestamp: new Date().toISOString(),
     });
   }
 
-  const allowedRoles = ['super_admin', 'company_admin'];
+  const allowedRoles = ["super_admin", "company_admin"];
   if (!allowedRoles.includes(req.user.role)) {
     return res.status(403).json({
       success: false,
-      error: 'Acesso restrito a administradores',
-      code: 'ADMIN_REQUIRED',
-      timestamp: new Date().toISOString()
+      error: "Acesso restrito a administradores",
+      code: "ADMIN_REQUIRED",
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -200,18 +209,18 @@ const requireSuperAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      error: 'Autenticação requerida',
-      code: 'AUTH_REQUIRED',
-      timestamp: new Date().toISOString()
+      error: "Autenticação requerida",
+      code: "AUTH_REQUIRED",
+      timestamp: new Date().toISOString(),
     });
   }
 
-  if (req.user.role !== 'super_admin') {
+  if (req.user.role !== "super_admin") {
     return res.status(403).json({
       success: false,
-      error: 'Acesso restrito a super administradores',
-      code: 'SUPER_ADMIN_REQUIRED',
-      timestamp: new Date().toISOString()
+      error: "Acesso restrito a super administradores",
+      code: "SUPER_ADMIN_REQUIRED",
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -226,5 +235,5 @@ module.exports = {
   requireCompanyAdmin,
   requireSuperAdmin,
   blacklistToken,
-  checkTokenBlacklist
+  checkTokenBlacklist,
 };

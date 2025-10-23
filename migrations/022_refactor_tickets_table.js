@@ -1,28 +1,28 @@
 /**
  * Migration 022: Refatoração da tabela polox.tickets
- * 
+ *
  * PROBLEMA:
  * - Tabela tickets ainda usa padrão antigo com coluna tags JSONB
  * - Campo resolution_notes TEXT sem estrutura adequada
- * 
+ *
  * SOLUÇÃO:
  * - Remove coluna tags (migra dados para tabela pivot)
  * - Remove coluna resolution_notes (substituída por ticket_comments)
  * - Cria tabela ticket_tags para normalização
- * 
+ *
  * ESTRUTURA ticket_tags:
  * - ticket_id BIGINT (FK para tickets.id CASCADE)
  * - tag_id BIGINT (FK para tags.id CASCADE)
  * - created_at TIMESTAMPTZ
  * - PRIMARY KEY (ticket_id, tag_id)
- * 
+ *
  * Data: 2025-10-23
  */
 
-const { query } = require('../src/config/database');
+const { query } = require("../src/config/database");
 
 async function up(client) {
-  console.log('📋 Iniciando Migration 022: Refatoração da tabela tickets...');
+  console.log("📋 Iniciando Migration 022: Refatoração da tabela tickets...");
 
   try {
     // 1. Verificar se coluna tags existe
@@ -37,7 +37,7 @@ async function up(client) {
     const tagsColumnExists = tagsColumnCheck.rows.length > 0;
 
     // 2. Criar tabela ticket_tags
-    console.log('🔧 Criando tabela ticket_tags...');
+    console.log("🔧 Criando tabela ticket_tags...");
     await client.query(`
       CREATE TABLE IF NOT EXISTS polox.ticket_tags (
         ticket_id BIGINT NOT NULL,
@@ -57,10 +57,10 @@ async function up(client) {
           ON DELETE CASCADE
       )
     `);
-    console.log('✅ Tabela ticket_tags criada com sucesso');
+    console.log("✅ Tabela ticket_tags criada com sucesso");
 
     // 3. Criar índices
-    console.log('🔧 Criando índices...');
+    console.log("🔧 Criando índices...");
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_ticket_tags_ticket_id 
       ON polox.ticket_tags(ticket_id)
@@ -69,14 +69,14 @@ async function up(client) {
       CREATE INDEX IF NOT EXISTS idx_ticket_tags_tag_id 
       ON polox.ticket_tags(tag_id)
     `);
-    console.log('✅ Índices criados com sucesso');
+    console.log("✅ Índices criados com sucesso");
 
     // 4. Migrar dados de tags JSONB para ticket_tags (se a coluna existir)
     let ticketsWithTags = { rows: [] }; // Inicializar para evitar erro de referência
-    
+
     if (tagsColumnExists) {
-      console.log('🔄 Migrando tags existentes para ticket_tags...');
-      
+      console.log("🔄 Migrando tags existentes para ticket_tags...");
+
       // Buscar tickets com tags
       ticketsWithTags = await client.query(`
         SELECT id, company_id, tags 
@@ -86,116 +86,160 @@ async function up(client) {
           AND tags::text != 'null'
       `);
 
-      console.log(`📊 Encontrados ${ticketsWithTags.rows.length} tickets com tags para migrar`);
+      console.log(
+        `📊 Encontrados ${ticketsWithTags.rows.length} tickets com tags para migrar`
+      );
 
       for (const ticket of ticketsWithTags.rows) {
         try {
-          const tagsArray = typeof ticket.tags === 'string' 
-            ? JSON.parse(ticket.tags) 
-            : ticket.tags;
+          const tagsArray =
+            typeof ticket.tags === "string"
+              ? JSON.parse(ticket.tags)
+              : ticket.tags;
 
           if (Array.isArray(tagsArray) && tagsArray.length > 0) {
             for (const tagName of tagsArray) {
-              if (tagName && typeof tagName === 'string') {
+              if (tagName && typeof tagName === "string") {
                 // Criar ou buscar tag
-                const tagResult = await client.query(`
+                const tagResult = await client.query(
+                  `
                   INSERT INTO polox.tags (company_id, name, slug, color, created_at, updated_at)
                   VALUES ($1, $2, $3, $4, NOW(), NOW())
                   ON CONFLICT (company_id, slug) 
                   DO UPDATE SET updated_at = NOW()
                   RETURNING id
-                `, [
-                  ticket.company_id,
-                  tagName.trim(),
-                  tagName.toLowerCase().trim().replace(/\s+/g, '-'),
-                  '#808080' // cor padrão cinza
-                ]);
+                `,
+                  [
+                    ticket.company_id,
+                    tagName.trim(),
+                    tagName.toLowerCase().trim().replace(/\s+/g, "-"),
+                    "#808080", // cor padrão cinza
+                  ]
+                );
 
                 const tagId = tagResult.rows[0].id;
 
                 // Associar tag ao ticket via pivot
-                await client.query(`
+                await client.query(
+                  `
                   INSERT INTO polox.ticket_tags (ticket_id, tag_id, created_at)
                   VALUES ($1, $2, NOW())
                   ON CONFLICT (ticket_id, tag_id) DO NOTHING
-                `, [ticket.id, tagId]);
+                `,
+                  [ticket.id, tagId]
+                );
               }
             }
           }
         } catch (error) {
-          console.error(`⚠️  Erro ao migrar tags do ticket ${ticket.id}:`, error.message);
+          console.error(
+            `⚠️  Erro ao migrar tags do ticket ${ticket.id}:`,
+            error.message
+          );
         }
       }
 
-      console.log('✅ Migração de tags concluída');
+      console.log("✅ Migração de tags concluída");
     }
 
-    // 5. Verificar se há dados em resolution_notes antes de remover
-    const resolutionNotesCheck = await client.query(`
-      SELECT COUNT(*) as count 
-      FROM polox.tickets 
-      WHERE resolution_notes IS NOT NULL 
-        AND resolution_notes != '' 
-        AND deleted_at IS NULL
+    // 5. Verificar se coluna resolution_notes existe antes de verificar dados
+    const hasResolutionNotesColumn = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = 'polox' AND table_name = 'tickets' AND column_name = 'resolution_notes'
     `);
 
-    const hasResolutionNotes = parseInt(resolutionNotesCheck.rows[0].count) > 0;
+    if (hasResolutionNotesColumn.rows.length > 0) {
+      console.log(
+        "📋 Coluna resolution_notes encontrada, verificando dados..."
+      );
 
-    if (hasResolutionNotes) {
-      console.log(`⚠️  ATENÇÃO: Existem ${resolutionNotesCheck.rows[0].count} tickets com resolution_notes`);
-      console.log('💡 SUGESTÃO: Migre esses dados para polox.ticket_comments antes de remover a coluna');
-      console.log('   Exemplo: Para cada resolution_note, crie um comentário interno no ticket');
+      const resolutionNotesCheck = await client.query(`
+        SELECT COUNT(*) as count 
+        FROM polox.tickets 
+        WHERE resolution_notes IS NOT NULL 
+          AND resolution_notes != '' 
+          AND deleted_at IS NULL
+      `);
+
+      const hasResolutionNotes =
+        parseInt(resolutionNotesCheck.rows[0].count) > 0;
+
+      if (hasResolutionNotes) {
+        console.log(
+          `⚠️  ATENÇÃO: Existem ${resolutionNotesCheck.rows[0].count} tickets com resolution_notes`
+        );
+        console.log(
+          "💡 SUGESTÃO: Migre esses dados para polox.ticket_comments antes de remover a coluna"
+        );
+        console.log(
+          "   Exemplo: Para cada resolution_note, crie um comentário interno no ticket"
+        );
+      }
+    } else {
+      console.log(
+        "ℹ️  Coluna resolution_notes não existe na tabela tickets - nada para alertar"
+      );
     }
 
     // 6. Remover coluna tags (se existir)
     if (tagsColumnExists) {
-      console.log('🗑️  Removendo coluna tags da tabela tickets...');
+      console.log("🗑️  Removendo coluna tags da tabela tickets...");
       await client.query(`
         ALTER TABLE polox.tickets 
         DROP COLUMN IF EXISTS tags
       `);
-      console.log('✅ Coluna tags removida com sucesso');
+      console.log("✅ Coluna tags removida com sucesso");
     } else {
-      console.log('ℹ️  Coluna tags não encontrada (já foi removida anteriormente)');
+      console.log(
+        "ℹ️  Coluna tags não encontrada (já foi removida anteriormente)"
+      );
     }
 
     // 7. Remover coluna resolution_notes
-    console.log('🗑️  Removendo coluna resolution_notes da tabela tickets...');
+    console.log("🗑️  Removendo coluna resolution_notes da tabela tickets...");
     await client.query(`
       ALTER TABLE polox.tickets 
       DROP COLUMN IF EXISTS resolution_notes
     `);
-    console.log('✅ Coluna resolution_notes removida com sucesso');
+    console.log("✅ Coluna resolution_notes removida com sucesso");
 
-    console.log('✅ Migration 022 concluída com sucesso!');
-    console.log('');
-    console.log('📌 RESUMO:');
-    console.log('   ✓ Tabela ticket_tags criada');
-    console.log('   ✓ Índices criados (ticket_id, tag_id)');
+    console.log("✅ Migration 022 concluída com sucesso!");
+    console.log("");
+    console.log("📌 RESUMO:");
+    console.log("   ✓ Tabela ticket_tags criada");
+    console.log("   ✓ Índices criados (ticket_id, tag_id)");
     if (tagsColumnExists) {
-      console.log(`   ✓ ${ticketsWithTags.rows.length} tickets com tags migrados`);
-      console.log('   ✓ Coluna tags removida');
+      console.log(
+        `   ✓ ${ticketsWithTags.rows.length} tickets com tags migrados`
+      );
+      console.log("   ✓ Coluna tags removida");
     }
-    console.log('   ✓ Coluna resolution_notes removida');
-    console.log('');
-    console.log('📝 PRÓXIMOS PASSOS:');
-    console.log('   1. Atualizar Ticket.js para usar ticket_tags');
-    console.log('   2. Adicionar métodos addTag(), getTags(), removeTag(), updateTags()');
-    console.log('   3. Usar tabela ticket_comments para histórico de resoluções');
-    console.log('   4. Campo description permanece para descrição inicial do ticket');
-
+    console.log("   ✓ Coluna resolution_notes removida");
+    console.log("");
+    console.log("📝 PRÓXIMOS PASSOS:");
+    console.log("   1. Atualizar Ticket.js para usar ticket_tags");
+    console.log(
+      "   2. Adicionar métodos addTag(), getTags(), removeTag(), updateTags()"
+    );
+    console.log(
+      "   3. Usar tabela ticket_comments para histórico de resoluções"
+    );
+    console.log(
+      "   4. Campo description permanece para descrição inicial do ticket"
+    );
   } catch (error) {
-    console.error('❌ Erro na Migration 022:', error);
+    console.error("❌ Erro na Migration 022:", error);
     throw error;
   }
 }
 
 async function down(client) {
-  console.log('⏪ Revertendo Migration 022...');
+  console.log("⏪ Revertendo Migration 022...");
 
   try {
     // 1. Recriar colunas
-    console.log('🔧 Recriando colunas tags e resolution_notes...');
+    console.log("🔧 Recriando colunas tags e resolution_notes...");
     await client.query(`
       ALTER TABLE polox.tickets 
       ADD COLUMN IF NOT EXISTS tags JSONB,
@@ -203,7 +247,7 @@ async function down(client) {
     `);
 
     // 2. Migrar dados de volta (ticket_tags -> JSONB)
-    console.log('🔄 Migrando dados de ticket_tags de volta para JSONB...');
+    console.log("🔄 Migrando dados de ticket_tags de volta para JSONB...");
     const ticketsWithTags = await client.query(`
       SELECT 
         tt.ticket_id,
@@ -214,21 +258,23 @@ async function down(client) {
     `);
 
     for (const row of ticketsWithTags.rows) {
-      await client.query(`
+      await client.query(
+        `
         UPDATE polox.tickets 
         SET tags = $1 
         WHERE id = $2
-      `, [JSON.stringify(row.tags), row.ticket_id]);
+      `,
+        [JSON.stringify(row.tags), row.ticket_id]
+      );
     }
 
     // 3. Remover tabela ticket_tags
-    console.log('🗑️  Removendo tabela ticket_tags...');
-    await client.query('DROP TABLE IF EXISTS polox.ticket_tags CASCADE');
+    console.log("🗑️  Removendo tabela ticket_tags...");
+    await client.query("DROP TABLE IF EXISTS polox.ticket_tags CASCADE");
 
-    console.log('✅ Migration 022 revertida com sucesso');
-
+    console.log("✅ Migration 022 revertida com sucesso");
   } catch (error) {
-    console.error('❌ Erro ao reverter Migration 022:', error);
+    console.error("❌ Erro ao reverter Migration 022:", error);
     throw error;
   }
 }

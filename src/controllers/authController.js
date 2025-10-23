@@ -63,7 +63,10 @@ class AuthController {
           role: user.role,
           companyId: user.company_id,
         },
-        process.env.JWT_SECRET || "your-secret-key",
+        process.env.JWT_SECRET ||
+          (() => {
+            throw new Error("JWT_SECRET não configurado!");
+          })(),
         { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
       );
 

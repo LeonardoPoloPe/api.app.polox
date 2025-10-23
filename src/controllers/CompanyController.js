@@ -385,7 +385,11 @@ class CompanyController {
                 : newCompany.settings,
           },
           admin: newAdmin,
-          temp_password: "admin123", // Informar senha temporária
+          temp_password:
+            process.env.DEFAULT_ADMIN_PASSWORD ||
+            Math.random().toString(36).slice(-8) +
+              Math.random().toString(36).slice(-8).toUpperCase() +
+              "123!",
           login_url: `https://${newCompany.domain}.crm.ze9.com.br`,
         },
         "Empresa criada com sucesso",
