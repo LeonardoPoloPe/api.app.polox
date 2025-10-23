@@ -30,7 +30,7 @@ class EventModel {
       recurrence_rule = null,
       reminder_minutes = 15,
       is_private = false,
-      tags = null,
+      tags = [], // Array de nomes de tags - será processado separadamente
       custom_fields = null,
       attachments = null
     } = eventData;
@@ -64,37 +64,65 @@ class EventModel {
       throw new ValidationError('Data de fim deve ser posterior à data de início');
     }
 
-    const insertQuery = `
-      INSERT INTO polox.events (
-        company_id, title, description, event_type, start_date, end_date,
-        all_day, location, status, priority, organizer_id, client_id,
-        lead_id, sale_id, recurrence_rule, reminder_minutes, is_private,
-        tags, custom_fields, attachments, created_at, updated_at
-      )
-      VALUES (
-        $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, $10, $11, $12,
-        $13, $14, $15, $16, $17,
-        $18, $19, $20, NOW(), NOW()
-      )
-      RETURNING 
-        id, title, description, event_type, start_date, end_date,
-        all_day, location, status, priority, organizer_id,
-        reminder_minutes, is_private, created_at, updated_at
-    `;
+    return await transaction(async (client) => {
+      // 1. Criar o evento (sem tags)
+      const insertQuery = `
+        INSERT INTO polox.events (
+          company_id, title, description, event_type, start_date, end_date,
+          all_day, location, status, priority, organizer_id, client_id,
+          lead_id, sale_id, recurrence_rule, reminder_minutes, is_private,
+          custom_fields, attachments, created_at, updated_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6,
+          $7, $8, $9, $10, $11, $12,
+          $13, $14, $15, $16, $17,
+          $18, $19, NOW(), NOW()
+        )
+        RETURNING 
+          id, title, description, event_type, start_date, end_date,
+          all_day, location, status, priority, organizer_id,
+          reminder_minutes, is_private, created_at, updated_at
+      `;
 
-    try {
-      const result = await query(insertQuery, [
+      const result = await client.query(insertQuery, [
         companyId, title, description, event_type, start_date, end_date,
         all_day, location, status, priority, organizer_id, client_id,
         lead_id, sale_id, recurrence_rule, reminder_minutes, is_private,
-        tags, custom_fields, attachments
-      ], { companyId });
+        custom_fields, attachments
+      ]);
 
-      return result.rows[0];
-    } catch (error) {
-      throw new ApiError(500, `Erro ao criar evento: ${error.message}`);
-    }
+      const event = result.rows[0];
+
+      // 2. Adicionar tags
+      if (tags && tags.length > 0) {
+        for (const tagName of tags) {
+          if (tagName && tagName.trim() !== '') {
+            // Inserir tag se não existir (específica da empresa)
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (name, slug, company_id)
+              VALUES ($1, $2, $3)
+              ON CONFLICT (company_id, name, slug) 
+              WHERE company_id IS NOT NULL 
+              DO UPDATE SET name = EXCLUDED.name
+              RETURNING id
+            `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag ao evento
+            await client.query(`
+              INSERT INTO polox.event_tags (event_id, tag_id)
+              VALUES ($1, $2)
+              ON CONFLICT DO NOTHING
+            `, [event.id, tagId]);
+          }
+        }
+      }
+
+      // 3. Retornar evento completo com tags
+      return await this.findById(event.id, companyId);
+    }, { companyId });
   }
 
   /**
@@ -125,7 +153,26 @@ class EventModel {
 
     try {
       const result = await query(selectQuery, [id, companyId], { companyId });
-      return result.rows[0] || null;
+      const event = result.rows[0];
+      
+      if (!event) {
+        return null;
+      }
+
+      // Buscar tags do evento
+      const tagsResult = await query(`
+        SELECT t.id, t.name, t.slug, t.color
+        FROM polox.tags t
+        INNER JOIN polox.event_tags et ON t.id = et.tag_id
+        WHERE et.event_id = $1
+        ORDER BY t.name
+      `, [id], { companyId });
+
+      // Montar objeto completo
+      return {
+        ...event,
+        tags: tagsResult.rows
+      };
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar evento: ${error.message}`);
     }
@@ -235,11 +282,12 @@ class EventModel {
         e.id, e.title, e.description, e.event_type, e.start_date,
         e.end_date, e.all_day, e.location, e.status, e.priority,
         e.organizer_id, e.client_id, e.lead_id, e.reminder_minutes,
-        e.is_private, e.tags, e.created_at, e.updated_at,
+        e.is_private, e.created_at, e.updated_at,
         u.name as organizer_name,
         c.name as client_name,
         l.name as lead_name,
         (SELECT COUNT(*) FROM polox.event_attendees WHERE event_id = e.id) as attendee_count,
+        (SELECT json_agg(t.name) FROM polox.tags t INNER JOIN polox.event_tags et ON t.id = et.tag_id WHERE et.event_id = e.id) as tags,
         CASE 
           WHEN e.start_date < NOW() AND e.status = 'scheduled' THEN true
           ELSE false
@@ -295,7 +343,7 @@ class EventModel {
       'title', 'description', 'event_type', 'start_date', 'end_date',
       'all_day', 'location', 'status', 'priority', 'client_id', 'lead_id',
       'sale_id', 'recurrence_rule', 'reminder_minutes', 'is_private',
-      'tags', 'custom_fields'
+      'custom_fields'
     ];
 
     // Validar datas se fornecidas
@@ -864,6 +912,159 @@ class EventModel {
     } catch (error) {
       throw new ApiError(500, `Erro ao verificar conflitos de agenda: ${error.message}`);
     }
+  }
+
+  /**
+   * Adiciona uma tag ao evento
+   * @param {number} eventId - ID do evento
+   * @param {string} tagName - Nome da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Object>} Tag associada
+   */
+  static async addTag(eventId, tagName, companyId) {
+    if (!tagName || tagName.trim() === '') {
+      throw new ValidationError('Nome da tag é obrigatório');
+    }
+
+    return await transaction(async (client) => {
+      // Verificar se evento existe
+      const event = await client.query(
+        'SELECT id FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [eventId, companyId]
+      );
+
+      if (event.rows.length === 0) {
+        throw new NotFoundError('Evento não encontrado');
+      }
+
+      // Inserir tag se não existir (específica da empresa)
+      const tagResult = await client.query(`
+        INSERT INTO polox.tags (name, slug, company_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (company_id, name, slug) 
+        WHERE company_id IS NOT NULL 
+        DO UPDATE SET name = EXCLUDED.name
+        RETURNING id, name, slug, color
+      `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+      const tag = tagResult.rows[0];
+
+      // Associar tag ao evento
+      await client.query(`
+        INSERT INTO polox.event_tags (event_id, tag_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `, [eventId, tag.id]);
+
+      return tag;
+    }, { companyId });
+  }
+
+  /**
+   * Busca todas as tags de um evento
+   * @param {number} eventId - ID do evento
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags
+   */
+  static async getTags(eventId, companyId) {
+    const selectQuery = `
+      SELECT t.id, t.name, t.slug, t.color, t.description
+      FROM polox.tags t
+      INNER JOIN polox.event_tags et ON t.id = et.tag_id
+      WHERE et.event_id = $1
+      ORDER BY t.name
+    `;
+
+    try {
+      const result = await query(selectQuery, [eventId], { companyId });
+      return result.rows;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao buscar tags: ${error.message}`);
+    }
+  }
+
+  /**
+   * Remove uma tag do evento
+   * @param {number} eventId - ID do evento
+   * @param {number} tagId - ID da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<boolean>} True se removido com sucesso
+   */
+  static async removeTag(eventId, tagId, companyId) {
+    const deleteQuery = `
+      DELETE FROM polox.event_tags
+      WHERE event_id = $1 AND tag_id = $2
+    `;
+
+    try {
+      const result = await query(deleteQuery, [eventId, tagId], { companyId });
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao remover tag: ${error.message}`);
+    }
+  }
+
+  /**
+   * Atualiza todas as tags de um evento
+   * @param {number} eventId - ID do evento
+   * @param {Array<string>} tagNames - Array com nomes das tags
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags atualizadas
+   */
+  static async updateTags(eventId, tagNames, companyId) {
+    return await transaction(async (client) => {
+      // Verificar se evento existe
+      const event = await client.query(
+        'SELECT id FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [eventId, companyId]
+      );
+
+      if (event.rows.length === 0) {
+        throw new NotFoundError('Evento não encontrado');
+      }
+
+      // Remover todas as tags antigas
+      await client.query(`
+        DELETE FROM polox.event_tags WHERE event_id = $1
+      `, [eventId]);
+
+      // Adicionar novas tags
+      if (tagNames && tagNames.length > 0) {
+        for (const tagName of tagNames) {
+          if (tagName && tagName.trim() !== '') {
+            // Inserir tag se não existir
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (name, slug, company_id)
+              VALUES ($1, $2, $3)
+              ON CONFLICT (company_id, name, slug) 
+              WHERE company_id IS NOT NULL 
+              DO UPDATE SET name = EXCLUDED.name
+              RETURNING id
+            `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag ao evento
+            await client.query(`
+              INSERT INTO polox.event_tags (event_id, tag_id)
+              VALUES ($1, $2)
+              ON CONFLICT DO NOTHING
+            `, [eventId, tagId]);
+          }
+        }
+      }
+
+      // Retornar tags atualizadas
+      const result = await client.query(`
+        SELECT t.id, t.name, t.slug, t.color
+        FROM polox.tags t
+        INNER JOIN polox.event_tags et ON t.id = et.tag_id
+        WHERE et.event_id = $1
+        ORDER BY t.name
+      `, [eventId]);
+
+      return result.rows;
+    }, { companyId });
   }
 }
 

@@ -25,7 +25,7 @@ class FinancialTransactionModel {
       client_id = null,
       sale_id = null,
       reference_document = null,
-      tags = null,
+      tags = [], // Array de nomes de tags - será processado separadamente
       attachment_url = null,
       recurring_rule = null,
       parent_transaction_id = null
@@ -59,36 +59,36 @@ class FinancialTransactionModel {
         throw new NotFoundError('Conta financeira não encontrada');
       }
 
-      // Criar a transação
+      // 1. Criar a transação (sem tags)
       const insertQuery = `
         INSERT INTO polox.financial_transactions (
           company_id, account_id, type, category, amount, description,
           transaction_date, status, payment_method, client_id, sale_id,
-          reference_document, tags, attachment_url, recurring_rule,
+          reference_document, attachment_url, recurring_rule,
           parent_transaction_id, created_at, updated_at
         )
         VALUES (
           $1, $2, $3, $4, $5, $6,
           $7, $8, $9, $10, $11,
-          $12, $13, $14, $15,
-          $16, NOW(), NOW()
+          $12, $13, $14,
+          $15, NOW(), NOW()
         )
         RETURNING 
           id, company_id, account_id, type, category, amount, description,
           transaction_date, status, payment_method, client_id, sale_id,
-          reference_document, tags, created_at, updated_at
+          reference_document, created_at, updated_at
       `;
 
       const transactionResult = await client.query(insertQuery, [
         companyId, account_id, type, category, amount, description,
         transaction_date, status, payment_method, client_id, sale_id,
-        reference_document, tags, attachment_url, recurring_rule,
+        reference_document, attachment_url, recurring_rule,
         parent_transaction_id
       ]);
 
       const newTransaction = transactionResult.rows[0];
 
-      // Atualizar saldo da conta se a transação estiver confirmada
+      // 2. Atualizar saldo da conta se a transação estiver confirmada
       if (status === 'completed') {
         const balanceChange = type === 'income' ? amount : -amount;
         await client.query(
@@ -97,7 +97,34 @@ class FinancialTransactionModel {
         );
       }
 
-      return newTransaction;
+      // 3. Adicionar tags
+      if (tags && tags.length > 0) {
+        for (const tagName of tags) {
+          if (tagName && tagName.trim() !== '') {
+            // Inserir tag se não existir (específica da empresa)
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (name, slug, company_id)
+              VALUES ($1, $2, $3)
+              ON CONFLICT (company_id, name, slug) 
+              WHERE company_id IS NOT NULL 
+              DO UPDATE SET name = EXCLUDED.name
+              RETURNING id
+            `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag à transação
+            await client.query(`
+              INSERT INTO polox.financial_transaction_tags (financial_transaction_id, tag_id)
+              VALUES ($1, $2)
+              ON CONFLICT DO NOTHING
+            `, [newTransaction.id, tagId]);
+          }
+        }
+      }
+
+      // 4. Retornar transação completa com tags
+      return await this.findById(newTransaction.id, companyId);
     }, { companyId });
   }
 
@@ -126,7 +153,26 @@ class FinancialTransactionModel {
 
     try {
       const result = await query(selectQuery, [id, companyId], { companyId });
-      return result.rows[0] || null;
+      const financialTransaction = result.rows[0];
+      
+      if (!financialTransaction) {
+        return null;
+      }
+
+      // Buscar tags da transação
+      const tagsResult = await query(`
+        SELECT t.id, t.name, t.slug, t.color
+        FROM polox.tags t
+        INNER JOIN polox.financial_transaction_tags ftt ON t.id = ftt.tag_id
+        WHERE ftt.financial_transaction_id = $1
+        ORDER BY t.name
+      `, [id], { companyId });
+
+      // Montar objeto completo
+      return {
+        ...financialTransaction,
+        tags: tagsResult.rows
+      };
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar transação: ${error.message}`);
     }
@@ -223,10 +269,11 @@ class FinancialTransactionModel {
       SELECT 
         ft.id, ft.type, ft.category, ft.amount, ft.description,
         ft.transaction_date, ft.status, ft.payment_method,
-        ft.reference_document, ft.tags, ft.created_at,
+        ft.reference_document, ft.created_at,
         fa.name as account_name,
         c.name as client_name,
-        s.sale_number
+        s.sale_number,
+        (SELECT json_agg(t.name) FROM polox.tags t INNER JOIN polox.financial_transaction_tags ftt ON t.id = ftt.tag_id WHERE ftt.financial_transaction_id = ft.id) as tags
       FROM polox.financial_transactions ft
       LEFT JOIN polox.financial_accounts fa ON ft.account_id = fa.id
       LEFT JOIN polox.clients c ON ft.client_id = c.id
@@ -271,7 +318,7 @@ class FinancialTransactionModel {
   static async update(id, updateData, companyId) {
     const allowedFields = [
       'category', 'description', 'transaction_date', 'payment_method',
-      'reference_document', 'tags', 'attachment_url'
+      'reference_document', 'attachment_url'
     ];
 
     const updates = [];
@@ -691,6 +738,159 @@ class FinancialTransactionModel {
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar transações recorrentes: ${error.message}`);
     }
+  }
+
+  /**
+   * Adiciona uma tag à transação financeira
+   * @param {number} transactionId - ID da transação
+   * @param {string} tagName - Nome da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Object>} Tag associada
+   */
+  static async addTag(transactionId, tagName, companyId) {
+    if (!tagName || tagName.trim() === '') {
+      throw new ValidationError('Nome da tag é obrigatório');
+    }
+
+    return await transaction(async (client) => {
+      // Verificar se transação existe
+      const transactionCheck = await client.query(
+        'SELECT id FROM polox.financial_transactions WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [transactionId, companyId]
+      );
+
+      if (transactionCheck.rows.length === 0) {
+        throw new NotFoundError('Transação financeira não encontrada');
+      }
+
+      // Inserir tag se não existir (específica da empresa)
+      const tagResult = await client.query(`
+        INSERT INTO polox.tags (name, slug, company_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (company_id, name, slug) 
+        WHERE company_id IS NOT NULL 
+        DO UPDATE SET name = EXCLUDED.name
+        RETURNING id, name, slug, color
+      `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+      const tag = tagResult.rows[0];
+
+      // Associar tag à transação
+      await client.query(`
+        INSERT INTO polox.financial_transaction_tags (financial_transaction_id, tag_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `, [transactionId, tag.id]);
+
+      return tag;
+    }, { companyId });
+  }
+
+  /**
+   * Busca todas as tags de uma transação
+   * @param {number} transactionId - ID da transação
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags
+   */
+  static async getTags(transactionId, companyId) {
+    const selectQuery = `
+      SELECT t.id, t.name, t.slug, t.color, t.description
+      FROM polox.tags t
+      INNER JOIN polox.financial_transaction_tags ftt ON t.id = ftt.tag_id
+      WHERE ftt.financial_transaction_id = $1
+      ORDER BY t.name
+    `;
+
+    try {
+      const result = await query(selectQuery, [transactionId], { companyId });
+      return result.rows;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao buscar tags: ${error.message}`);
+    }
+  }
+
+  /**
+   * Remove uma tag da transação
+   * @param {number} transactionId - ID da transação
+   * @param {number} tagId - ID da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<boolean>} True se removido com sucesso
+   */
+  static async removeTag(transactionId, tagId, companyId) {
+    const deleteQuery = `
+      DELETE FROM polox.financial_transaction_tags
+      WHERE financial_transaction_id = $1 AND tag_id = $2
+    `;
+
+    try {
+      const result = await query(deleteQuery, [transactionId, tagId], { companyId });
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao remover tag: ${error.message}`);
+    }
+  }
+
+  /**
+   * Atualiza todas as tags de uma transação
+   * @param {number} transactionId - ID da transação
+   * @param {Array<string>} tagNames - Array com nomes das tags
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags atualizadas
+   */
+  static async updateTags(transactionId, tagNames, companyId) {
+    return await transaction(async (client) => {
+      // Verificar se transação existe
+      const transactionCheck = await client.query(
+        'SELECT id FROM polox.financial_transactions WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [transactionId, companyId]
+      );
+
+      if (transactionCheck.rows.length === 0) {
+        throw new NotFoundError('Transação financeira não encontrada');
+      }
+
+      // Remover todas as tags antigas
+      await client.query(`
+        DELETE FROM polox.financial_transaction_tags WHERE financial_transaction_id = $1
+      `, [transactionId]);
+
+      // Adicionar novas tags
+      if (tagNames && tagNames.length > 0) {
+        for (const tagName of tagNames) {
+          if (tagName && tagName.trim() !== '') {
+            // Inserir tag se não existir
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (name, slug, company_id)
+              VALUES ($1, $2, $3)
+              ON CONFLICT (company_id, name, slug) 
+              WHERE company_id IS NOT NULL 
+              DO UPDATE SET name = EXCLUDED.name
+              RETURNING id
+            `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag à transação
+            await client.query(`
+              INSERT INTO polox.financial_transaction_tags (financial_transaction_id, tag_id)
+              VALUES ($1, $2)
+              ON CONFLICT DO NOTHING
+            `, [transactionId, tagId]);
+          }
+        }
+      }
+
+      // Retornar tags atualizadas
+      const result = await client.query(`
+        SELECT t.id, t.name, t.slug, t.color
+        FROM polox.tags t
+        INNER JOIN polox.financial_transaction_tags ftt ON t.id = ftt.tag_id
+        WHERE ftt.financial_transaction_id = $1
+        ORDER BY t.name
+      `, [transactionId]);
+
+      return result.rows;
+    }, { companyId });
   }
 }
 

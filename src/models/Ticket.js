@@ -24,9 +24,9 @@ class TicketModel {
       source = 'manual',
       assigned_to = null,
       due_date = null,
-      tags = null,
       custom_fields = null,
-      attachments = null
+      attachments = null,
+      tags = [] // Array de nomes de tags para associar via pivot
     } = ticketData;
 
     // Validar dados obrigatórios
@@ -54,25 +54,56 @@ class TicketModel {
         INSERT INTO polox.tickets (
           company_id, client_id, user_id, ticket_number, title, description,
           category, priority, status, source, assigned_to, due_date,
-          tags, custom_fields, attachments, created_at, updated_at
+          custom_fields, attachments, created_at, updated_at
         )
         VALUES (
           $1, $2, $3, $4, $5, $6,
           $7, $8, $9, $10, $11, $12,
-          $13, $14, $15, NOW(), NOW()
+          $13, $14, NOW(), NOW()
         )
-        RETURNING 
-          id, ticket_number, title, description, category, priority,
-          status, source, assigned_to, due_date, created_at, updated_at
+        RETURNING id
       `;
 
       const result = await client.query(insertQuery, [
         companyId, client_id, user_id, ticketNumber, title, description,
         category, priority, status, source, assigned_to, due_date,
-        tags, custom_fields, attachments
+        custom_fields, attachments
       ]);
 
-      return result.rows[0];
+      const ticketId = result.rows[0].id;
+
+      // Processar tags via pivot table
+      if (Array.isArray(tags) && tags.length > 0) {
+        for (const tagName of tags) {
+          if (tagName && typeof tagName === 'string') {
+            // Criar ou buscar tag
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (company_id, name, slug, color, created_at, updated_at)
+              VALUES ($1, $2, $3, $4, NOW(), NOW())
+              ON CONFLICT (company_id, slug) 
+              DO UPDATE SET updated_at = NOW()
+              RETURNING id
+            `, [
+              companyId,
+              tagName.trim(),
+              tagName.toLowerCase().trim().replace(/\s+/g, '-'),
+              '#808080'
+            ]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag ao ticket
+            await client.query(`
+              INSERT INTO polox.ticket_tags (ticket_id, tag_id, created_at)
+              VALUES ($1, $2, NOW())
+              ON CONFLICT (ticket_id, tag_id) DO NOTHING
+            `, [ticketId, tagId]);
+          }
+        }
+      }
+
+      // Retornar ticket completo com tags
+      return await this.findById(ticketId, companyId);
     }, { companyId });
   }
 
@@ -118,7 +149,20 @@ class TicketModel {
         assigned_user.name as assigned_user_name,
         assigned_user.email as assigned_user_email,
         (SELECT COUNT(*) FROM polox.ticket_comments WHERE ticket_id = t.id) as comment_count,
-        (SELECT COUNT(*) FROM polox.ticket_history WHERE ticket_id = t.id) as history_count
+        (SELECT COUNT(*) FROM polox.ticket_history WHERE ticket_id = t.id) as history_count,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', tags.id,
+              'name', tags.name,
+              'slug', tags.slug,
+              'color', tags.color
+            )
+          )
+          FROM polox.ticket_tags tt
+          INNER JOIN polox.tags tags ON tt.tag_id = tags.id
+          WHERE tt.ticket_id = t.id
+        ) as tags
       FROM polox.tickets t
       LEFT JOIN polox.clients c ON t.client_id = c.id
       LEFT JOIN polox.users u ON t.user_id = u.id
@@ -128,7 +172,14 @@ class TicketModel {
 
     try {
       const result = await query(selectQuery, [id, companyId], { companyId });
-      return result.rows[0] || null;
+      const ticket = result.rows[0] || null;
+      
+      // Garantir que tags seja um array vazio se null
+      if (ticket) {
+        ticket.tags = ticket.tags || [];
+      }
+      
+      return ticket;
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar ticket: ${error.message}`);
     }
@@ -253,11 +304,17 @@ class TicketModel {
       SELECT 
         t.id, t.ticket_number, t.title, t.description, t.category,
         t.priority, t.status, t.source, t.assigned_to, t.due_date,
-        t.tags, t.created_at, t.updated_at,
+        t.created_at, t.updated_at,
         c.name as client_name,
         u.name as user_name,
         assigned_user.name as assigned_user_name,
         (SELECT COUNT(*) FROM polox.ticket_comments WHERE ticket_id = t.id) as comment_count,
+        (
+          SELECT json_agg(tags.name)
+          FROM polox.ticket_tags tt
+          INNER JOIN polox.tags tags ON tt.tag_id = tags.id
+          WHERE tt.ticket_id = t.id
+        ) as tags,
         CASE 
           WHEN t.due_date IS NOT NULL AND t.due_date < NOW() AND t.status NOT IN ('resolved', 'closed') THEN true
           ELSE false
@@ -313,7 +370,7 @@ class TicketModel {
   static async update(id, updateData, companyId, userId = null) {
     const allowedFields = [
       'title', 'description', 'category', 'priority', 'status',
-      'assigned_to', 'due_date', 'tags', 'custom_fields'
+      'assigned_to', 'due_date', 'custom_fields'
     ];
 
     return await transaction(async (client) => {
@@ -838,6 +895,171 @@ class TicketModel {
     } catch (error) {
       throw new ApiError(500, `Erro ao obter tickets por categoria: ${error.message}`);
     }
+  }
+
+  /**
+   * Adiciona uma tag ao ticket
+   * @param {number} ticketId - ID do ticket
+   * @param {string} tagName - Nome da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Object>} Tag associada
+   */
+  static async addTag(ticketId, tagName, companyId) {
+    if (!tagName || typeof tagName !== 'string') {
+      throw new ValidationError('Nome da tag é obrigatório');
+    }
+
+    return await transaction(async (client) => {
+      // Verificar se ticket existe
+      const ticket = await client.query(
+        'SELECT id FROM polox.tickets WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [ticketId, companyId]
+      );
+
+      if (ticket.rows.length === 0) {
+        throw new NotFoundError('Ticket não encontrado');
+      }
+
+      // Criar ou buscar tag
+      const tagResult = await client.query(`
+        INSERT INTO polox.tags (company_id, name, slug, color, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, NOW(), NOW())
+        ON CONFLICT (company_id, slug) 
+        DO UPDATE SET updated_at = NOW()
+        RETURNING id, name, slug, color
+      `, [
+        companyId,
+        tagName.trim(),
+        tagName.toLowerCase().trim().replace(/\s+/g, '-'),
+        '#808080'
+      ]);
+
+      const tag = tagResult.rows[0];
+
+      // Associar tag ao ticket
+      await client.query(`
+        INSERT INTO polox.ticket_tags (ticket_id, tag_id, created_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (ticket_id, tag_id) DO NOTHING
+      `, [ticketId, tag.id]);
+
+      return tag;
+    }, { companyId });
+  }
+
+  /**
+   * Obtém todas as tags de um ticket
+   * @param {number} ticketId - ID do ticket
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags
+   */
+  static async getTags(ticketId, companyId) {
+    const selectQuery = `
+      SELECT 
+        t.id, t.name, t.slug, t.color,
+        tt.created_at as associated_at
+      FROM polox.ticket_tags tt
+      INNER JOIN polox.tags t ON tt.tag_id = t.id
+      INNER JOIN polox.tickets tk ON tt.ticket_id = tk.id
+      WHERE tt.ticket_id = $1 AND tk.company_id = $2 AND tk.deleted_at IS NULL
+      ORDER BY t.name ASC
+    `;
+
+    try {
+      const result = await query(selectQuery, [ticketId, companyId], { companyId });
+      return result.rows;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao buscar tags: ${error.message}`);
+    }
+  }
+
+  /**
+   * Remove uma tag do ticket
+   * @param {number} ticketId - ID do ticket
+   * @param {number} tagId - ID da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<boolean>} True se removido com sucesso
+   */
+  static async removeTag(ticketId, tagId, companyId) {
+    const deleteQuery = `
+      DELETE FROM polox.ticket_tags 
+      WHERE ticket_id = $1 AND tag_id = $2
+      AND EXISTS (
+        SELECT 1 FROM polox.tickets 
+        WHERE id = $1 AND company_id = $3 AND deleted_at IS NULL
+      )
+    `;
+
+    try {
+      const result = await query(deleteQuery, [ticketId, tagId, companyId], { companyId });
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao remover tag: ${error.message}`);
+    }
+  }
+
+  /**
+   * Atualiza todas as tags de um ticket
+   * @param {number} ticketId - ID do ticket
+   * @param {Array<string>} tagNames - Array de nomes de tags
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags atualizadas
+   */
+  static async updateTags(ticketId, tagNames, companyId) {
+    if (!Array.isArray(tagNames)) {
+      throw new ValidationError('tagNames deve ser um array');
+    }
+
+    return await transaction(async (client) => {
+      // Verificar se ticket existe
+      const ticket = await client.query(
+        'SELECT id FROM polox.tickets WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [ticketId, companyId]
+      );
+
+      if (ticket.rows.length === 0) {
+        throw new NotFoundError('Ticket não encontrado');
+      }
+
+      // Remover todas as tags atuais
+      await client.query(
+        'DELETE FROM polox.ticket_tags WHERE ticket_id = $1',
+        [ticketId]
+      );
+
+      // Adicionar novas tags
+      const newTags = [];
+      for (const tagName of tagNames) {
+        if (tagName && typeof tagName === 'string') {
+          // Criar ou buscar tag
+          const tagResult = await client.query(`
+            INSERT INTO polox.tags (company_id, name, slug, color, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, NOW(), NOW())
+            ON CONFLICT (company_id, slug) 
+            DO UPDATE SET updated_at = NOW()
+            RETURNING id, name, slug, color
+          `, [
+            companyId,
+            tagName.trim(),
+            tagName.toLowerCase().trim().replace(/\s+/g, '-'),
+            '#808080'
+          ]);
+
+          const tag = tagResult.rows[0];
+
+          // Associar tag ao ticket
+          await client.query(`
+            INSERT INTO polox.ticket_tags (ticket_id, tag_id, created_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (ticket_id, tag_id) DO NOTHING
+          `, [ticketId, tag.id]);
+
+          newTags.push(tag);
+        }
+      }
+
+      return newTags;
+    }, { companyId });
   }
 }
 

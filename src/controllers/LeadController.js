@@ -1,17 +1,17 @@
 /**
  * ==========================================
- * 📈 LEAD CONTROLLER - CRM CORE
+ * 📈 LEAD CONTROLLER - CRM CORE (ATUALIZADO)
  * ==========================================
  * 
  * Gestão completa de leads/prospects para pipeline de vendas
  * - CRUD completo de leads
+ * - Gerenciamento de notas, tags e interests
  * - Conversão automática para clientes
  * - Sistema de gamificação integrado
  * - Filtros avançados e relatórios
- * - Importação e exportação em lote
  */
 
-const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
+const LeadModel = require('../models/Lead');
 const { logger, auditLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
@@ -23,60 +23,79 @@ class LeadController {
    * 📝 VALIDAÇÕES JOI
    */
   static createLeadSchema = Joi.object({
-    name: Joi.string().min(2).max(255).required()
-      .messages({
-        'string.min': 'Nome deve ter pelo menos 2 caracteres',
-        'any.required': 'Nome é obrigatório'
-      }),
-    email: Joi.string().email().allow(null)
-      .messages({
-        'string.email': 'Email deve ter formato válido'
-      }),
+    name: Joi.string().min(2).max(255).required(),
+    email: Joi.string().email().allow(null),
     phone: Joi.string().max(20).allow(null),
-    company: Joi.string().max(255).allow(null),
+    company_name: Joi.string().max(255).allow(null),
     position: Joi.string().max(100).allow(null),
-    source: Joi.string().valid(
-      'website', 'social', 'referral', 'cold_call', 'email', 'event', 'advertising', 'other'
-    ).default('other'),
+    source: Joi.string().max(50).allow(null),
     status: Joi.string().valid(
       'new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'
     ).default('new'),
-    value: Joi.number().min(0).allow(null),
-    description: Joi.string().max(1000).allow(null),
-    tags: Joi.array().items(Joi.string()).default([]),
-    custom_fields: Joi.object().default({})
+    score: Joi.number().integer().min(0).max(100).allow(null),
+    temperature: Joi.string().valid('cold', 'warm', 'hot').allow(null),
+    city: Joi.string().max(100).allow(null),
+    state: Joi.string().max(2).allow(null),
+    country: Joi.string().max(100).allow(null),
+    conversion_value: Joi.number().min(0).allow(null),
+    owner_id: Joi.number().integer().positive().allow(null),
+    // Campos relacionados
+    note: Joi.string().max(5000).allow(null),
+    tags: Joi.array().items(Joi.string().min(1).max(100)).default([]),
+    interests: Joi.array().items(
+      Joi.object({
+        name: Joi.string().min(1).max(100).required(),
+        category: Joi.string().valid('product', 'service', 'industry', 'technology', 'other')
+          .default('other')
+      })
+    ).default([])
   });
 
   static updateLeadSchema = Joi.object({
     name: Joi.string().min(2).max(255),
     email: Joi.string().email().allow(null),
     phone: Joi.string().max(20).allow(null),
-    company: Joi.string().max(255).allow(null),
+    company_name: Joi.string().max(255).allow(null),
     position: Joi.string().max(100).allow(null),
-    source: Joi.string().valid(
-      'website', 'social', 'referral', 'cold_call', 'email', 'event', 'advertising', 'other'
-    ),
+    source: Joi.string().max(50).allow(null),
     status: Joi.string().valid(
       'new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'
     ),
-    value: Joi.number().min(0).allow(null),
-    description: Joi.string().max(1000).allow(null),
-    tags: Joi.array().items(Joi.string()),
-    custom_fields: Joi.object()
+    score: Joi.number().integer().min(0).max(100).allow(null),
+    temperature: Joi.string().valid('cold', 'warm', 'hot').allow(null),
+    city: Joi.string().max(100).allow(null),
+    state: Joi.string().max(2).allow(null),
+    country: Joi.string().max(100).allow(null),
+    conversion_value: Joi.number().min(0).allow(null),
+    owner_id: Joi.number().integer().positive().allow(null)
   });
 
   static assignLeadSchema = Joi.object({
-    user_id: Joi.number().integer().positive().required()
-      .messages({
-        'any.required': 'ID do usuário é obrigatório'
-      })
+    owner_id: Joi.number().integer().positive().required()
   });
 
-  static updateStatusSchema = Joi.object({
-    status: Joi.string().valid(
-      'new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'
-    ).required(),
-    notes: Joi.string().max(500).allow(null)
+  static addNoteSchema = Joi.object({
+    content: Joi.string().min(1).max(5000).required(),
+    type: Joi.string().valid('general', 'call', 'meeting', 'email', 'whatsapp', 'other')
+      .default('general')
+  });
+
+  static updateNoteSchema = Joi.object({
+    content: Joi.string().min(1).max(5000).required()
+  });
+
+  static addTagsSchema = Joi.object({
+    tags: Joi.array().items(Joi.string().min(1).max(100)).min(1).required()
+  });
+
+  static addInterestsSchema = Joi.object({
+    interests: Joi.array().items(
+      Joi.object({
+        name: Joi.string().min(1).max(100).required(),
+        category: Joi.string().valid('product', 'service', 'industry', 'technology', 'other')
+          .default('other')
+      })
+    ).min(1).required()
   });
 
   /**
@@ -86,130 +105,34 @@ class LeadController {
   static index = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const offset = (page - 1) * limit;
     
-    let whereClause = 'WHERE l.company_id = $1 AND l.deleted_at IS NULL';
-    let queryParams = [req.user.companyId];
-    let paramCount = 1;
-
-    // 🔍 FILTROS AVANÇADOS
-    if (req.query.status) {
-      const statuses = req.query.status.split(',');
-      whereClause += ` AND l.status = ANY($${++paramCount})`;
-      queryParams.push(statuses);
-    }
-
-    if (req.query.source) {
-      whereClause += ` AND l.source = $${++paramCount}`;
-      queryParams.push(req.query.source);
-    }
-
-    if (req.query.assigned_to) {
-      whereClause += ` AND l.assigned_to_id = $${++paramCount}`;
-      queryParams.push(parseInt(req.query.assigned_to));
-    }
-
-    if (req.query.value_min) {
-      whereClause += ` AND l.estimated_value >= $${++paramCount}`;
-      queryParams.push(parseFloat(req.query.value_min));
-    }
-
-    if (req.query.value_max) {
-      whereClause += ` AND l.estimated_value <= $${++paramCount}`;
-      queryParams.push(parseFloat(req.query.value_max));
-    }
-
-    if (req.query.created_from) {
-      whereClause += ` AND l.created_at >= $${++paramCount}`;
-      queryParams.push(req.query.created_from);
-    }
-
-    if (req.query.created_to) {
-      whereClause += ` AND l.created_at <= $${++paramCount}`;
-      queryParams.push(req.query.created_to);
-    }
-
-    if (req.query.search) {
-      whereClause += ` AND (
-        l.name ILIKE $${++paramCount} OR 
-        l.email ILIKE $${++paramCount} OR 
-        l.company ILIKE $${++paramCount}
-      )`;
-      const searchTerm = `%${req.query.search}%`;
-      queryParams.push(searchTerm, searchTerm, searchTerm);
-      paramCount += 2;
-    }
-
-    // 📊 ORDENAÇÃO
-    const validSortFields = ['name', 'estimated_value', 'created_at', 'status', 'source'];
-    const sortField = validSortFields.includes(req.query.sort) ? req.query.sort : 'created_at';
-    const sortOrder = req.query.order === 'asc' ? 'ASC' : 'DESC';
-
-    // 🔍 QUERY PRINCIPAL
-    const leadsQuery = `
-      SELECT 
-        l.*,
-        u.name as assigned_to_name,
-        u.email as assigned_to_email,
-        c.name as converted_client_name,
-        CASE WHEN l.converted_to_client_id IS NOT NULL THEN true ELSE false END as is_converted
-      FROM leads l
-      LEFT JOIN users u ON l.assigned_to_id = u.id
-      LEFT JOIN clients c ON l.converted_to_client_id = c.id
-      ${whereClause}
-      ORDER BY l.${sortField} ${sortOrder}
-      LIMIT $${++paramCount} OFFSET $${++paramCount}
-    `;
-    
-    queryParams.push(limit, offset);
-
-    // 📊 QUERY DE CONTAGEM
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM leads l
-      ${whereClause}
-    `;
-
-    // 📈 QUERY DE ESTATÍSTICAS
-    const statsQuery = `
-      SELECT 
-        COUNT(*) as total_leads,
-        COALESCE(SUM(estimated_value), 0) as total_value,
-        COUNT(CASE WHEN status = 'new' THEN 1 END) as new_leads,
-        COUNT(CASE WHEN status = 'contacted' THEN 1 END) as contacted_leads,
-        COUNT(CASE WHEN status = 'qualified' THEN 1 END) as qualified_leads,
-        COUNT(CASE WHEN status = 'proposal' THEN 1 END) as proposal_leads,
-        COUNT(CASE WHEN status = 'negotiation' THEN 1 END) as negotiation_leads,
-        COUNT(CASE WHEN status = 'won' THEN 1 END) as won_leads,
-        COUNT(CASE WHEN status = 'lost' THEN 1 END) as lost_leads,
-        COUNT(CASE WHEN converted_to_client_id IS NOT NULL THEN 1 END) as converted_leads,
-        COALESCE(AVG(estimated_value), 0) as average_value
-      FROM leads l
-      WHERE l.company_id = $1 AND l.deleted_at IS NULL
-    `;
-
-    const [leadsResult, countResult, statsResult] = await Promise.all([
-      query(leadsQuery, queryParams),
-      query(countQuery, queryParams.slice(0, -2)),
-      query(statsQuery, [req.user.companyId])
-    ]);
-
-    const stats = statsResult.rows[0];
-    
-    // 📊 Calcular taxa de conversão
-    const conversionRate = stats.total_leads > 0 
-      ? ((stats.converted_leads / stats.total_leads) * 100).toFixed(2)
-      : 0;
-
-    return paginatedResponse(res, leadsResult.rows, {
+    const options = {
       page,
       limit,
-      total: parseInt(countResult.rows[0].total),
-      stats: {
-        ...stats,
-        conversion_rate: parseFloat(conversionRate)
-      }
+      status: req.query.status,
+      source: req.query.source,
+      ownerId: req.query.owner_id,
+      minScore: req.query.score_min,
+      maxScore: req.query.score_max,
+      temperature: req.query.temperature,
+      search: req.query.search,
+      sortBy: req.query.sort || 'created_at',
+      sortOrder: req.query.order || 'desc'
+    };
+
+    const result = await LeadModel.list(options, req.user.companyId);
+
+    auditLogger.info('Leads listados', {
+      userId: req.user.id,
+      companyId: req.user.companyId,
+      filters: options
     });
+
+    return res.json(paginatedResponse(
+      result.leads,
+      result.pagination,
+      { stats: result.stats }
+    ));
   });
 
   /**
@@ -220,83 +143,46 @@ class LeadController {
     const { error, value } = LeadController.createLeadSchema.validate(req.body);
     if (error) throw new ApiError(400, error.details[0].message);
 
-    const leadData = value;
+    const { note, tags, interests, ...leadData } = value;
+    
+    // Adicionar created_by_id
+    leadData.created_by_id = req.user.id;
 
-    // Verificar se email já existe (se fornecido)
-    if (leadData.email) {
-      const emailCheck = await query(
-        'SELECT id FROM leads WHERE email = $1 AND company_id = $2 AND deleted_at IS NULL',
-        [leadData.email, req.user.companyId]
-      );
+    // Criar o lead
+    const lead = await LeadModel.create(leadData, req.user.companyId);
 
-      if (emailCheck.rows.length > 0) {
-        throw new ApiError(400, 'Lead with this email already exists');
+    // Adicionar nota inicial se fornecida
+    if (note) {
+      await LeadModel.addNote(lead.id, req.user.id, note, 'general', req.user.companyId);
+    }
+
+    // Adicionar tags se fornecidas
+    if (tags && tags.length > 0) {
+      await LeadModel.updateTags(lead.id, tags, req.user.companyId);
+    }
+
+    // Adicionar interests se fornecidos
+    if (interests && interests.length > 0) {
+      for (const interest of interests) {
+        await LeadModel.addInterest(
+          lead.id, 
+          interest.name, 
+          interest.category || 'other', 
+          req.user.companyId
+        );
       }
     }
 
-    // 🆕 CRIAR LEAD
-    const createLeadQuery = `
-      INSERT INTO leads (
-        company_id, user_id, assigned_to_id, name, email, phone, 
-        company_name, position, source, status, notes, tags
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING *
-    `;
+    // Buscar lead completo com relacionamentos
+    const fullLead = await LeadModel.findById(lead.id, req.user.companyId);
 
-    const newLeadResult = await query(createLeadQuery, [
-      req.user.companyId,
-      req.user.id,
-      req.user.id, // Por padrão, quem cria fica responsável
-      leadData.name,
-      leadData.email,
-      leadData.phone,
-      leadData.company,
-      leadData.position,
-      leadData.source,
-      leadData.status,
-      leadData.description,
-      JSON.stringify(leadData.tags)
-    ]);
-
-    const newLead = newLeadResult.rows[0];
-
-    // 🎮 GAMIFICAÇÃO: Conceder XP/Coins por criar lead
-    await query(`
-      UPDATE user_gamification_profiles 
-      SET total_xp = total_xp + 10, current_coins = current_coins + 5
-      WHERE user_id = $1 AND company_id = $2
-    `, [req.user.id, req.user.companyId]);
-
-    // 📈 Registrar no histórico de gamificação
-    await query(`
-      INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
-      VALUES 
-        ($1, $2, 'xp', 10, $3, 'lead_created'),
-        ($1, $2, 'coins', 5, $3, 'lead_created')
-    `, [req.user.id, req.user.companyId, `Lead created: ${leadData.name}`]);
-
-    // 🏆 Verificar conquista "Primeiro Lead"
-    const leadCountQuery = await query(
-      'SELECT COUNT(*) as count FROM leads WHERE user_id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [req.user.id, req.user.companyId]
-    );
-
-    if (parseInt(leadCountQuery.rows[0].count) === 1) {
-      await LeadController.unlockAchievement(req.user.id, req.user.companyId, 'first_lead');
-    }
-
-    // 📋 Log de auditoria
-    auditLogger('Lead created', {
+    auditLogger.info('Lead criado', {
       userId: req.user.id,
       companyId: req.user.companyId,
-      entityType: 'lead',
-      entityId: newLead.id,
-      action: 'create',
-      changes: leadData,
-      ip: req.ip
+      leadId: lead.id
     });
 
-    return successResponse(res, newLead, 'Lead created successfully', 201);
+    return res.status(201).json(successResponse(fullLead, 'Lead criado com sucesso'));
   });
 
   /**
@@ -304,30 +190,15 @@ class LeadController {
    * GET /api/leads/:id
    */
   static show = asyncHandler(async (req, res) => {
-    const leadId = req.params.id;
-
-    const leadQuery = `
-      SELECT 
-        l.*,
-        u.name as assigned_to_name,
-        u.email as assigned_to_email,
-        creator.name as created_by_name,
-        c.name as converted_client_name,
-        c.id as converted_client_id
-      FROM leads l
-      LEFT JOIN users u ON l.assigned_to_id = u.id
-      LEFT JOIN users creator ON l.created_by_id = creator.id
-      LEFT JOIN clients c ON l.converted_to_client_id = c.id
-      WHERE l.id = $1 AND l.company_id = $2 AND l.deleted_at IS NULL
-    `;
+    const leadId = parseInt(req.params.id);
     
-    const leadResult = await query(leadQuery, [leadId, req.user.companyId]);
+    const lead = await LeadModel.findById(leadId, req.user.companyId);
     
-    if (leadResult.rows.length === 0) {
-      throw new ApiError(404, 'Lead not found');
+    if (!lead) {
+      throw new ApiError(404, 'Lead não encontrado');
     }
 
-    return successResponse(res, leadResult.rows[0]);
+    return res.json(successResponse(lead));
   });
 
   /**
@@ -335,201 +206,47 @@ class LeadController {
    * PUT /api/leads/:id
    */
   static update = asyncHandler(async (req, res) => {
-    const leadId = req.params.id;
+    const leadId = parseInt(req.params.id);
     const { error, value } = LeadController.updateLeadSchema.validate(req.body);
+    
     if (error) throw new ApiError(400, error.details[0].message);
 
-    const updateData = value;
-
-    // Verificar se lead existe
-    const leadCheck = await query(
-      'SELECT * FROM leads WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [leadId, req.user.companyId]
-    );
-
-    if (leadCheck.rows.length === 0) {
-      throw new ApiError(404, 'Lead not found');
+    const updatedLead = await LeadModel.update(leadId, value, req.user.companyId);
+    
+    if (!updatedLead) {
+      throw new ApiError(404, 'Lead não encontrado');
     }
 
-    const currentLead = leadCheck.rows[0];
-
-    // Verificar email único (se mudou)
-    if (updateData.email && updateData.email !== currentLead.email) {
-      const emailCheck = await query(
-        'SELECT id FROM leads WHERE email = $1 AND company_id = $2 AND id != $3 AND deleted_at IS NULL',
-        [updateData.email, req.user.companyId, leadId]
-      );
-
-      if (emailCheck.rows.length > 0) {
-        throw new ApiError(400, 'Lead with this email already exists');
-      }
-    }
-
-    // 🔄 CONSTRUIR QUERY DE UPDATE
-    const updateFields = [];
-    const updateValues = [];
-    let paramCount = 0;
-
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== undefined) {
-        paramCount++;
-        updateFields.push(`${key} = $${paramCount}`);
-        
-        if (key === 'tags' || key === 'custom_fields') {
-          updateValues.push(JSON.stringify(updateData[key]));
-        } else {
-          updateValues.push(updateData[key]);
-        }
-      }
-    });
-
-    updateFields.push(`updated_at = NOW()`);
-    updateValues.push(leadId, req.user.companyId);
-
-    const updateQuery = `
-      UPDATE leads 
-      SET ${updateFields.join(', ')}
-      WHERE id = $${paramCount + 1} AND company_id = $${paramCount + 2}
-      RETURNING *
-    `;
-
-    const updatedLeadResult = await query(updateQuery, updateValues);
-
-    // 📋 Log de auditoria
-    auditLogger('Lead updated', {
+    auditLogger.info('Lead atualizado', {
       userId: req.user.id,
       companyId: req.user.companyId,
-      entityType: 'lead',
-      entityId: leadId,
-      action: 'update',
-      changes: updateData,
-      ip: req.ip
+      leadId,
+      changes: value
     });
 
-    return successResponse(res, updatedLeadResult.rows[0], 'Lead updated successfully');
+    return res.json(successResponse(updatedLead, 'Lead atualizado com sucesso'));
   });
 
   /**
-   * 🔄 CONVERTER LEAD PARA CLIENTE
-   * POST /api/leads/:id/convert
+   * 🗑️ DELETAR LEAD (SOFT DELETE)
+   * DELETE /api/leads/:id
    */
-  static convertToClient = asyncHandler(async (req, res) => {
-    const leadId = req.params.id;
-
-    // 🔍 Buscar lead
-    const leadQuery = `
-      SELECT * FROM leads 
-      WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
-    `;
+  static destroy = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.id);
     
-    const leadResult = await query(leadQuery, [leadId, req.user.companyId]);
+    const deleted = await LeadModel.softDelete(leadId, req.user.companyId);
     
-    if (leadResult.rows.length === 0) {
-      throw new ApiError(404, 'Lead not found');
+    if (!deleted) {
+      throw new ApiError(404, 'Lead não encontrado');
     }
 
-    const lead = leadResult.rows[0];
+    auditLogger.info('Lead deletado', {
+      userId: req.user.id,
+      companyId: req.user.companyId,
+      leadId
+    });
 
-    // ✅ Verificar se já foi convertido
-    if (lead.converted_to_client_id) {
-      throw new ApiError(400, 'Lead already converted to client');
-    }
-
-    const transaction = await beginTransaction();
-    
-    try {
-      // 1️⃣ CRIAR CLIENTE baseado no lead
-      const createClientQuery = `
-        INSERT INTO clients (
-          company_id, name, email, phone, company_name, position,
-          source, status, notes, tags
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'ativo', $8, $9)
-        RETURNING *
-      `;
-
-      const newClientResult = await query(createClientQuery, [
-        req.user.companyId,
-        lead.name,
-        lead.email,
-        lead.phone,
-        lead.company_name,
-        lead.position,
-        lead.source,
-        lead.notes,
-        lead.tags
-      ], transaction);
-
-      const newClient = newClientResult.rows[0];
-
-      // 2️⃣ ATUALIZAR LEAD como convertido
-      await query(`
-        UPDATE leads 
-        SET 
-          converted_to_client_id = $1,
-          converted_at = NOW(),
-          status = 'won'
-        WHERE id = $2
-      `, [newClient.id, leadId], transaction);
-
-      // 3️⃣ GAMIFICAÇÃO: Conceder XP/Coins pela conversão
-      await query(`
-        UPDATE user_gamification_profiles 
-        SET total_xp = total_xp + 50, current_coins = current_coins + 25
-        WHERE user_id = $1 AND company_id = $2
-      `, [lead.assigned_to_id || req.user.id, req.user.companyId], transaction);
-
-      // 4️⃣ Registrar no histórico
-      await query(`
-        INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
-        VALUES 
-          ($1, $2, 'xp', 50, $3, 'lead_converted'),
-          ($1, $2, 'coins', 25, $3, 'lead_converted')
-      `, [
-        lead.assigned_to_id || req.user.id, 
-        req.user.companyId,
-        `Lead converted to client: ${lead.name}`
-      ], transaction);
-
-      // 5️⃣ Verificar conquista "Primeiro Cliente"
-      const clientCountQuery = await query(
-        'SELECT COUNT(*) as count FROM clients WHERE company_id = $1 AND deleted_at IS NULL',
-        [req.user.companyId],
-        transaction
-      );
-
-      if (parseInt(clientCountQuery.rows[0].count) === 1) {
-        await LeadController.unlockAchievement(
-          lead.assigned_to_id || req.user.id, 
-          req.user.companyId, 
-          'first_client',
-          transaction
-        );
-      }
-
-      await commitTransaction(transaction);
-
-      // 📋 Log de auditoria
-      auditLogger('Lead converted to client', {
-        userId: req.user.id,
-        companyId: req.user.companyId,
-        entityType: 'lead',
-        entityId: leadId,
-        action: 'convert',
-        relatedEntityType: 'client',
-        relatedEntityId: newClient.id,
-        ip: req.ip
-      });
-
-      return successResponse(res, {
-        lead_id: leadId,
-        client_id: newClient.id,
-        client: newClient
-      }, 'Lead converted to client successfully');
-
-    } catch (error) {
-      await rollbackTransaction(transaction);
-      throw error;
-    }
+    return res.json(successResponse(null, 'Lead deletado com sucesso'));
   });
 
   /**
@@ -537,122 +254,303 @@ class LeadController {
    * PUT /api/leads/:id/assign
    */
   static assignTo = asyncHandler(async (req, res) => {
-    const leadId = req.params.id;
+    const leadId = parseInt(req.params.id);
     const { error, value } = LeadController.assignLeadSchema.validate(req.body);
+    
     if (error) throw new ApiError(400, error.details[0].message);
 
-    const { user_id } = value;
-
-    // Verificar se usuário existe na empresa
-    const userCheck = await query(
-      'SELECT id, name FROM users WHERE id = $1 AND company_id = $2 AND status = $3',
-      [user_id, req.user.companyId, 'active']
+    const updatedLead = await LeadModel.update(
+      leadId, 
+      { owner_id: value.owner_id },
+      req.user.companyId
     );
-
-    if (userCheck.rows.length === 0) {
-      throw new ApiError(404, 'User not found in company');
+    
+    if (!updatedLead) {
+      throw new ApiError(404, 'Lead não encontrado');
     }
 
-    // Verificar se lead existe
-    const leadCheck = await query(
-      'SELECT id, name, assigned_to_id FROM leads WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [leadId, req.user.companyId]
-    );
-
-    if (leadCheck.rows.length === 0) {
-      throw new ApiError(404, 'Lead not found');
-    }
-
-    const lead = leadCheck.rows[0];
-
-    // Atualizar responsável
-    await query(`
-      UPDATE leads 
-      SET assigned_to_id = $1, updated_at = NOW()
-      WHERE id = $2
-    `, [user_id, leadId]);
-
-    // 📋 Log de auditoria
-    auditLogger('Lead assigned', {
+    auditLogger.info('Lead atribuído', {
       userId: req.user.id,
       companyId: req.user.companyId,
-      entityType: 'lead',
-      entityId: leadId,
-      action: 'assign',
-      changes: { 
-        from_user_id: lead.assigned_to_id,
-        to_user_id: user_id,
-        to_user_name: userCheck.rows[0].name
-      },
-      ip: req.ip
+      leadId,
+      assignedTo: value.owner_id
     });
 
-    return successResponse(res, {
-      lead_id: leadId,
-      assigned_to: userCheck.rows[0]
-    }, 'Lead assigned successfully');
+    return res.json(successResponse(updatedLead, 'Lead atribuído com sucesso'));
   });
 
   /**
-   * 🏆 DESBLOQUEAR CONQUISTA
+   * 📊 ESTATÍSTICAS DE LEADS
+   * GET /api/leads/stats
    */
-  static async unlockAchievement(userId, companyId, achievementCode, transaction = null) {
-    const achievementQuery = `
-      SELECT id, name, xp_reward, coin_reward FROM achievements 
-      WHERE company_id = $1 AND unlock_criteria->>'action' = $2 AND is_active = true
-    `;
+  static stats = asyncHandler(async (req, res) => {
+    const stats = await LeadModel.getStats(req.user.companyId);
     
-    const achievementResult = await query(achievementQuery, [companyId, achievementCode], transaction);
+    return res.json(successResponse(stats));
+  });
+
+  /**
+   * 🔄 CONVERTER LEAD PARA CLIENTE
+   * POST /api/leads/:id/convert
+   */
+  static convertToClient = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.id);
     
-    if (achievementResult.rows.length > 0) {
-      const achievement = achievementResult.rows[0];
-      
-      // Verificar se já foi desbloqueada
-      const userAchievementCheck = await query(
-        'SELECT id FROM user_achievements WHERE user_id = $1 AND achievement_id = $2',
-        [userId, achievement.id],
-        transaction
-      );
-
-      if (userAchievementCheck.rows.length === 0) {
-        // Desbloquear conquista
-        await query(
-          'INSERT INTO user_achievements (user_id, achievement_id) VALUES ($1, $2)',
-          [userId, achievement.id],
-          transaction
-        );
-
-        // Conceder recompensas da conquista
-        if (achievement.xp_reward > 0 || achievement.coin_reward > 0) {
-          await query(`
-            UPDATE user_gamification_profiles 
-            SET total_xp = total_xp + $1, current_coins = current_coins + $2
-            WHERE user_id = $3 AND company_id = $4
-          `, [achievement.xp_reward, achievement.coin_reward, userId, companyId], transaction);
-
-          // Registrar no histórico
-          await query(`
-            INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
-            VALUES 
-              ($1, $2, 'xp', $3, $4, 'achievement_unlocked'),
-              ($1, $2, 'coins', $5, $4, 'achievement_unlocked')
-          `, [
-            userId, companyId, 
-            achievement.xp_reward, 
-            `Achievement unlocked: ${achievement.name}`,
-            achievement.coin_reward
-          ], transaction);
-        }
-      }
+    // Buscar lead
+    const lead = await LeadModel.findById(leadId, req.user.companyId);
+    
+    if (!lead) {
+      throw new ApiError(404, 'Lead não encontrado');
     }
-  }
 
-  // TODO: Implementar métodos restantes:
-  // - destroy (soft delete)
-  // - updateStatus 
-  // - getStats
-  // - importLeads
-  // - exportLeads
+    if (lead.converted_to_client_id) {
+      throw new ApiError(400, 'Lead já foi convertido em cliente');
+    }
+
+    // Preparar dados do cliente
+    const clientData = {
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      company_name: lead.company_name,
+      position: lead.position,
+      city: lead.city,
+      state: lead.state,
+      country: lead.country,
+      ...req.body // Permite override/campos adicionais
+    };
+
+    const result = await LeadModel.convertToClient(leadId, clientData, req.user.companyId);
+
+    auditLogger.info('Lead convertido para cliente', {
+      userId: req.user.id,
+      companyId: req.user.companyId,
+      leadId,
+      clientId: result.client.id
+    });
+
+    return res.json(successResponse(result, 'Lead convertido em cliente com sucesso'));
+  });
+
+  // ==========================================
+  // 📝 ENDPOINTS DE NOTAS
+  // ==========================================
+
+  /**
+   * GET /api/leads/:id/notes - Listar notas do lead
+   */
+  static getNotes = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.id);
+    
+    const notes = await LeadModel.getNotes(leadId, req.user.companyId);
+    
+    return res.json(successResponse(notes));
+  });
+
+  /**
+   * POST /api/leads/:id/notes - Adicionar nota ao lead
+   */
+  static addNote = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.id);
+    const { error, value } = LeadController.addNoteSchema.validate(req.body);
+    
+    if (error) throw new ApiError(400, error.details[0].message);
+
+    const note = await LeadModel.addNote(
+      leadId,
+      req.user.id,
+      value.content,
+      value.type,
+      req.user.companyId
+    );
+
+    auditLogger.info('Nota adicionada ao lead', {
+      userId: req.user.id,
+      companyId: req.user.companyId,
+      leadId,
+      noteId: note.id
+    });
+
+    return res.status(201).json(successResponse(note, 'Nota adicionada com sucesso'));
+  });
+
+  /**
+   * PUT /api/leads/:leadId/notes/:noteId - Atualizar nota
+   */
+  static updateNote = asyncHandler(async (req, res) => {
+    const noteId = parseInt(req.params.noteId);
+    const { error, value } = LeadController.updateNoteSchema.validate(req.body);
+    
+    if (error) throw new ApiError(400, error.details[0].message);
+
+    const note = await LeadModel.updateNote(noteId, { content: value.content });
+    
+    if (!note) {
+      throw new ApiError(404, 'Nota não encontrada');
+    }
+
+    auditLogger.info('Nota atualizada', {
+      userId: req.user.id,
+      noteId
+    });
+
+    return res.json(successResponse(note, 'Nota atualizada com sucesso'));
+  });
+
+  /**
+   * DELETE /api/leads/:leadId/notes/:noteId - Deletar nota
+   */
+  static deleteNote = asyncHandler(async (req, res) => {
+    const noteId = parseInt(req.params.noteId);
+    
+    const deleted = await LeadModel.deleteNote(noteId);
+    
+    if (!deleted) {
+      throw new ApiError(404, 'Nota não encontrada');
+    }
+
+    auditLogger.info('Nota deletada', {
+      userId: req.user.id,
+      noteId
+    });
+
+    return res.json(successResponse(null, 'Nota deletada com sucesso'));
+  });
+
+  // ==========================================
+  // 🏷️ ENDPOINTS DE TAGS
+  // ==========================================
+
+  /**
+   * GET /api/leads/:id/tags - Listar tags do lead
+   */
+  static getTags = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.id);
+    
+    const tags = await LeadModel.getTags(leadId, req.user.companyId);
+    
+    return res.json(successResponse(tags));
+  });
+
+  /**
+   * POST /api/leads/:id/tags - Adicionar tags ao lead
+   */
+  static addTags = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.id);
+    const { error, value } = LeadController.addTagsSchema.validate(req.body);
+    
+    if (error) throw new ApiError(400, error.details[0].message);
+
+    // Buscar tags atuais
+    const currentTags = await LeadModel.getTags(leadId, req.user.companyId);
+    const currentTagNames = currentTags.map(t => t.name);
+    
+    // Combinar com novas tags
+    const allTags = [...new Set([...currentTagNames, ...value.tags])];
+    
+    // Atualizar
+    const tags = await LeadModel.updateTags(leadId, allTags, req.user.companyId);
+
+    auditLogger.info('Tags adicionadas ao lead', {
+      userId: req.user.id,
+      companyId: req.user.companyId,
+      leadId,
+      tags: value.tags
+    });
+
+    return res.json(successResponse(tags, 'Tags adicionadas com sucesso'));
+  });
+
+  /**
+   * DELETE /api/leads/:leadId/tags/:tagId - Remover tag
+   */
+  static removeTag = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.leadId);
+    const tagId = parseInt(req.params.tagId);
+    
+    const removed = await LeadModel.removeTag(leadId, tagId, req.user.companyId);
+    
+    if (!removed) {
+      throw new ApiError(404, 'Tag não encontrada ou não associada ao lead');
+    }
+
+    auditLogger.info('Tag removida do lead', {
+      userId: req.user.id,
+      companyId: req.user.companyId,
+      leadId,
+      tagId
+    });
+
+    return res.json(successResponse(null, 'Tag removida com sucesso'));
+  });
+
+  // ==========================================
+  // 💡 ENDPOINTS DE INTERESTS
+  // ==========================================
+
+  /**
+   * GET /api/leads/:id/interests - Listar interests do lead
+   */
+  static getInterests = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.id);
+    
+    const interests = await LeadModel.getInterests(leadId, req.user.companyId);
+    
+    return res.json(successResponse(interests));
+  });
+
+  /**
+   * POST /api/leads/:id/interests - Adicionar interests ao lead
+   */
+  static addInterests = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.id);
+    const { error, value } = LeadController.addInterestsSchema.validate(req.body);
+    
+    if (error) throw new ApiError(400, error.details[0].message);
+
+    const addedInterests = [];
+    for (const interest of value.interests) {
+      const added = await LeadModel.addInterest(
+        leadId,
+        interest.name,
+        interest.category || 'other',
+        req.user.companyId
+      );
+      addedInterests.push(added);
+    }
+
+    auditLogger.info('Interests adicionados ao lead', {
+      userId: req.user.id,
+      companyId: req.user.companyId,
+      leadId,
+      interests: value.interests.map(i => i.name)
+    });
+
+    return res.json(successResponse(addedInterests, 'Interests adicionados com sucesso'));
+  });
+
+  /**
+   * DELETE /api/leads/:leadId/interests/:interestId - Remover interest
+   */
+  static removeInterest = asyncHandler(async (req, res) => {
+    const leadId = parseInt(req.params.leadId);
+    const interestId = parseInt(req.params.interestId);
+    
+    const removed = await LeadModel.removeInterest(leadId, interestId, req.user.companyId);
+    
+    if (!removed) {
+      throw new ApiError(404, 'Interest não encontrado ou não associado ao lead');
+    }
+
+    auditLogger.info('Interest removido do lead', {
+      userId: req.user.id,
+      companyId: req.user.companyId,
+      leadId,
+      interestId
+    });
+
+    return res.json(successResponse(null, 'Interest removido com sucesso'));
+  });
 }
 
 module.exports = LeadController;

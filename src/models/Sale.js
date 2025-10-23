@@ -27,8 +27,7 @@ class SaleModel {
       payment_status = 'pending',
       payment_due_date,
       description,
-      notes,
-      tags = [],
+      tags = [], // Array de nomes de tags para criar associações
       commission_percentage = 0,
       items = [] // Array de itens da venda
     } = saleData;
@@ -52,30 +51,55 @@ class SaleModel {
           company_id, client_id, user_id, sale_number, total_amount,
           discount_amount, tax_amount, net_amount, status, sale_date,
           delivery_date, payment_method, payment_status, payment_due_date,
-          description, notes, tags, commission_percentage, commission_amount,
+          description, commission_percentage, commission_amount,
           created_at, updated_at
         )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-          $11, $12, $13, $14, $15, $16, $17, $18, $19,
+          $11, $12, $13, $14, $15, $16, $17,
           NOW(), NOW()
         )
-        RETURNING 
-          id, company_id, client_id, user_id, sale_number, total_amount,
-          discount_amount, tax_amount, net_amount, status, sale_date,
-          delivery_date, payment_method, payment_status, payment_due_date,
-          description, notes, tags, commission_percentage, commission_amount,
-          created_at, updated_at
+        RETURNING id
       `;
 
       const saleResult = await client.query(insertSaleQuery, [
         companyId, client_id, user_id, sale_number, total_amount,
         discount_amount, tax_amount, net_amount, status, sale_date,
         delivery_date, payment_method, payment_status, payment_due_date,
-        description, notes, JSON.stringify(tags), commission_percentage, commission_amount
+        description, commission_percentage, commission_amount
       ]);
 
-      const sale = saleResult.rows[0];
+      const saleId = saleResult.rows[0].id;
+
+      // Processar tags se fornecidas
+      if (tags && tags.length > 0) {
+        for (const tagName of tags) {
+          if (tagName && tagName.trim() !== '') {
+            // Inserir tag se não existir (específica da empresa)
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (name, slug, company_id, created_at, updated_at)
+              VALUES ($1, $2, $3, NOW(), NOW())
+              ON CONFLICT (company_id, name, slug) 
+              WHERE company_id IS NOT NULL 
+              DO UPDATE SET name = EXCLUDED.name
+              RETURNING id
+            `, [
+              tagName.trim(),
+              tagName.trim().toLowerCase().replace(/\s+/g, '-'),
+              companyId
+            ]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag à venda
+            await client.query(`
+              INSERT INTO polox.sale_tags (sale_id, tag_id, created_at)
+              VALUES ($1, $2, NOW())
+              ON CONFLICT (sale_id, tag_id) DO NOTHING
+            `, [saleId, tagId]);
+          }
+        }
+      }
 
       // Inserir itens da venda se fornecidos
       if (items && items.length > 0) {
@@ -89,7 +113,7 @@ class SaleModel {
           `;
 
           await client.query(insertItemQuery, [
-            sale.id,
+            saleId,
             item.product_id,
             item.product_name,
             item.quantity,
@@ -101,7 +125,8 @@ class SaleModel {
         }
       }
 
-      return sale;
+      // Retornar venda completa com tags
+      return await this.findById(saleId, companyId);
     }, { companyId });
   }
 
@@ -119,7 +144,13 @@ class SaleModel {
         c.email as client_email,
         c.phone as client_phone,
         u.name as seller_name,
-        u.email as seller_email
+        u.email as seller_email,
+        (
+          SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'slug', t.slug, 'color', t.color))
+          FROM polox.tags t
+          INNER JOIN polox.sale_tags st ON t.id = st.tag_id
+          WHERE st.sale_id = s.id
+        ) as tags
       FROM polox.sales s
       LEFT JOIN polox.clients c ON s.client_id = c.id
       LEFT JOIN polox.users u ON s.user_id = u.id
@@ -134,6 +165,11 @@ class SaleModel {
       }
 
       const sale = result.rows[0];
+      
+      // Garantir que tags seja sempre um array
+      if (!sale.tags) {
+        sale.tags = [];
+      }
 
       // Buscar itens da venda
       const itemsQuery = `
@@ -244,6 +280,12 @@ class SaleModel {
         c.name as client_name,
         c.email as client_email,
         u.name as seller_name,
+        (
+          SELECT json_agg(t.name)
+          FROM polox.tags t
+          INNER JOIN polox.sale_tags st ON t.id = st.tag_id
+          WHERE st.sale_id = s.id
+        ) as tags,
         (SELECT COUNT(*) FROM polox.sale_items WHERE sale_id = s.id) as items_count
       FROM polox.sales s
       LEFT JOIN polox.clients c ON s.client_id = c.id
@@ -288,7 +330,7 @@ class SaleModel {
   static async update(id, updateData, companyId) {
     const allowedFields = [
       'status', 'payment_status', 'delivery_date', 'payment_date',
-      'payment_method', 'description', 'notes', 'tags'
+      'payment_method', 'description'
     ];
 
     const updates = [];
@@ -298,13 +340,8 @@ class SaleModel {
     // Construir query dinamicamente
     for (const [key, value] of Object.entries(updateData)) {
       if (allowedFields.includes(key)) {
-        if (key === 'tags') {
-          updates.push(`${key} = $${paramCount}`);
-          values.push(JSON.stringify(value));
-        } else {
-          updates.push(`${key} = $${paramCount}`);
-          values.push(value);
-        }
+        updates.push(`${key} = $${paramCount}`);
+        values.push(value);
         paramCount++;
       }
     }
@@ -402,7 +439,7 @@ class SaleModel {
       UPDATE polox.sales 
       SET 
         status = 'cancelled',
-        notes = COALESCE(notes, '') || '\nCancelamento: ' || $1,
+        description = COALESCE(description, '') || '\nCancelamento: ' || $1,
         updated_at = NOW()
       WHERE id = $2 AND company_id = $3 AND deleted_at IS NULL AND status != 'confirmed'
     `;
@@ -423,7 +460,7 @@ class SaleModel {
    * @returns {Promise<boolean>} True se registrado com sucesso
    */
   static async recordPayment(id, paymentData, companyId) {
-    const { payment_date, payment_method, notes } = paymentData;
+    const { payment_date, payment_method, description_note } = paymentData;
 
     const updateQuery = `
       UPDATE polox.sales 
@@ -431,14 +468,17 @@ class SaleModel {
         payment_status = 'paid',
         payment_date = $1,
         payment_method = COALESCE($2, payment_method),
-        notes = COALESCE(notes, '') || '\nPagamento registrado: ' || $3,
+        description = CASE 
+          WHEN $3 IS NOT NULL THEN COALESCE(description, '') || '\nPagamento registrado: ' || $3
+          ELSE description
+        END,
         updated_at = NOW()
       WHERE id = $4 AND company_id = $5 AND deleted_at IS NULL
     `;
 
     try {
       const result = await query(updateQuery, [
-        payment_date, payment_method, notes || '', id, companyId
+        payment_date, payment_method, description_note || null, id, companyId
       ], { companyId });
       return result.rowCount > 0;
     } catch (error) {
@@ -569,6 +609,159 @@ class SaleModel {
     } catch (error) {
       throw new ApiError(500, `Erro ao obter ranking de vendedores: ${error.message}`);
     }
+  }
+
+  /**
+   * Adiciona uma tag à venda
+   * @param {number} saleId - ID da venda
+   * @param {string} tagName - Nome da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Object>} Tag associada
+   */
+  static async addTag(saleId, tagName, companyId) {
+    if (!tagName || tagName.trim() === '') {
+      throw new ValidationError('Nome da tag é obrigatório');
+    }
+
+    return await transaction(async (client) => {
+      // Verificar se venda existe
+      const saleCheck = await client.query(
+        'SELECT id FROM polox.sales WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [saleId, companyId]
+      );
+
+      if (saleCheck.rows.length === 0) {
+        throw new NotFoundError('Venda não encontrada');
+      }
+
+      // Inserir tag se não existir (específica da empresa)
+      const tagResult = await client.query(`
+        INSERT INTO polox.tags (name, slug, company_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (company_id, name, slug) 
+        WHERE company_id IS NOT NULL 
+        DO UPDATE SET name = EXCLUDED.name
+        RETURNING id, name, slug, color
+      `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+      const tag = tagResult.rows[0];
+
+      // Associar tag à venda
+      await client.query(`
+        INSERT INTO polox.sale_tags (sale_id, tag_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `, [saleId, tag.id]);
+
+      return tag;
+    }, { companyId });
+  }
+
+  /**
+   * Busca todas as tags de uma venda
+   * @param {number} saleId - ID da venda
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags
+   */
+  static async getTags(saleId, companyId) {
+    const selectQuery = `
+      SELECT t.id, t.name, t.slug, t.color, t.description
+      FROM polox.tags t
+      INNER JOIN polox.sale_tags st ON t.id = st.tag_id
+      WHERE st.sale_id = $1
+      ORDER BY t.name
+    `;
+
+    try {
+      const result = await query(selectQuery, [saleId], { companyId });
+      return result.rows;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao buscar tags: ${error.message}`);
+    }
+  }
+
+  /**
+   * Remove uma tag da venda
+   * @param {number} saleId - ID da venda
+   * @param {number} tagId - ID da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<boolean>} True se removido com sucesso
+   */
+  static async removeTag(saleId, tagId, companyId) {
+    const deleteQuery = `
+      DELETE FROM polox.sale_tags
+      WHERE sale_id = $1 AND tag_id = $2
+    `;
+
+    try {
+      const result = await query(deleteQuery, [saleId, tagId], { companyId });
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao remover tag: ${error.message}`);
+    }
+  }
+
+  /**
+   * Atualiza todas as tags de uma venda
+   * @param {number} saleId - ID da venda
+   * @param {Array<string>} tagNames - Array com nomes das tags
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags atualizadas
+   */
+  static async updateTags(saleId, tagNames, companyId) {
+    return await transaction(async (client) => {
+      // Verificar se venda existe
+      const saleCheck = await client.query(
+        'SELECT id FROM polox.sales WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [saleId, companyId]
+      );
+
+      if (saleCheck.rows.length === 0) {
+        throw new NotFoundError('Venda não encontrada');
+      }
+
+      // Remover todas as tags antigas
+      await client.query(`
+        DELETE FROM polox.sale_tags WHERE sale_id = $1
+      `, [saleId]);
+
+      // Adicionar novas tags
+      if (tagNames && tagNames.length > 0) {
+        for (const tagName of tagNames) {
+          if (tagName && tagName.trim() !== '') {
+            // Inserir tag se não existir
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (name, slug, company_id)
+              VALUES ($1, $2, $3)
+              ON CONFLICT (company_id, name, slug) 
+              WHERE company_id IS NOT NULL 
+              DO UPDATE SET name = EXCLUDED.name
+              RETURNING id
+            `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag à venda
+            await client.query(`
+              INSERT INTO polox.sale_tags (sale_id, tag_id)
+              VALUES ($1, $2)
+              ON CONFLICT DO NOTHING
+            `, [saleId, tagId]);
+          }
+        }
+      }
+
+      // Retornar tags atualizadas
+      const result = await client.query(`
+        SELECT t.id, t.name, t.slug, t.color
+        FROM polox.tags t
+        INNER JOIN polox.sale_tags st ON t.id = st.tag_id
+        WHERE st.sale_id = $1
+        ORDER BY t.name
+      `, [saleId]);
+
+      return result.rows;
+    }, { companyId });
   }
 }
 

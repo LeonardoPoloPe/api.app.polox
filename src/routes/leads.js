@@ -395,8 +395,357 @@ router.post('/:id/convert', rateLimiter.general, LeadController.convertToClient)
  *       404:
  *         description: Lead ou usuário não encontrado
  */
-router.put('/:id/assign', rateLimiter.general, validateRequest(Joi.object({
-  user_id: Joi.string().required()
-})), LeadController.assignTo);
+router.put('/:id/assign', rateLimiter.general, LeadController.assignTo);
+
+// ==========================================
+// 📝 ROTAS DE NOTAS
+// ==========================================
+
+/**
+ * @swagger
+ * /leads/{id}/notes:
+ *   get:
+ *     summary: Listar notas do lead
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do lead
+ *     responses:
+ *       200:
+ *         description: Lista de notas do lead
+ */
+router.get('/:id/notes', rateLimiter.general, LeadController.getNotes);
+
+/**
+ * @swagger
+ * /leads/{id}/notes:
+ *   post:
+ *     summary: Adicionar nota ao lead
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do lead
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 5000
+ *               type:
+ *                 type: string
+ *                 enum: [general, call, meeting, email, whatsapp, other]
+ *                 default: general
+ *     responses:
+ *       201:
+ *         description: Nota criada com sucesso
+ */
+router.post('/:id/notes', rateLimiter.general, LeadController.addNote);
+
+/**
+ * @swagger
+ * /leads/{leadId}/notes/{noteId}:
+ *   put:
+ *     summary: Atualizar nota
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: leadId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: noteId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 5000
+ *     responses:
+ *       200:
+ *         description: Nota atualizada com sucesso
+ */
+router.put('/:leadId/notes/:noteId', rateLimiter.general, LeadController.updateNote);
+
+/**
+ * @swagger
+ * /leads/{leadId}/notes/{noteId}:
+ *   delete:
+ *     summary: Deletar nota
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: leadId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: noteId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Nota deletada com sucesso
+ */
+router.delete('/:leadId/notes/:noteId', rateLimiter.general, LeadController.deleteNote);
+
+// ==========================================
+// 🏷️ ROTAS DE TAGS
+// ==========================================
+
+/**
+ * @swagger
+ * /leads/{id}/tags:
+ *   get:
+ *     summary: Listar tags do lead
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Lista de tags do lead
+ */
+router.get('/:id/tags', rateLimiter.general, LeadController.getTags);
+
+/**
+ * @swagger
+ * /leads/{id}/tags:
+ *   post:
+ *     summary: Adicionar tags ao lead
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - tags
+ *             properties:
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   minLength: 1
+ *                   maxLength: 100
+ *                 example: ["qualificado", "urgente", "tecnologia"]
+ *     responses:
+ *       200:
+ *         description: Tags adicionadas com sucesso
+ */
+router.post('/:id/tags', rateLimiter.general, LeadController.addTags);
+
+/**
+ * @swagger
+ * /leads/{leadId}/tags/{tagId}:
+ *   delete:
+ *     summary: Remover tag do lead
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: leadId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Tag removida com sucesso
+ */
+router.delete('/:leadId/tags/:tagId', rateLimiter.general, LeadController.removeTag);
+
+// ==========================================
+// 💡 ROTAS DE INTERESTS
+// ==========================================
+
+/**
+ * @swagger
+ * /leads/{id}/interests:
+ *   get:
+ *     summary: Listar interesses do lead
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Lista de interesses do lead
+ */
+router.get('/:id/interests', rateLimiter.general, LeadController.getInterests);
+
+/**
+ * @swagger
+ * /leads/{id}/interests:
+ *   post:
+ *     summary: Adicionar interesses ao lead
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - interests
+ *             properties:
+ *               interests:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - name
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                       minLength: 1
+ *                       maxLength: 100
+ *                     category:
+ *                       type: string
+ *                       enum: [product, service, industry, technology, other]
+ *                       default: other
+ *                 example: 
+ *                   - name: "Cloud Computing"
+ *                     category: "technology"
+ *                   - name: "ERP"
+ *                     category: "product"
+ *     responses:
+ *       200:
+ *         description: Interesses adicionados com sucesso
+ */
+router.post('/:id/interests', rateLimiter.general, LeadController.addInterests);
+
+/**
+ * @swagger
+ * /leads/{leadId}/interests/{interestId}:
+ *   delete:
+ *     summary: Remover interesse do lead
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: leadId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: interestId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Interesse removido com sucesso
+ */
+router.delete('/:leadId/interests/:interestId', rateLimiter.general, LeadController.removeInterest);
+
+// ==========================================
+// 📊 ROTA DE ESTATÍSTICAS
+// ==========================================
+
+/**
+ * @swagger
+ * /leads/stats:
+ *   get:
+ *     summary: Obter estatísticas de leads
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Estatísticas dos leads da empresa
+ */
+router.get('/stats', rateLimiter.general, LeadController.stats);
+
+// ==========================================
+// 🗑️ ROTA DE DELETE
+// ==========================================
+
+/**
+ * @swagger
+ * /leads/{id}:
+ *   delete:
+ *     summary: Deletar lead (soft delete)
+ *     tags: [Leads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Lead deletado com sucesso
+ */
+router.delete('/:id', rateLimiter.general, LeadController.destroy);
 
 module.exports = router;

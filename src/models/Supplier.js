@@ -30,7 +30,6 @@ class SupplierModel {
       status = 'active',
       payment_terms = null,
       credit_limit = null,
-      notes = null,
       contact_person = null,
       contact_phone = null,
       contact_email = null,
@@ -73,15 +72,15 @@ class SupplierModel {
           company_id, supplier_code, name, company_name, email, phone,
           document, document_type, address, city, state, zip_code,
           country, website, category, status, payment_terms, credit_limit,
-          notes, contact_person, contact_phone, contact_email, bank_info,
+          contact_person, contact_phone, contact_email, bank_info,
           tax_info, custom_fields, created_at, updated_at
         )
         VALUES (
           $1, $2, $3, $4, $5, $6,
           $7, $8, $9, $10, $11, $12,
           $13, $14, $15, $16, $17, $18,
-          $19, $20, $21, $22, $23,
-          $24, $25, NOW(), NOW()
+          $19, $20, $21, $22,
+          $23, $24, NOW(), NOW()
         )
         RETURNING 
           id, supplier_code, name, company_name, email, phone,
@@ -93,7 +92,7 @@ class SupplierModel {
         companyId, supplierCode, name, company_name, email, phone,
         document, document_type, address, city, state, zip_code,
         country, website, category, status, payment_terms, credit_limit,
-        notes, contact_person, contact_phone, contact_email, bank_info,
+        contact_person, contact_phone, contact_email, bank_info,
         tax_info, custom_fields
       ]);
 
@@ -285,7 +284,7 @@ class SupplierModel {
     const allowedFields = [
       'name', 'company_name', 'email', 'phone', 'document', 'document_type',
       'address', 'city', 'state', 'zip_code', 'country', 'website',
-      'category', 'status', 'payment_terms', 'credit_limit', 'notes',
+      'category', 'status', 'payment_terms', 'credit_limit',
       'contact_person', 'contact_phone', 'contact_email', 'bank_info',
       'tax_info', 'custom_fields'
     ];

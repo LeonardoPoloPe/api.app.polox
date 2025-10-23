@@ -1,0 +1,185 @@
+/**
+ * Migration 019: Refatorar tabela polox.products - Normalizar tags
+ * 
+ * Objetivo: Remover campo tags (JSONB) e criar tabela pivot product_tags
+ * 
+ * Changes:
+ * - Remove coluna tags da tabela products
+ * - Cria tabela polox.product_tags (pivot table)
+ * - Migra dados existentes de tags JSONB para tabela pivot
+ * - Adiciona constraints e índices para performance
+ * 
+ * Data: 2025-10-23
+ */
+
+const { query } = require('../src/config/database');
+
+/**
+ * Aplica a migration
+ */
+async function up(client) {
+  console.log('🔄 Iniciando Migration 019: Refatorar tabela products - tags...');
+
+  try {
+    // 1. Criar tabela pivot product_tags
+    console.log('📋 Criando tabela polox.product_tags...');
+    await client.query(`
+        CREATE TABLE IF NOT EXISTS polox.product_tags (
+          product_id BIGINT NOT NULL,
+          tag_id BIGINT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          
+          PRIMARY KEY (product_id, tag_id),
+          
+          CONSTRAINT fk_product_tags_product
+            FOREIGN KEY (product_id) 
+            REFERENCES polox.products(id) 
+            ON DELETE CASCADE,
+          
+          CONSTRAINT fk_product_tags_tag
+            FOREIGN KEY (tag_id) 
+            REFERENCES polox.tags(id) 
+            ON DELETE CASCADE
+        )
+      `);
+
+      // 2. Criar índices para performance
+      console.log('📊 Criando índices na tabela product_tags...');
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_product_tags_product_id 
+        ON polox.product_tags(product_id)
+      `);
+
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_product_tags_tag_id 
+        ON polox.product_tags(tag_id)
+      `);
+
+      // 3. Migrar tags existentes do JSONB para tabela pivot
+      console.log('🔄 Migrando tags existentes de JSONB para tabela pivot...');
+      
+      // Buscar produtos com tags
+      const productsWithTags = await client.query(`
+        SELECT id, tags, company_id
+        FROM polox.products
+        WHERE tags IS NOT NULL 
+          AND tags != 'null'::jsonb 
+          AND jsonb_array_length(tags) > 0
+          AND deleted_at IS NULL
+      `);
+
+      console.log(`   Encontrados ${productsWithTags.rows.length} produtos com tags para migrar`);
+
+      let totalTagsMigrated = 0;
+
+      for (const product of productsWithTags.rows) {
+        const tagsArray = product.tags;
+        
+        if (Array.isArray(tagsArray) && tagsArray.length > 0) {
+          for (const tagName of tagsArray) {
+            if (tagName && typeof tagName === 'string' && tagName.trim() !== '') {
+              // Inserir tag na tabela polox.tags se não existir
+              const tagResult = await client.query(`
+                INSERT INTO polox.tags (name, slug, company_id, created_at, updated_at)
+                VALUES ($1, $2, $3, NOW(), NOW())
+                ON CONFLICT (company_id, name, slug) 
+                WHERE company_id IS NOT NULL 
+                DO UPDATE SET name = EXCLUDED.name
+                RETURNING id
+              `, [
+                tagName.trim(),
+                tagName.trim().toLowerCase().replace(/\s+/g, '-'),
+                product.company_id
+              ]);
+
+              const tagId = tagResult.rows[0].id;
+
+              // Associar produto à tag na tabela pivot
+              await client.query(`
+                INSERT INTO polox.product_tags (product_id, tag_id, created_at)
+                VALUES ($1, $2, NOW())
+                ON CONFLICT (product_id, tag_id) DO NOTHING
+              `, [product.id, tagId]);
+
+              totalTagsMigrated++;
+            }
+          }
+        }
+      }
+
+      console.log(`   ✅ Total de ${totalTagsMigrated} tags migradas com sucesso`);
+
+      // 4. Remover coluna tags da tabela products
+      console.log('🗑️  Removendo coluna tags da tabela products...');
+      await client.query(`
+        ALTER TABLE polox.products 
+        DROP COLUMN IF EXISTS tags
+      `);
+
+      console.log('✅ Migration 019 concluída com sucesso!');
+  } catch (error) {
+    console.error('❌ Erro na Migration 019:', error);
+    throw error;
+  }
+}
+
+/**
+ * Reverte a migration
+ */
+async function down(client) {
+  console.log('🔄 Revertendo Migration 019: Refatorar tabela products...');
+
+  try {
+    // 1. Recriar coluna tags na tabela products
+    console.log('📋 Recriando coluna tags na tabela products...');
+    await client.query(`
+      ALTER TABLE polox.products 
+      ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb
+    `);
+
+      // 2. Migrar tags de volta da tabela pivot para JSONB
+      console.log('🔄 Migrando tags de volta para JSONB...');
+      
+      const productsWithPivotTags = await client.query(`
+        SELECT DISTINCT product_id
+        FROM polox.product_tags
+      `);
+
+      for (const row of productsWithPivotTags.rows) {
+        const productId = row.product_id;
+
+        // Buscar tags do produto
+        const tagsResult = await client.query(`
+          SELECT t.name
+          FROM polox.tags t
+          INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
+          WHERE pt.product_id = $1
+          ORDER BY t.name
+        `, [productId]);
+
+        const tagNames = tagsResult.rows.map(r => r.name);
+
+        // Atualizar coluna tags com array JSON
+        await client.query(`
+          UPDATE polox.products
+          SET tags = $1::jsonb
+          WHERE id = $2
+        `, [JSON.stringify(tagNames), productId]);
+      }
+
+      console.log(`   ✅ Tags migradas de volta para ${productsWithPivotTags.rows.length} produtos`);
+
+      // 3. Remover tabela pivot (CASCADE remove índices automaticamente)
+      console.log('🗑️  Removendo tabela product_tags...');
+      await client.query(`
+        DROP TABLE IF EXISTS polox.product_tags CASCADE
+      `);
+
+      console.log('✅ Migration 019 revertida com sucesso!');
+  } catch (error) {
+    console.error('❌ Erro ao reverter Migration 019:', error);
+    throw error;
+  }
+}
+
+module.exports = { up, down };

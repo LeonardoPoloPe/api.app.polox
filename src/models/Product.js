@@ -36,7 +36,7 @@ class ProductModel {
       slug,
       meta_title,
       meta_description,
-      tags = [],
+      tags = [], // Array de nomes de tags para criar associações
       featured_image_url,
       gallery_images = [],
       is_featured = false,
@@ -53,54 +53,74 @@ class ProductModel {
       throw new ValidationError('Preço de venda deve ser maior que zero');
     }
 
-    const insertQuery = `
-      INSERT INTO polox.products (
-        company_id, category_id, supplier_id, name, description, code, barcode,
-        type, status, cost_price, sale_price, markup_percentage,
-        stock_quantity, min_stock_level, max_stock_level, stock_unit,
-        weight, length, width, height, slug, meta_title, meta_description,
-        tags, featured_image_url, gallery_images,
-        is_featured, is_digital, requires_shipping,
-        created_at, updated_at
-      )
-      VALUES (
-        $1, $2, $3, $4, $5, $6, $7,
-        $8, $9, $10, $11, $12,
-        $13, $14, $15, $16,
-        $17, $18, $19, $20, $21, $22, $23,
-        $24, $25, $26,
-        $27, $28, $29,
-        NOW(), NOW()
-      )
-      RETURNING 
-        id, company_id, category_id, supplier_id, name, description, code, barcode,
-        type, status, cost_price, sale_price, markup_percentage,
-        stock_quantity, min_stock_level, max_stock_level, stock_unit,
-        weight, length, width, height, slug, meta_title, meta_description,
-        tags, featured_image_url, gallery_images,
-        is_featured, is_digital, requires_shipping,
-        created_at, updated_at
-    `;
+    return await transaction(async (client) => {
+      // Inserir produto
+      const insertQuery = `
+        INSERT INTO polox.products (
+          company_id, category_id, supplier_id, name, description, code, barcode,
+          type, status, cost_price, sale_price, markup_percentage,
+          stock_quantity, min_stock_level, max_stock_level, stock_unit,
+          weight, length, width, height, slug, meta_title, meta_description,
+          featured_image_url, gallery_images,
+          is_featured, is_digital, requires_shipping,
+          created_at, updated_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7,
+          $8, $9, $10, $11, $12,
+          $13, $14, $15, $16,
+          $17, $18, $19, $20, $21, $22, $23,
+          $24, $25,
+          $26, $27, $28,
+          NOW(), NOW()
+        )
+        RETURNING id
+      `;
 
-    try {
-      const result = await query(insertQuery, [
+      const result = await client.query(insertQuery, [
         companyId, category_id, supplier_id, name, description, code, barcode,
         type, status, cost_price, sale_price, markup_percentage,
         stock_quantity, min_stock_level, max_stock_level, stock_unit,
         weight, length, width, height, slug, meta_title, meta_description,
-        JSON.stringify(tags), featured_image_url, JSON.stringify(gallery_images),
+        featured_image_url, JSON.stringify(gallery_images),
         is_featured, is_digital, requires_shipping
-      ], { companyId });
+      ]);
 
-      return result.rows[0];
-    } catch (error) {
-      if (error.code === '23505') {
-        if (error.constraint?.includes('code')) {
-          throw new ValidationError('Código do produto já existe');
+      const productId = result.rows[0].id;
+
+      // Processar tags se fornecidas
+      if (tags && tags.length > 0) {
+        for (const tagName of tags) {
+          if (tagName && tagName.trim() !== '') {
+            // Inserir tag se não existir (específica da empresa)
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (name, slug, company_id, created_at, updated_at)
+              VALUES ($1, $2, $3, NOW(), NOW())
+              ON CONFLICT (company_id, name, slug) 
+              WHERE company_id IS NOT NULL 
+              DO UPDATE SET name = EXCLUDED.name
+              RETURNING id
+            `, [
+              tagName.trim(),
+              tagName.trim().toLowerCase().replace(/\s+/g, '-'),
+              companyId
+            ]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag ao produto
+            await client.query(`
+              INSERT INTO polox.product_tags (product_id, tag_id, created_at)
+              VALUES ($1, $2, NOW())
+              ON CONFLICT (product_id, tag_id) DO NOTHING
+            `, [productId, tagId]);
+          }
         }
       }
-      throw new ApiError(500, `Erro ao criar produto: ${error.message}`);
-    }
+
+      // Retornar produto completo com tags
+      return await this.findById(productId, companyId);
+    }, { companyId });
   }
 
   /**
@@ -115,7 +135,13 @@ class ProductModel {
         p.*,
         pc.name as category_name,
         s.name as supplier_name,
-        s.company_name as supplier_company_name
+        s.company_name as supplier_company_name,
+        (
+          SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'slug', t.slug, 'color', t.color))
+          FROM polox.tags t
+          INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
+          WHERE pt.product_id = p.id
+        ) as tags
       FROM polox.products p
       LEFT JOIN polox.product_categories pc ON p.category_id = pc.id
       LEFT JOIN polox.suppliers s ON p.supplier_id = s.id
@@ -124,7 +150,13 @@ class ProductModel {
 
     try {
       const result = await query(selectQuery, [id, companyId], { companyId });
-      return result.rows[0] || null;
+      const product = result.rows[0] || null;
+      
+      if (product && !product.tags) {
+        product.tags = [];
+      }
+      
+      return product;
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar produto: ${error.message}`);
     }
@@ -235,6 +267,12 @@ class ProductModel {
         p.is_featured, p.is_digital, p.requires_shipping, p.created_at, p.updated_at,
         pc.name as category_name,
         s.name as supplier_name,
+        (
+          SELECT json_agg(t.name)
+          FROM polox.tags t
+          INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
+          WHERE pt.product_id = p.id
+        ) as tags,
         CASE 
           WHEN p.stock_quantity <= p.min_stock_level THEN true 
           ELSE false 
@@ -284,7 +322,7 @@ class ProductModel {
       'category_id', 'supplier_id', 'name', 'description', 'code', 'barcode',
       'type', 'status', 'cost_price', 'sale_price', 'markup_percentage',
       'min_stock_level', 'max_stock_level', 'stock_unit', 'weight', 'length',
-      'width', 'height', 'slug', 'meta_title', 'meta_description', 'tags',
+      'width', 'height', 'slug', 'meta_title', 'meta_description',
       'featured_image_url', 'gallery_images', 'is_featured', 'is_digital',
       'requires_shipping'
     ];
@@ -296,7 +334,7 @@ class ProductModel {
     // Construir query dinamicamente
     for (const [key, value] of Object.entries(updateData)) {
       if (allowedFields.includes(key)) {
-        if (key === 'tags' || key === 'gallery_images') {
+        if (key === 'gallery_images') {
           updates.push(`${key} = $${paramCount}`);
           values.push(JSON.stringify(value));
         } else {
@@ -557,6 +595,159 @@ class ProductModel {
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar produtos por categoria: ${error.message}`);
     }
+  }
+
+  /**
+   * Adiciona uma tag ao produto
+   * @param {number} productId - ID do produto
+   * @param {string} tagName - Nome da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Object>} Tag associada
+   */
+  static async addTag(productId, tagName, companyId) {
+    if (!tagName || tagName.trim() === '') {
+      throw new ValidationError('Nome da tag é obrigatório');
+    }
+
+    return await transaction(async (client) => {
+      // Verificar se produto existe
+      const productCheck = await client.query(
+        'SELECT id FROM polox.products WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [productId, companyId]
+      );
+
+      if (productCheck.rows.length === 0) {
+        throw new NotFoundError('Produto não encontrado');
+      }
+
+      // Inserir tag se não existir (específica da empresa)
+      const tagResult = await client.query(`
+        INSERT INTO polox.tags (name, slug, company_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (company_id, name, slug) 
+        WHERE company_id IS NOT NULL 
+        DO UPDATE SET name = EXCLUDED.name
+        RETURNING id, name, slug, color
+      `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+      const tag = tagResult.rows[0];
+
+      // Associar tag ao produto
+      await client.query(`
+        INSERT INTO polox.product_tags (product_id, tag_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `, [productId, tag.id]);
+
+      return tag;
+    }, { companyId });
+  }
+
+  /**
+   * Busca todas as tags de um produto
+   * @param {number} productId - ID do produto
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags
+   */
+  static async getTags(productId, companyId) {
+    const selectQuery = `
+      SELECT t.id, t.name, t.slug, t.color, t.description
+      FROM polox.tags t
+      INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
+      WHERE pt.product_id = $1
+      ORDER BY t.name
+    `;
+
+    try {
+      const result = await query(selectQuery, [productId], { companyId });
+      return result.rows;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao buscar tags: ${error.message}`);
+    }
+  }
+
+  /**
+   * Remove uma tag do produto
+   * @param {number} productId - ID do produto
+   * @param {number} tagId - ID da tag
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<boolean>} True se removido com sucesso
+   */
+  static async removeTag(productId, tagId, companyId) {
+    const deleteQuery = `
+      DELETE FROM polox.product_tags
+      WHERE product_id = $1 AND tag_id = $2
+    `;
+
+    try {
+      const result = await query(deleteQuery, [productId, tagId], { companyId });
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao remover tag: ${error.message}`);
+    }
+  }
+
+  /**
+   * Atualiza todas as tags de um produto
+   * @param {number} productId - ID do produto
+   * @param {Array<string>} tagNames - Array com nomes das tags
+   * @param {number} companyId - ID da empresa
+   * @returns {Promise<Array>} Lista de tags atualizadas
+   */
+  static async updateTags(productId, tagNames, companyId) {
+    return await transaction(async (client) => {
+      // Verificar se produto existe
+      const productCheck = await client.query(
+        'SELECT id FROM polox.products WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        [productId, companyId]
+      );
+
+      if (productCheck.rows.length === 0) {
+        throw new NotFoundError('Produto não encontrado');
+      }
+
+      // Remover todas as tags antigas
+      await client.query(`
+        DELETE FROM polox.product_tags WHERE product_id = $1
+      `, [productId]);
+
+      // Adicionar novas tags
+      if (tagNames && tagNames.length > 0) {
+        for (const tagName of tagNames) {
+          if (tagName && tagName.trim() !== '') {
+            // Inserir tag se não existir
+            const tagResult = await client.query(`
+              INSERT INTO polox.tags (name, slug, company_id)
+              VALUES ($1, $2, $3)
+              ON CONFLICT (company_id, name, slug) 
+              WHERE company_id IS NOT NULL 
+              DO UPDATE SET name = EXCLUDED.name
+              RETURNING id
+            `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+
+            const tagId = tagResult.rows[0].id;
+
+            // Associar tag ao produto
+            await client.query(`
+              INSERT INTO polox.product_tags (product_id, tag_id)
+              VALUES ($1, $2)
+              ON CONFLICT DO NOTHING
+            `, [productId, tagId]);
+          }
+        }
+      }
+
+      // Retornar tags atualizadas
+      const result = await client.query(`
+        SELECT t.id, t.name, t.slug, t.color
+        FROM polox.tags t
+        INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
+        WHERE pt.product_id = $1
+        ORDER BY t.name
+      `, [productId]);
+
+      return result.rows;
+    }, { companyId });
   }
 }
 
