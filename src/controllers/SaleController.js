@@ -217,7 +217,7 @@ class SaleController {
 
     // 🔍 Verificar se cliente existe
     const clientCheck = await query(
-      'SELECT id, name, email FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      'SELECT id, client_name as name, email FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
       [saleData.client_id, req.user.companyId]
     );
 

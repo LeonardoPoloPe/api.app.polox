@@ -146,9 +146,9 @@ class CustomFieldValue {
 
         return {
           id: field.id,
-          name: field.name,
+          name: field.field_name,
           field_type: field.field_type,
-          options: field.options,
+          options: field.field_options,
           is_required: field.is_required,
           sort_order: field.sort_order,
           value: extractedValue,
@@ -284,13 +284,13 @@ class CustomFieldValue {
           case 'numeric':
             valueData.numeric_value = parseFloat(value);
             if (isNaN(valueData.numeric_value)) {
-              throw new ValidationError(`Valor numérico inválido para campo "${field.name}"`);
+              throw new ValidationError(`Valor numérico inválido para campo "${field.field_name}"`);
             }
             break;
           case 'date':
             valueData.date_value = new Date(value);
             if (isNaN(valueData.date_value.getTime())) {
-              throw new ValidationError(`Data inválida para campo "${field.name}"`);
+              throw new ValidationError(`Data inválida para campo "${field.field_name}"`);
             }
             break;
           case 'checkbox':

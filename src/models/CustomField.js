@@ -149,7 +149,7 @@ class CustomField {
     try {
       // Validações
       if (!entityType || !name || !fieldType) {
-        throw new ValidationError('entity_type, name e field_type são obrigatórios');
+        throw new ValidationError('entity_type, field_name e field_type são obrigatórios');
       }
 
       if (!this.ENTITY_TYPES.includes(entityType)) {
@@ -174,7 +174,7 @@ class CustomField {
 
       const sql = `
         INSERT INTO polox.custom_fields (
-          company_id, entity_type, name, field_type, options, is_required, sort_order
+          company_id, entity_type, field_name, field_type, field_options, is_required, sort_order
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
@@ -245,9 +245,9 @@ class CustomField {
       const sql = `
         UPDATE polox.custom_fields
         SET 
-          name = COALESCE($1, name),
+          field_name = COALESCE($1, field_name),
           field_type = COALESCE($2, field_type),
-          options = COALESCE($3, options),
+          field_options = COALESCE($3, field_options),
           is_required = COALESCE($4, is_required),
           sort_order = COALESCE($5, sort_order),
           updated_at = NOW()

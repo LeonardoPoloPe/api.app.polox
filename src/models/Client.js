@@ -130,13 +130,13 @@ class ClientModel {
     const selectQuery = `
       SELECT 
         c.*,
-        l.name as lead_name,
-        l.source as lead_source,
+        l.lead_name as lead_name,
+        l.lead_source as lead_source,
         (
           SELECT json_agg(
             json_build_object(
               'id', tags.id,
-              'name', tags.name,
+              'name', tags.tag_name,
               'slug', tags.slug,
               'color', tags.color
             )
@@ -582,11 +582,11 @@ class ClientModel {
 
       // Criar ou buscar tag
       const tagResult = await client.query(`
-        INSERT INTO polox.tags (company_id, name, slug, color, created_at, updated_at)
+        INSERT INTO polox.tags (company_id, tag_name, slug, color, created_at, updated_at)
         VALUES ($1, $2, $3, $4, NOW(), NOW())
         ON CONFLICT (company_id, slug) 
         DO UPDATE SET updated_at = NOW()
-        RETURNING id, name, slug, color
+        RETURNING id, tag_name as name, slug, color
       `, [
         companyId,
         tagName.trim(),
@@ -616,13 +616,13 @@ class ClientModel {
   static async getTags(clientId, companyId) {
     const selectQuery = `
       SELECT 
-        t.id, t.name, t.slug, t.color,
+        t.id, t.tag_name as name, t.slug, t.color,
         ct.created_at as associated_at
       FROM polox.client_tags ct
       INNER JOIN polox.tags t ON ct.tag_id = t.id
       INNER JOIN polox.clients c ON ct.client_id = c.id
       WHERE ct.client_id = $1 AND c.company_id = $2 AND c.deleted_at IS NULL
-      ORDER BY t.name ASC
+      ORDER BY t.tag_name ASC
     `;
 
     try {
@@ -693,11 +693,11 @@ class ClientModel {
         if (tagName && typeof tagName === 'string') {
           // Criar ou buscar tag
           const tagResult = await client.query(`
-            INSERT INTO polox.tags (company_id, name, slug, color, created_at, updated_at)
+            INSERT INTO polox.tags (company_id, tag_name, slug, color, created_at, updated_at)
             VALUES ($1, $2, $3, $4, NOW(), NOW())
             ON CONFLICT (company_id, slug) 
             DO UPDATE SET updated_at = NOW()
-            RETURNING id, name, slug, color
+            RETURNING id, tag_name as name, slug, color
           `, [
             companyId,
             tagName.trim(),

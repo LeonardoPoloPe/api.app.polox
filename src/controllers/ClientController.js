@@ -406,7 +406,7 @@ class ClientController {
 
     // Verificar se cliente existe e pertence à empresa
     const clientCheck = await query(
-      'SELECT id, name FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      'SELECT id, client_name as name FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
       [clientId, req.user.companyId]
     );
 
