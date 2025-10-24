@@ -228,7 +228,7 @@ class ProductModel {
     }
 
     if (type) {
-      conditions.push(`p.type = $${paramCount}`);
+      conditions.push(`p.product_type = $${paramCount}`);
       values.push(type);
       paramCount++;
     }
@@ -244,7 +244,7 @@ class ProductModel {
     }
 
     if (search) {
-      conditions.push(`(p.name ILIKE $${paramCount} OR p.description ILIKE $${paramCount} OR p.code ILIKE $${paramCount} OR p.barcode ILIKE $${paramCount})`);
+      conditions.push(`(p.product_name ILIKE $${paramCount} OR p.description ILIKE $${paramCount} OR p.code ILIKE $${paramCount} OR p.barcode ILIKE $${paramCount})`);
       values.push(`%${search}%`);
       paramCount++;
     }
@@ -261,14 +261,14 @@ class ProductModel {
     // Query para buscar dados
     const selectQuery = `
       SELECT 
-        p.id, p.name, p.description, p.code, p.barcode, p.type, p.status,
+        p.id, p.product_name, p.description, p.code, p.barcode, p.product_type, p.status,
         p.cost_price, p.sale_price, p.markup_percentage, p.stock_quantity,
         p.min_stock_level, p.max_stock_level, p.stock_unit, p.featured_image_url,
         p.is_featured, p.is_digital, p.requires_shipping, p.created_at, p.updated_at,
-        pc.name as category_name,
-        s.name as supplier_name,
+        pc.category_name,
+        s.supplier_name,
         (
-          SELECT json_agg(t.name)
+          SELECT json_agg(t.tag_name)
           FROM polox.tags t
           INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
           WHERE pt.product_id = p.id

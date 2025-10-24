@@ -127,7 +127,7 @@ class CustomWheel {
         const query = `
             SELECT 
                 cw.*,
-                u.name as created_by_name,
+                u.full_name as created_by_name,
                 COUNT(wp.id) as prizes_count,
                 COUNT(ws.id) as total_spins
             FROM ${this.table} cw
@@ -135,7 +135,7 @@ class CustomWheel {
             LEFT JOIN polox.wheel_prizes wp ON cw.id = wp.wheel_id AND wp.is_active = true
             LEFT JOIN polox.wheel_spins ws ON cw.id = ws.wheel_id
             WHERE cw.id = $1 AND cw.company_id = $2
-            GROUP BY cw.id, u.name
+            GROUP BY cw.id, u.full_name
         `;
 
         try {
@@ -185,7 +185,7 @@ class CustomWheel {
         const query = `
             SELECT 
                 cw.*,
-                u.name as created_by_name,
+                u.full_name as created_by_name,
                 COUNT(wp.id) as prizes_count,
                 COUNT(DISTINCT ws.user_id) as unique_spinners,
                 COUNT(ws.id) as total_spins
@@ -194,7 +194,7 @@ class CustomWheel {
             LEFT JOIN polox.wheel_prizes wp ON cw.id = wp.wheel_id AND wp.is_active = true
             LEFT JOIN polox.wheel_spins ws ON cw.id = ws.wheel_id
             WHERE ${whereConditions.join(' AND ')}
-            GROUP BY cw.id, u.name
+            GROUP BY cw.id, u.full_name
             ORDER BY cw.created_at DESC
             LIMIT $${++paramCount} OFFSET $${++paramCount}
         `;

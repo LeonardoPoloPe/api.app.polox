@@ -236,13 +236,13 @@ class ClientModel {
     }
 
     if (type) {
-      conditions.push(`c.type = $${paramCount}`);
+      conditions.push(`c.client_type = $${paramCount}`);
       values.push(type);
       paramCount++;
     }
 
     if (search) {
-      conditions.push(`(c.name ILIKE $${paramCount} OR c.email ILIKE $${paramCount} OR c.company_name ILIKE $${paramCount} OR c.document_number ILIKE $${paramCount})`);
+      conditions.push(`(c.client_name ILIKE $${paramCount} OR c.email ILIKE $${paramCount} OR c.company_name ILIKE $${paramCount} OR c.document_number ILIKE $${paramCount})`);
       values.push(`%${search}%`);
       paramCount++;
     }
@@ -259,14 +259,14 @@ class ClientModel {
     // Query para buscar dados
     const selectQuery = `
       SELECT 
-        c.id, c.name, c.email, c.phone, c.company_name, c.document_number,
-        c.document_type, c.type, c.category, c.status, c.address_city,
+        c.id, c.client_name, c.email, c.phone, c.company_name, c.document_number,
+        c.document_type, c.client_type, c.category, c.status, c.address_city,
         c.address_state, c.total_spent, c.total_orders, c.average_order_value,
         c.lifetime_value, c.acquisition_date, c.last_purchase_date,
         c.last_contact_date, c.created_at, c.updated_at,
         (SELECT COUNT(*) FROM polox.sales WHERE client_id = c.id AND deleted_at IS NULL) as sales_count,
         (
-          SELECT json_agg(tags.name)
+          SELECT json_agg(tags.tag_name)
           FROM polox.client_tags ct
           INNER JOIN polox.tags tags ON ct.tag_id = tags.id
           WHERE ct.client_id = c.id
@@ -418,7 +418,7 @@ class ClientModel {
       SELECT 
         s.id, s.sale_number, s.total_amount, s.discount_amount, s.net_amount,
         s.status, s.payment_status, s.sale_date, s.payment_date, s.description,
-        u.name as seller_name
+        u.full_name as seller_name
       FROM polox.sales s
       LEFT JOIN polox.users u ON s.user_id = u.id
       WHERE s.client_id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL

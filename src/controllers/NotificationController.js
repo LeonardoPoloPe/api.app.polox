@@ -35,7 +35,7 @@ class NotificationController {
 
     // Filtros
     if (req.query.type) {
-      whereClause += ` AND n.type = $${++paramCount}`;
+      whereClause += ` AND n.notification_type = $${++paramCount}`;
       queryParams.push(req.query.type);
     }
 
@@ -63,7 +63,7 @@ class NotificationController {
     const notificationsQuery = `
       SELECT 
         n.id,
-        n.type,
+        n.notification_type,
         n.title,
         n.message,
         n.data,
@@ -201,7 +201,7 @@ class NotificationController {
         
         const createNotificationQuery = `
           INSERT INTO notifications (
-            id, user_id, company_id, type, title, message, data, 
+            id, user_id, company_id, notification_type, title, message, data, 
             priority, action_url, expires_at, created_by, created_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
           RETURNING *
@@ -244,7 +244,7 @@ class NotificationController {
 
         // Registrar no histórico de gamificação
         await query(`
-          INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type, reference_id)
+          INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type, reference_id)
           VALUES 
             ($1, $2, $3, 'xp', $4, 'Notification created', 'notification_created', $5),
             ($6, $2, $3, 'coins', $7, 'Notification created', 'notification_created', $5)
@@ -331,7 +331,7 @@ class NotificationController {
 
       // Conceder XP/Coins por ler notificação importante
       const importantTypes = ['ticket_assigned', 'urgent_alert', 'system_alert'];
-      if (importantTypes.includes(notification.type)) {
+      if (importantTypes.includes(notification.notification_type)) {
         const xpReward = 2;
         const coinReward = 1;
 
@@ -429,7 +429,7 @@ class NotificationController {
 
         // Registrar no histórico
         await query(`
-          INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type, reference_id)
+          INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type, reference_id)
           VALUES 
             ($1, $2, $3, 'xp', $4, 'Bulk notifications read', 'notifications_bulk_read', $5),
             ($6, $2, $3, 'coins', $7, 'Bulk notifications read', 'notifications_bulk_read', $5)
@@ -489,7 +489,7 @@ class NotificationController {
 
       // Verificar se é deletável (algumas notificações do sistema podem ser protegidas)
       const protectedTypes = ['system_critical', 'security_alert'];
-      if (protectedTypes.includes(notification.type) && req.user.role !== 'admin') {
+      if (protectedTypes.includes(notification.notification_type) && req.user.role !== 'admin') {
         throw new ApiError(403, 'Esta notificação não pode ser removida');
       }
 
@@ -509,7 +509,7 @@ class NotificationController {
         userId: req.user.id,
         notificationId: notificationId,
         notificationTitle: notification.title,
-        notificationType: notification.type,
+        notificationType: notification.notification_type,
         companyId: req.user.companyId,
         ip: req.ip
       });

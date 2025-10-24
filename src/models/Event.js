@@ -135,7 +135,7 @@ class EventModel {
     const selectQuery = `
       SELECT 
         e.*,
-        u.name as organizer_name,
+        u.full_name as organizer_name,
         u.email as organizer_email,
         c.name as client_name,
         c.email as client_email,
@@ -283,7 +283,7 @@ class EventModel {
         e.end_date, e.all_day, e.location, e.status, e.priority,
         e.organizer_id, e.client_id, e.lead_id, e.reminder_minutes,
         e.is_private, e.created_at, e.updated_at,
-        u.name as organizer_name,
+        u.full_name as organizer_name,
         c.name as client_name,
         l.name as lead_name,
         (SELECT COUNT(*) FROM polox.event_attendees WHERE event_id = e.id) as attendee_count,
@@ -538,7 +538,7 @@ class EventModel {
     const selectQuery = `
       SELECT 
         ea.*,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email
       FROM polox.event_attendees ea
       LEFT JOIN polox.users u ON ea.user_id = u.id

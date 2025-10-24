@@ -99,7 +99,7 @@ class UserAchievementModel {
         a.points as achievement_points,
         a.category as achievement_category,
         a.rarity as achievement_rarity,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         gb.name as granted_by_name
       FROM polox.user_achievements ua
@@ -241,7 +241,7 @@ class UserAchievementModel {
       SELECT 
         ua.id, ua.user_id, ua.achievement_id, ua.progress, ua.unlocked_at,
         ua.metadata, ua.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         u.avatar_url as user_avatar,
         up.level as user_level,
@@ -440,7 +440,7 @@ class UserAchievementModel {
       SELECT 
         ua.id, ua.user_id, ua.achievement_id, ua.unlocked_at,
         ua.metadata, ua.progress,
-        u.name as user_name,
+        u.full_name as user_name,
         u.avatar_url as user_avatar,
         a.title as achievement_title,
         a.description as achievement_description,

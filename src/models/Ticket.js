@@ -144,7 +144,7 @@ class TicketModel {
         c.name as client_name,
         c.email as client_email,
         c.phone as client_phone,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         assigned_user.name as assigned_user_name,
         assigned_user.email as assigned_user_email,
@@ -196,7 +196,7 @@ class TicketModel {
       SELECT 
         t.*,
         c.name as client_name,
-        u.name as user_name,
+        u.full_name as user_name,
         assigned_user.name as assigned_user_name
       FROM polox.tickets t
       LEFT JOIN polox.clients c ON t.client_id = c.id
@@ -306,7 +306,7 @@ class TicketModel {
         t.priority, t.status, t.source, t.assigned_to, t.due_date,
         t.created_at, t.updated_at,
         c.name as client_name,
-        u.name as user_name,
+        u.full_name as user_name,
         assigned_user.name as assigned_user_name,
         (SELECT COUNT(*) FROM polox.ticket_comments WHERE ticket_id = t.id) as comment_count,
         (
@@ -630,7 +630,7 @@ class TicketModel {
     const selectQuery = `
       SELECT 
         tc.*,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email
       FROM polox.ticket_comments tc
       LEFT JOIN polox.users u ON tc.user_id = u.id
@@ -725,7 +725,7 @@ class TicketModel {
     const selectQuery = `
       SELECT 
         th.*,
-        u.name as user_name
+        u.full_name as user_name
       FROM polox.ticket_history th
       LEFT JOIN polox.users u ON th.user_id = u.id
       WHERE th.ticket_id = $1 AND th.company_id = $2

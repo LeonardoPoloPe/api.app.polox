@@ -153,7 +153,7 @@ class SaleController {
         c.name as client_name,
         c.email as client_email,
         c.company as client_company,
-        u.name as seller_name,
+        u.full_name as seller_name,
         u.email as seller_email,
         COUNT(si.id) as items_count
       FROM sales s
@@ -161,7 +161,7 @@ class SaleController {
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN sale_items si ON s.id = si.sale_id
       ${whereClause}
-      GROUP BY s.id, c.name, c.email, c.company, u.name, u.email
+      GROUP BY s.id, c.name, c.email, c.company, u.full_name, u.email
       ORDER BY ${sortField} ${sortOrder}
       LIMIT $${++paramCount} OFFSET $${++paramCount}
     `;
@@ -332,7 +332,7 @@ class SaleController {
 
       // 5️⃣ Registrar no histórico de gamificação
       await query(`
-        INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
+        INSERT INTO gamification_history (user_id, company_id, event_type, amount, reason, action_type)
         VALUES 
           ($1, $2, 'xp', $3, $4, 'sale_completed'),
           ($1, $2, 'coins', $5, $4, 'sale_completed')
@@ -412,7 +412,7 @@ class SaleController {
         c.email as client_email,
         c.phone as client_phone,
         c.company as client_company,
-        u.name as seller_name,
+        u.full_name as seller_name,
         u.email as seller_email,
         json_agg(
           json_build_object(
@@ -429,7 +429,7 @@ class SaleController {
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN sale_items si ON s.id = si.sale_id
       WHERE s.id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL
-      GROUP BY s.id, c.name, c.email, c.phone, c.company, u.name, u.email
+      GROUP BY s.id, c.name, c.email, c.phone, c.company, u.full_name, u.email
     `;
     
     const saleResult = await query(saleQuery, [saleId, req.user.companyId]);
@@ -673,7 +673,7 @@ class SaleController {
 
           // Registrar no histórico
           await query(`
-            INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
+            INSERT INTO gamification_history (user_id, company_id, event_type, amount, reason, action_type)
             VALUES 
               ($1, $2, 'xp', $3, $4, 'achievement_unlocked'),
               ($1, $2, 'coins', $5, $4, 'achievement_unlocked')

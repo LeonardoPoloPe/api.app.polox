@@ -92,7 +92,7 @@ class GamificationHistoryModel {
         gh.id, gh.user_id, gh.event_type, gh.points_awarded, gh.points_deducted,
         gh.description, gh.metadata, gh.related_entity_type, gh.related_entity_id,
         gh.triggered_by_user_id, gh.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         tb.name as triggered_by_name
       FROM polox.gamification_history gh
@@ -244,7 +244,7 @@ class GamificationHistoryModel {
         gh.id, gh.user_id, gh.event_type, gh.points_awarded, gh.points_deducted,
         gh.description, gh.metadata, gh.related_entity_type, gh.related_entity_id,
         gh.triggered_by_user_id, gh.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         u.avatar_url as user_avatar
       FROM polox.gamification_history gh
@@ -311,7 +311,7 @@ class GamificationHistoryModel {
         gh.id, gh.user_id, gh.event_type, gh.points_awarded, gh.points_deducted,
         gh.description, gh.metadata, gh.related_entity_type, gh.related_entity_id,
         gh.triggered_by_user_id, gh.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         tb.name as triggered_by_name
       FROM polox.gamification_history gh
@@ -441,7 +441,7 @@ class GamificationHistoryModel {
     const rankingQuery = `
       SELECT 
         u.id as user_id,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         u.avatar_url as user_avatar,
         COALESCE(SUM(gh.points_awarded), 0) as total_points_awarded,
@@ -454,7 +454,7 @@ class GamificationHistoryModel {
       LEFT JOIN polox.gamification_history gh ON u.id = gh.user_id
       LEFT JOIN polox.user_gamification_profiles up ON u.id = up.user_id
       ${whereClause}
-      GROUP BY u.id, u.name, u.email, u.avatar_url, up.level, up.total_points
+      GROUP BY u.id, u.full_name, u.email, u.avatar_url, up.level, up.total_points
       HAVING COALESCE(SUM(gh.points_awarded) - SUM(gh.points_deducted), 0) > 0
       ORDER BY net_points DESC, total_events DESC
       LIMIT $${params.length + 1}
@@ -559,7 +559,7 @@ class GamificationHistoryModel {
         gh.id, gh.user_id, gh.event_type, gh.points_awarded, gh.points_deducted,
         gh.description, gh.metadata, gh.related_entity_type, gh.related_entity_id,
         gh.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.avatar_url as user_avatar
       FROM polox.gamification_history gh
       INNER JOIN polox.users u ON gh.user_id = u.id

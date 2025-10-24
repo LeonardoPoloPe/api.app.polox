@@ -232,7 +232,7 @@ class WheelSpin {
         const query = `
             SELECT 
                 ws.*,
-                u.name as user_name,
+                u.full_name as user_name,
                 u.email as user_email,
                 cw.name as wheel_name,
                 wp.name as prize_name,
@@ -374,7 +374,7 @@ class WheelSpin {
         const query = `
             SELECT 
                 ws.*,
-                u.name as user_name,
+                u.full_name as user_name,
                 u.email as user_email,
                 wp.name as prize_name,
                 wp.prize_type
@@ -582,7 +582,7 @@ class WheelSpin {
             JOIN polox.custom_wheels cw ON ws.wheel_id = cw.id
             JOIN polox.users u ON ws.user_id = u.id
             WHERE ${whereConditions.join(' AND ')}
-            GROUP BY u.id, u.name, u.email
+            GROUP BY u.id, u.full_name, u.email
             ORDER BY total_spins DESC, wins DESC
             LIMIT $${++paramCount}
         `;
@@ -625,7 +625,7 @@ class WheelSpin {
         const query = `
             SELECT 
                 ws.*,
-                u.name as user_name,
+                u.full_name as user_name,
                 u.email as user_email,
                 cw.name as wheel_name,
                 wp.name as prize_name,

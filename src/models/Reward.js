@@ -612,7 +612,7 @@ class RewardModel {
       SELECT 
         ur.*,
         r.name as reward_name,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email
       FROM polox.user_rewards ur
       LEFT JOIN polox.rewards r ON ur.reward_id = r.id

@@ -228,7 +228,7 @@ class SupplierController {
 
       // Registrar no histórico de gamificação
       await query(`
-        INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type, reference_id)
+        INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type, reference_id)
         VALUES 
           ($1, $2, $3, 'xp', 15, 'Supplier registered', 'supplier_created', $4),
           ($5, $2, $3, 'coins', 8, 'Supplier registered', 'supplier_created', $4)
@@ -282,13 +282,13 @@ class SupplierController {
         AVG(sr.rating) as calculated_rating,
         COUNT(DISTINCT sr.id) as rating_count,
         MAX(po.created_at) as last_order_date,
-        u.name as created_by_name
+        u.full_name as created_by_name
       FROM suppliers s
       LEFT JOIN purchase_orders po ON s.id = po.supplier_id AND po.deleted_at IS NULL
       LEFT JOIN supplier_ratings sr ON s.id = sr.supplier_id AND sr.deleted_at IS NULL
       LEFT JOIN users u ON s.created_by = u.id
       WHERE s.id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL
-      GROUP BY s.id, u.name
+      GROUP BY s.id, u.full_name
     `;
 
     const supplierResult = await query(supplierQuery, [supplierId, req.user.companyId]);
@@ -551,13 +551,13 @@ class SupplierController {
 
     const productsQuery = `
       SELECT 
-        p.id, p.name, p.sku, p.type, p.category, p.status,
+        p.id, p.product_name, p.sku, p.product_type, p.category, p.status,
         sp.cost_price, sp.lead_time, sp.minimum_order_quantity,
         sp.is_preferred, sp.created_at as relationship_created
       FROM products p
       JOIN supplier_products sp ON p.id = sp.product_id
       WHERE sp.supplier_id = $1 AND p.company_id = $2 AND p.deleted_at IS NULL
-      ORDER BY sp.is_preferred DESC, p.name ASC
+      ORDER BY sp.is_preferred DESC, p.product_name ASC
     `;
 
     const productsResult = await query(productsQuery, [supplierId, req.user.companyId]);
@@ -679,7 +679,7 @@ class SupplierController {
 
       // Registrar no histórico
       await query(`
-        INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type, reference_id)
+        INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type, reference_id)
         VALUES 
           ($1, $2, $3, 'xp', $4, 'Purchase order created', 'purchase_order_created', $5),
           ($6, $2, $3, 'coins', $7, 'Purchase order created', 'purchase_order_created', $5)
@@ -757,13 +757,13 @@ class SupplierController {
     const ordersQuery = `
       SELECT 
         po.*,
-        u.name as created_by_name,
+        u.full_name as created_by_name,
         COUNT(DISTINCT poi.id) as item_count
       FROM purchase_orders po
       LEFT JOIN users u ON po.created_by = u.id
       LEFT JOIN purchase_order_items poi ON po.id = poi.order_id
       ${whereClause}
-      GROUP BY po.id, u.name
+      GROUP BY po.id, u.full_name
       ORDER BY po.created_at DESC
       LIMIT $${++paramCount} OFFSET $${++paramCount}
     `;

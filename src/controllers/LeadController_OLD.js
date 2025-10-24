@@ -183,7 +183,7 @@ class LeadController {
     const leadsQuery = `
       SELECT 
         l.*,
-        u.name as assigned_to_name,
+        u.full_name as assigned_to_name,
         u.email as assigned_to_email,
         c.name as converted_client_name,
         CASE WHEN l.converted_to_client_id IS NOT NULL THEN true ELSE false END as is_converted
@@ -303,7 +303,7 @@ class LeadController {
 
     // 📈 Registrar no histórico de gamificação
     await query(`
-      INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
+      INSERT INTO gamification_history (user_id, company_id, event_type, amount, reason, action_type)
       VALUES 
         ($1, $2, 'xp', 10, $3, 'lead_created'),
         ($1, $2, 'coins', 5, $3, 'lead_created')
@@ -343,9 +343,9 @@ class LeadController {
     const leadQuery = `
       SELECT 
         l.*,
-        u.name as assigned_to_name,
+        u.full_name as assigned_to_name,
         u.email as assigned_to_email,
-        creator.name as created_by_name,
+        creator.full_name as created_by_name,
         c.name as converted_client_name,
         c.id as converted_client_id
       FROM leads l
@@ -514,7 +514,7 @@ class LeadController {
 
       // 4️⃣ Registrar no histórico
       await query(`
-        INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
+        INSERT INTO gamification_history (user_id, company_id, event_type, amount, reason, action_type)
         VALUES 
           ($1, $2, 'xp', 50, $3, 'lead_converted'),
           ($1, $2, 'coins', 25, $3, 'lead_converted')
@@ -579,7 +579,7 @@ class LeadController {
 
     // Verificar se usuário existe na empresa
     const userCheck = await query(
-      'SELECT id, name FROM users WHERE id = $1 AND company_id = $2 AND status = $3',
+      'SELECT id, full_name FROM users WHERE id = $1 AND company_id = $2 AND status = $3',
       [user_id, req.user.companyId, 'active']
     );
 
@@ -666,7 +666,7 @@ class LeadController {
 
           // Registrar no histórico
           await query(`
-            INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
+            INSERT INTO gamification_history (user_id, company_id, event_type, amount, reason, action_type)
             VALUES 
               ($1, $2, 'xp', $3, $4, 'achievement_unlocked'),
               ($1, $2, 'coins', $5, $4, 'achievement_unlocked')

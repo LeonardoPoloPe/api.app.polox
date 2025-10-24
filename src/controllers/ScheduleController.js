@@ -91,7 +91,7 @@ class ScheduleController {
     }
 
     if (req.query.type) {
-      whereClause += ` AND e.type = $${++paramCount}`;
+      whereClause += ` AND e.event_type = $${++paramCount}`;
       queryParams.push(req.query.type);
     }
 
@@ -151,7 +151,7 @@ class ScheduleController {
         e.*,
         c.name as client_name,
         l.name as lead_name,
-        u.name as organizer_name,
+        u.full_name as organizer_name,
         COALESCE(
           json_agg(
             CASE WHEN ea.user_id IS NOT NULL THEN
@@ -172,7 +172,7 @@ class ScheduleController {
       LEFT JOIN event_attendees ea ON e.id = ea.event_id AND ea.deleted_at IS NULL
       LEFT JOIN users u_att ON ea.user_id = u_att.id
       ${whereClause}
-      GROUP BY e.id, c.name, l.name, u.name
+      GROUP BY e.id, c.name, l.name, u.full_name
       ORDER BY e.${sortField} ${sortOrder}
       LIMIT $${++paramCount} OFFSET $${++paramCount}
     `;
@@ -318,7 +318,7 @@ class ScheduleController {
 
       // Registrar no histórico de gamificação
       await client.query(`
-        INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type)
+        INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type)
         VALUES 
           ($1, $2, $3, 'xp', $4, 'Evento agendado', 'event_created'),
           ($5, $2, $3, 'coins', $6, 'Evento agendado', 'event_created')
@@ -364,7 +364,7 @@ class ScheduleController {
         l.name as lead_name,
         l.email as lead_email,
         l.phone as lead_phone,
-        u.name as organizer_name,
+        u.full_name as organizer_name,
         u.email as organizer_email,
         COALESCE(
           json_agg(
@@ -391,7 +391,7 @@ class ScheduleController {
       LEFT JOIN users u_att ON ea.user_id = u_att.id
       LEFT JOIN schedule_events parent_event ON e.parent_event_id = parent_event.id
       WHERE e.id = $1 AND e.company_id = $2 AND e.deleted_at IS NULL
-      GROUP BY e.id, c.name, c.email, c.phone, l.name, l.email, l.phone, u.name, u.email, parent_event.title
+      GROUP BY e.id, c.name, c.email, c.phone, l.name, l.email, l.phone, u.full_name, u.email, parent_event.title
     `;
 
     const eventResult = await query(eventQuery, [eventId, req.user.companyId]);
@@ -695,15 +695,15 @@ class ScheduleController {
         e.title,
         e.start_date,
         e.end_date,
-        e.type,
+        e.event_type,
         e.priority,
-        u.name as organizer_name,
+        u.full_name as organizer_name,
         array_agg(DISTINCT ea.user_id) FILTER (WHERE ea.user_id IS NOT NULL) as conflicted_users
       FROM schedule_events e
       LEFT JOIN users u ON e.created_by = u.id
       LEFT JOIN event_attendees ea ON e.id = ea.event_id AND ea.deleted_at IS NULL AND ea.user_id = ANY($4)
       ${whereClause}
-      GROUP BY e.id, e.title, e.start_date, e.end_date, e.type, e.priority, u.name
+      GROUP BY e.id, e.title, e.start_date, e.end_date, e.event_type, e.priority, u.full_name
       ORDER BY e.start_date ASC
     `;
 
@@ -795,14 +795,14 @@ class ScheduleController {
         e.start_date,
         e.end_date,
         e.all_day,
-        e.type,
+        e.event_type,
         e.priority,
         e.status,
-        e.location,
+        e.event_location,
         e.is_private,
-        c.name as client_name,
-        l.name as lead_name,
-        u.name as organizer_name,
+        c.client_name,
+        l.lead_name,
+        u.full_name as organizer_name,
         CASE 
           WHEN e.created_by = $4 THEN true
           WHEN e.id IN (SELECT event_id FROM event_attendees WHERE user_id = $4 AND deleted_at IS NULL) THEN true
@@ -931,7 +931,7 @@ class ScheduleController {
 
       // Registrar no histórico de gamificação
       await query(`
-        INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type)
+        INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type)
         VALUES 
           ($1, $2, $3, 'xp', $4, 'Evento completado', 'event_completed'),
           ($5, $2, $3, 'coins', $6, 'Evento completado', 'event_completed')

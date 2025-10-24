@@ -176,7 +176,7 @@ class PushNotificationToken {
         const query = `
             SELECT 
                 pnt.*,
-                u.name as user_name,
+                u.full_name as user_name,
                 u.email as user_email
             FROM ${this.table} pnt
             JOIN polox.users u ON pnt.user_id = u.id
@@ -249,7 +249,7 @@ class PushNotificationToken {
         const query = `
             SELECT 
                 pnt.*,
-                u.name as user_name,
+                u.full_name as user_name,
                 u.email as user_email,
                 u.timezone as user_timezone
             FROM ${this.table} pnt
@@ -493,7 +493,7 @@ class PushNotificationToken {
         const query = `
             SELECT 
                 pnt.*,
-                u.name as user_name,
+                u.full_name as user_name,
                 u.email as user_email
             FROM ${this.table} pnt
             JOIN polox.users u ON pnt.user_id = u.id

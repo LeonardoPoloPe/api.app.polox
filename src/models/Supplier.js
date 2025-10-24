@@ -438,7 +438,7 @@ class SupplierModel {
     const selectQuery = `
       SELECT 
         se.*,
-        u.name as user_name
+        u.full_name as user_name
       FROM polox.supplier_evaluations se
       LEFT JOIN polox.users u ON se.user_id = u.id
       WHERE se.supplier_id = $1 AND se.company_id = $2

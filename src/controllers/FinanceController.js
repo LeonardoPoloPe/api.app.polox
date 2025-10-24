@@ -279,7 +279,7 @@ class FinanceController {
       SELECT 
         ft.*,
         fc.name as category_name,
-        u.name as created_by_name
+        u.full_name as created_by_name
       FROM financial_transactions ft
       LEFT JOIN financial_categories fc ON ft.category_id = fc.id AND fc.company_id = ft.company_id
       LEFT JOIN users u ON ft.created_by = u.id
@@ -406,7 +406,7 @@ class FinanceController {
 
       // Registrar no histórico de gamificação
       await client.query(`
-        INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type)
+        INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type)
         VALUES 
           ($1, $2, $3, 'xp', $4, $5, 'finance_transaction'),
           ($6, $2, $3, 'coins', $7, $5, 'finance_transaction')
@@ -716,12 +716,12 @@ class FinanceController {
         fc.*,
         COUNT(ft.id) as transaction_count,
         SUM(CASE WHEN ft.deleted_at IS NULL THEN ft.amount ELSE 0 END) as total_amount,
-        u.name as created_by_name
+        u.full_name as created_by_name
       FROM financial_categories fc
       LEFT JOIN financial_transactions ft ON fc.id = ft.category_id AND ft.company_id = fc.company_id
       LEFT JOIN users u ON fc.created_by = u.id
       ${whereClause}
-      GROUP BY fc.id, u.name
+      GROUP BY fc.id, u.full_name
       ORDER BY fc.name ASC
     `;
 

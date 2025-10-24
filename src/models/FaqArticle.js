@@ -109,7 +109,7 @@ class FaqArticleModel {
         fa.not_helpful_count, fa.created_at, fa.updated_at,
         fc.name as category_name,
         fc.slug as category_slug,
-        u.name as author_name,
+        u.full_name as author_name,
         u.email as author_email
       FROM polox.faq_articles fa
       INNER JOIN polox.faq_categories fc ON fa.category_id = fc.id
@@ -152,7 +152,7 @@ class FaqArticleModel {
         fa.not_helpful_count, fa.created_at, fa.updated_at,
         fc.name as category_name,
         fc.slug as category_slug,
-        u.name as author_name,
+        u.full_name as author_name,
         u.email as author_email
       FROM polox.faq_articles fa
       INNER JOIN polox.faq_categories fc ON fa.category_id = fc.id
@@ -219,7 +219,7 @@ class FaqArticleModel {
         fa.is_published, fa.is_featured, fa.view_count, fa.helpful_count,
         fa.not_helpful_count, fa.created_at, fa.updated_at,
         fc.name as category_name,
-        u.name as author_name
+        u.full_name as author_name
       FROM polox.faq_articles fa
       INNER JOIN polox.faq_categories fc ON fa.category_id = fc.id
       INNER JOIN polox.users u ON fa.author_id = u.id
@@ -304,7 +304,7 @@ class FaqArticleModel {
         fa.not_helpful_count, fa.created_at, fa.updated_at,
         fc.name as category_name,
         fc.slug as category_slug,
-        u.name as author_name,
+        u.full_name as author_name,
         LENGTH(fa.content) as content_length
       FROM polox.faq_articles fa
       INNER JOIN polox.faq_categories fc ON fa.category_id = fc.id
@@ -345,7 +345,7 @@ class FaqArticleModel {
         fa.view_count, fa.helpful_count, fa.created_at,
         fc.name as category_name,
         fc.slug as category_slug,
-        u.name as author_name
+        u.full_name as author_name
       FROM polox.faq_articles fa
       INNER JOIN polox.faq_categories fc ON fa.category_id = fc.id
       INNER JOIN polox.users u ON fa.author_id = u.id
@@ -378,7 +378,7 @@ class FaqArticleModel {
         fa.view_count, fa.helpful_count, fa.created_at,
         fc.name as category_name,
         fc.slug as category_slug,
-        u.name as author_name,
+        u.full_name as author_name,
         (fa.helpful_count::float / NULLIF(fa.helpful_count + fa.not_helpful_count, 0)) as helpfulness_ratio
       FROM polox.faq_articles fa
       INNER JOIN polox.faq_categories fc ON fa.category_id = fc.id

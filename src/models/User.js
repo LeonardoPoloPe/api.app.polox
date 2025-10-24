@@ -458,7 +458,7 @@ class UserModel {
 
     // Filtro por role
     if (role) {
-      conditions.push(`u.role = $${paramCount}`);
+      conditions.push(`u.user_role = $${paramCount}`);
       values.push(role);
       paramCount++;
     }

@@ -86,7 +86,7 @@ class ProjectTaskModel {
         pt.due_date, pt.dependencies, pt.tags, pt.custom_fields,
         pt.completed_at, pt.created_at, pt.updated_at,
         p.name as project_name,
-        u.name as assigned_user_name,
+        u.full_name as assigned_user_name,
         u.email as assigned_user_email,
         p.company_id
       FROM polox.project_tasks pt
@@ -156,7 +156,7 @@ class ProjectTaskModel {
         pt.priority, pt.status, pt.progress, pt.estimated_hours, pt.actual_hours,
         pt.due_date, pt.dependencies, pt.tags, pt.custom_fields,
         pt.completed_at, pt.created_at, pt.updated_at,
-        u.name as assigned_user_name,
+        u.full_name as assigned_user_name,
         u.avatar_url as assigned_user_avatar
       FROM polox.project_tasks pt
       INNER JOIN polox.projects p ON pt.project_id = p.id
@@ -519,7 +519,7 @@ class ProjectTaskModel {
         pt.id, pt.title, pt.priority, pt.due_date, pt.progress,
         pt.assigned_to_user_id, pt.project_id,
         p.name as project_name,
-        u.name as assigned_user_name,
+        u.full_name as assigned_user_name,
         (pt.due_date - NOW()::date) as days_remaining
       FROM polox.project_tasks pt
       INNER JOIN polox.projects p ON pt.project_id = p.id

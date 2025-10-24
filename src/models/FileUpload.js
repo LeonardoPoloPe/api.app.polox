@@ -118,7 +118,7 @@ class FileUploadModel {
     const selectQuery = `
       SELECT 
         f.*,
-        u.name as uploaded_by_name,
+        u.full_name as uploaded_by_name,
         u.email as uploaded_by_email,
         CASE 
           WHEN f.entity_type = 'clients' THEN c.name
@@ -285,7 +285,7 @@ class FileUploadModel {
         f.id, f.number, f.original_name, f.file_name, f.file_size,
         f.mime_type, f.file_extension, f.category, f.is_public,
         f.entity_type, f.entity_id, f.description, f.uploaded_at,
-        u.name as uploaded_by_name,
+        u.full_name as uploaded_by_name,
         CASE 
           WHEN f.entity_type = 'clients' THEN c.name
           WHEN f.entity_type = 'leads' THEN l.name
@@ -388,7 +388,7 @@ class FileUploadModel {
     const selectQuery = `
       SELECT 
         f.*,
-        u.name as uploaded_by_name
+        u.full_name as uploaded_by_name
       FROM polox.file_uploads f
       LEFT JOIN polox.users u ON f.uploaded_by = u.id
       WHERE ${conditions.join(' AND ')}
@@ -931,7 +931,7 @@ class FileUploadModel {
       SELECT 
         f.id, f.number, f.original_name, f.file_size, f.mime_type,
         f.uploaded_at, f.entity_type, f.entity_id,
-        u.name as uploaded_by_name
+        u.full_name as uploaded_by_name
       FROM polox.file_uploads f
       LEFT JOIN polox.users u ON f.uploaded_by = u.id
       WHERE f.company_id = $1 AND f.deleted_at IS NULL

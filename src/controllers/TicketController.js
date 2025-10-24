@@ -275,7 +275,7 @@ class TicketController {
 
       // Registrar no histórico de gamificação
       await query(`
-        INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type, reference_id)
+        INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type, reference_id)
         VALUES 
           ($1, $2, $3, 'xp', $4, 'Ticket created', 'ticket_created', $5),
           ($6, $2, $3, 'coins', $7, 'Ticket created', 'ticket_created', $5)
@@ -353,7 +353,7 @@ class TicketController {
     const repliesQuery = `
       SELECT 
         tr.*,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email
       FROM ticket_replies tr
       LEFT JOIN users u ON tr.user_id = u.id
@@ -367,7 +367,7 @@ class TicketController {
     const historyQuery = `
       SELECT 
         th.*,
-        u.name as user_name
+        u.full_name as user_name
       FROM ticket_history th
       LEFT JOIN users u ON th.performed_by = u.id
       WHERE th.ticket_id = $1
@@ -527,7 +527,7 @@ class TicketController {
 
         // Registrar gamificação
         await query(`
-          INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type, reference_id)
+          INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type, reference_id)
           VALUES 
             ($1, $2, $3, 'xp', $4, 'Ticket resolved', 'ticket_resolved', $5),
             ($6, $2, $3, 'coins', $7, 'Ticket resolved', 'ticket_resolved', $5)
@@ -1042,7 +1042,7 @@ class TicketController {
       // Verificar se usuário designado existe (se fornecido)
       if (assigned_to) {
         const assigneeCheck = await query(
-          'SELECT id, name FROM users WHERE id = $1 AND company_id = $2 AND active = true',
+          'SELECT id, full_name FROM users WHERE id = $1 AND company_id = $2 AND active = true',
           [assigned_to, req.user.companyId]
         );
 
@@ -1184,7 +1184,7 @@ class TicketController {
       // Relatório de performance por usuário
       const performanceQuery = `
         SELECT 
-          u.id, u.name,
+          u.id, u.full_name,
           COUNT(DISTINCT t.id) as total_assigned,
           COUNT(CASE WHEN t.status IN ('resolved', 'closed') THEN 1 END) as resolved_count,
           ROUND(AVG(CASE 
@@ -1195,7 +1195,7 @@ class TicketController {
         FROM users u
         LEFT JOIN tickets t ON u.id = t.assigned_to AND t.deleted_at IS NULL ${dateFilter}
         WHERE u.company_id = $1 AND u.active = true
-        GROUP BY u.id, u.name
+        GROUP BY u.id, u.full_name
         HAVING COUNT(DISTINCT t.id) > 0
         ORDER BY resolved_count DESC, avg_resolution_hours ASC
       `;

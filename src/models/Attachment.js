@@ -116,7 +116,7 @@ class Attachment {
             SELECT 
                 a.*,
                 f.original_filename, f.file_size, f.mime_type, f.file_url,
-                u.name as created_by_name
+                u.full_name as created_by_name
             FROM ${this.table} a
             JOIN polox.file_uploads f ON a.file_upload_id = f.id
             LEFT JOIN polox.users u ON a.created_by_user_id = u.id
@@ -174,7 +174,7 @@ class Attachment {
             SELECT 
                 a.*,
                 f.original_filename, f.file_size, f.mime_type, f.file_url,
-                u.name as created_by_name
+                u.full_name as created_by_name
             FROM ${this.table} a
             JOIN polox.file_uploads f ON a.file_upload_id = f.id
             LEFT JOIN polox.users u ON a.created_by_user_id = u.id
@@ -462,7 +462,7 @@ class Attachment {
             SELECT 
                 a.*,
                 f.original_filename, f.file_size, f.mime_type, f.file_url,
-                u.name as created_by_name
+                u.full_name as created_by_name
             FROM ${this.table} a
             JOIN polox.file_uploads f ON a.file_upload_id = f.id
             LEFT JOIN polox.users u ON a.created_by_user_id = u.id

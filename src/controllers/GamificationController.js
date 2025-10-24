@@ -75,7 +75,7 @@ class GamificationController {
     const profileQuery = `
       SELECT 
         ugp.*,
-        u.name as user_name,
+        u.full_name as user_name,
         u.position,
         COUNT(DISTINCT ua.id) as achievements_unlocked,
         COUNT(DISTINCT ur.id) as rewards_purchased,
@@ -94,7 +94,7 @@ class GamificationController {
       LEFT JOIN user_rewards ur ON ugp.user_id = ur.user_id
       LEFT JOIN user_mission_progress ump ON ugp.user_id = ump.user_id AND ump.is_completed = true
       WHERE ugp.user_id = $1 AND ugp.company_id = $2
-      GROUP BY ugp.id, u.name, u.position
+      GROUP BY ugp.id, u.full_name, u.position
     `;
 
     const result = await query(profileQuery, [req.user.id, req.user.company_id]);
@@ -169,7 +169,7 @@ class GamificationController {
 
     // Verificar se usuário existe na empresa
     const userCheck = await query(
-      'SELECT id, name FROM users WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      'SELECT id, full_name FROM users WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
       [targetUserId, req.user.company_id]
     );
 
@@ -670,7 +670,7 @@ class GamificationController {
       LEFT JOIN user_achievements ua ON u.id = ua.user_id
       LEFT JOIN user_mission_progress ump ON u.id = ump.user_id AND ump.is_completed = true
       WHERE ugp.company_id = $1 AND u.deleted_at IS NULL ${dateFilter}
-      GROUP BY u.id, u.name, u.position, ugp.current_level, ugp.total_xp, ugp.current_coins, ugp.updated_at
+      GROUP BY u.id, u.full_name, u.position, ugp.current_level, ugp.total_xp, ugp.current_coins, ugp.updated_at
       ORDER BY ugp.total_xp DESC, ugp.current_level DESC, ugp.updated_at ASC
       LIMIT $2
     `;
@@ -770,7 +770,7 @@ class GamificationController {
     const historyQuery = `
       SELECT 
         gh.*,
-        u.name as awarded_by_name
+        u.full_name as awarded_by_name
       FROM gamification_history gh
       LEFT JOIN users u ON gh.awarded_by_user_id = u.id
       ${whereClause}

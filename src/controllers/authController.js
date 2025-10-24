@@ -32,7 +32,7 @@ class AuthController {
       const userResult = await query(
         `
         SELECT 
-          id, email, password_hash, name, role, company_id, created_at
+          id, email, password_hash, full_name, user_role, company_id, created_at
         FROM users 
         WHERE email = $1 AND deleted_at IS NULL
       `,
@@ -60,7 +60,7 @@ class AuthController {
         {
           id: user.id,
           email: user.email,
-          role: user.role,
+          role: user.user_role,
           companyId: user.company_id,
         },
         process.env.JWT_SECRET ||
@@ -84,9 +84,9 @@ class AuthController {
         data: {
           user: {
             id: user.id,
-            name: user.name,
+            name: user.full_name,
             email: user.email,
-            role: user.role,
+            role: user.user_role,
             companyId: user.company_id,
           },
           token,
@@ -137,10 +137,10 @@ class AuthController {
       const userResult = await query(
         `
         INSERT INTO users (
-          name, email, password_hash, company_id, role
+          full_name, email, password_hash, company_id, user_role
         ) VALUES (
           $1, $2, $3, $4, $5
-        ) RETURNING id, name, email, company_id, role, created_at
+        ) RETURNING id, full_name, email, company_id, user_role, created_at
       `,
         [name.trim(), email.toLowerCase(), hashedPassword, companyId, role]
       );
@@ -161,9 +161,9 @@ class AuthController {
         data: {
           user: {
             id: newUser.id,
-            name: newUser.name,
+            name: newUser.full_name,
             email: newUser.email,
-            role: newUser.role,
+            role: newUser.user_role,
             companyId: newUser.company_id,
             createdAt: newUser.created_at,
           },

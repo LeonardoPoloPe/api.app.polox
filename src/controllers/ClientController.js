@@ -319,7 +319,7 @@ class ClientController {
     const statsRes = await query(statsQuery, [clientId]);
 
     const notesRes = await query(`
-      SELECT cn.*, u.name as created_by_name
+      SELECT cn.*, u.full_name as created_by_name
       FROM client_notes cn
       LEFT JOIN users u ON cn.created_by_id = u.id
       WHERE cn.client_id = $1
@@ -418,7 +418,7 @@ class ClientController {
     const salesQuery = `
       SELECT 
         s.*,
-        u.name as seller_name,
+        u.full_name as seller_name,
         u.email as seller_email,
         COUNT(si.id) as items_count,
         json_agg(
@@ -434,7 +434,7 @@ class ClientController {
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN sale_items si ON s.id = si.sale_id
       WHERE s.client_id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL
-      GROUP BY s.id, u.name, u.email
+      GROUP BY s.id, u.full_name, u.email
       ORDER BY s.sale_date DESC
     `;
 

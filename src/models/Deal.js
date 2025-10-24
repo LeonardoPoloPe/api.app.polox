@@ -102,7 +102,7 @@ class DealModel {
         p.name as pipeline_name,
         c.name as client_name,
         l.name as lead_name,
-        u.name as user_name
+        u.full_name as user_name
       FROM polox.deals d
       LEFT JOIN polox.pipelines p ON d.pipeline_id = p.id
       LEFT JOIN polox.clients c ON d.client_id = c.id
@@ -187,7 +187,7 @@ class DealModel {
         p.name as pipeline_name,
         c.name as client_name,
         l.name as lead_name,
-        u.name as user_name
+        u.full_name as user_name
       FROM polox.deals d
       LEFT JOIN polox.pipelines p ON d.pipeline_id = p.id
       LEFT JOIN polox.clients c ON d.client_id = c.id

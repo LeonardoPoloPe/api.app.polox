@@ -31,7 +31,7 @@ class UserController {
       
       // Filtro de busca por nome ou email
       if (search) {
-        whereClause += ' AND (name ILIKE $1 OR email ILIKE $1)';
+        whereClause += ' AND (full_name ILIKE $1 OR email ILIKE $1)';
         queryParams.push(`%${search}%`);
       }
 
@@ -48,7 +48,7 @@ class UserController {
       const offset = (page - 1) * limit;
       const usersResult = await query(`
         SELECT 
-          id, name, email, role, company_id, created_at
+          id, full_name, email, user_role, company_id, created_at
         FROM users 
         ${whereClause}
         ORDER BY created_at DESC
@@ -58,9 +58,9 @@ class UserController {
       // Formatar resposta
       const users = usersResult.rows.map(user => ({
         id: user.id,
-        name: user.name,
+        name: user.full_name,
         email: user.email,
-        role: user.role,
+        role: user.user_role,
         companyId: user.company_id,
         createdAt: user.created_at
       }));
@@ -92,7 +92,7 @@ class UserController {
     try {
       const userResult = await query(`
         SELECT 
-          id, name, email, role, company_id, created_at
+          id, full_name, email, user_role, company_id, created_at
         FROM users 
         WHERE id = $1 AND deleted_at IS NULL
       `, [id]);
@@ -108,9 +108,9 @@ class UserController {
         data: {
           user: {
             id: user.id,
-            name: user.name,
+            name: user.full_name,
             email: user.email,
-            role: user.role,
+            role: user.user_role,
             companyId: user.company_id,
             createdAt: user.created_at
           }
@@ -129,7 +129,7 @@ class UserController {
     try {
       const userResult = await query(`
         SELECT 
-          id, name, email, role, company_id, created_at
+          id, full_name, email, user_role, company_id, created_at
         FROM users 
         WHERE id = $1 AND deleted_at IS NULL
       `, [req.user.id]);
@@ -145,9 +145,9 @@ class UserController {
         data: {
           user: {
             id: user.id,
-            name: user.name,
+            name: user.full_name,
             email: user.email,
-            role: user.role,
+            role: user.user_role,
             companyId: user.company_id,
             createdAt: user.created_at
           }
@@ -186,9 +186,9 @@ class UserController {
       // Atualizar usuário
       const userResult = await query(`
         UPDATE users 
-        SET name = $1, email = $2, updated_at = NOW()
+        SET full_name = $1, email = $2, updated_at = NOW()
         WHERE id = $3 AND deleted_at IS NULL
-        RETURNING id, name, email, role, company_id, created_at, updated_at
+        RETURNING id, full_name, email, user_role, company_id, created_at, updated_at
       `, [name.trim(), email.toLowerCase(), req.user.id]);
 
       if (userResult.rows.length === 0) {
@@ -203,9 +203,9 @@ class UserController {
         data: {
           user: {
             id: user.id,
-            name: user.name,
+            name: user.full_name,
             email: user.email,
-            role: user.role,
+            role: user.user_role,
             companyId: user.company_id,
             createdAt: user.created_at,
             updatedAt: user.updated_at

@@ -95,7 +95,7 @@ class UserRewardModel {
         r.points_cost as reward_points_cost,
         r.rarity as reward_rarity,
         r.config as reward_config,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         gb.name as granted_by_name
       FROM polox.user_rewards ur
@@ -258,7 +258,7 @@ class UserRewardModel {
       SELECT 
         ur.id, ur.user_id, ur.reward_id, ur.quantity, ur.status,
         ur.granted_at, ur.claimed_at, ur.expires_at, ur.metadata,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         u.avatar_url as user_avatar,
         up.level as user_level,
@@ -468,7 +468,7 @@ class UserRewardModel {
       SELECT 
         ur.id, ur.user_id, ur.reward_id, ur.quantity, ur.expires_at,
         ur.granted_at, ur.metadata,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         r.title as reward_title,
         r.description as reward_description,

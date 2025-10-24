@@ -66,7 +66,7 @@ class LeadModel {
       // 2. Adicionar nota inicial se fornecida
       if (notes && notes.trim() !== '') {
         await client.query(`
-          INSERT INTO polox.lead_notes (lead_id, created_by_id, content, type)
+          INSERT INTO polox.lead_notes (lead_id, created_by_id, content, note_type)
           VALUES ($1, $2, $3, 'general')
         `, [lead.id, created_by_id, notes]);
       }
@@ -77,7 +77,7 @@ class LeadModel {
           if (tagName && tagName.trim() !== '') {
             // Inserir tag se não existir
             const tagResult = await client.query(`
-              INSERT INTO polox.tags (name)
+              INSERT INTO polox.tags (tag_name)
               VALUES ($1)
               ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
               RETURNING id
@@ -162,7 +162,7 @@ class LeadModel {
       const notesResult = await query(`
         SELECT 
           ln.id, ln.content, ln.type, ln.created_at, ln.updated_at,
-          u.name as created_by_name
+          u.full_name as created_by_name
         FROM polox.lead_notes ln
         LEFT JOIN polox.users u ON ln.created_by_id = u.id
         WHERE ln.lead_id = $1 AND ln.deleted_at IS NULL
@@ -619,10 +619,10 @@ class LeadModel {
     }
 
     const insertQuery = `
-      INSERT INTO polox.lead_notes (lead_id, created_by_id, content, type)
+      INSERT INTO polox.lead_notes (lead_id, created_by_id, content, note_type)
       VALUES ($1, $2, $3, $4)
       RETURNING 
-        id, lead_id, created_by_id, content, type, 
+        id, lead_id, created_by_id, content, note_type, 
         created_at, updated_at
     `;
 
@@ -644,7 +644,7 @@ class LeadModel {
     const selectQuery = `
       SELECT 
         ln.id, ln.content, ln.type, ln.created_at, ln.updated_at,
-        u.name as created_by_name, u.email as created_by_email
+        u.full_name as created_by_name, u.email as created_by_email
       FROM polox.lead_notes ln
       LEFT JOIN polox.users u ON ln.created_by_id = u.id
       WHERE ln.lead_id = $1 AND ln.deleted_at IS NULL

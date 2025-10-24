@@ -105,7 +105,7 @@ class UserMissionProgressModel {
         m.points_reward as mission_points_reward,
         m.requirements as mission_requirements,
         m.config as mission_config,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email
       FROM polox.user_mission_progress ump
       INNER JOIN polox.users u ON ump.user_id = u.id
@@ -262,7 +262,7 @@ class UserMissionProgressModel {
       SELECT 
         ump.id, ump.user_id, ump.mission_id, ump.status, ump.current_value,
         ump.target_value, ump.progress_percentage, ump.started_at, ump.completed_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         u.avatar_url as user_avatar,
         up.level as user_level,
@@ -602,7 +602,7 @@ class UserMissionProgressModel {
       SELECT 
         ump.id, ump.user_id, ump.mission_id, ump.current_value, ump.target_value,
         ump.progress_percentage, ump.started_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         m.title as mission_title,
         m.description as mission_description,

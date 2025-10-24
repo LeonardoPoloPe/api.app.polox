@@ -98,7 +98,7 @@ class UserGamificationProfileModel {
     const selectQuery = `
       SELECT 
         ugp.*,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         (SELECT COUNT(*) FROM polox.user_achievements WHERE user_id = ugp.user_id AND company_id = ugp.company_id) as total_unlocked_achievements,
         (SELECT COUNT(*) FROM polox.user_rewards WHERE user_id = ugp.user_id AND company_id = ugp.company_id AND redeemed_at IS NOT NULL) as total_redeemed_rewards,
@@ -171,7 +171,7 @@ class UserGamificationProfileModel {
     const selectQuery = `
       SELECT 
         ugp.*,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         ROW_NUMBER() OVER (ORDER BY ugp.${sortBy} ${sortOrder}) as ranking,
         (SELECT COUNT(*) FROM polox.user_achievements WHERE user_id = ugp.user_id AND company_id = ugp.company_id) as total_achievements_unlocked
@@ -500,7 +500,7 @@ class UserGamificationProfileModel {
         ugp.points,
         ugp.level,
         ugp.current_streak,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         ROW_NUMBER() OVER (ORDER BY ugp.points DESC) as ranking
       FROM polox.user_gamification_profiles ugp

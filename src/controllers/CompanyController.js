@@ -208,20 +208,20 @@ class CompanyController {
 
     // 🔍 VERIFICAR SE DOMÍNIO JÁ EXISTE
     const domainCheck = await query(
-      "SELECT id, name FROM polox.companies WHERE domain = $1 AND deleted_at IS NULL",
+      "SELECT id, company_name FROM polox.companies WHERE company_domain = $1 AND deleted_at IS NULL",
       [companyData.domain]
     );
 
     if (domainCheck.rows.length > 0) {
       throw new ApiError(
         400,
-        `Domínio '${companyData.domain}' já está em uso pela empresa: ${domainCheck.rows[0].name}`
+        `Domínio '${companyData.domain}' já está em uso pela empresa: ${domainCheck.rows[0].company_name}`
       );
     }
 
     // 🔍 VERIFICAR SE EMAIL DO ADMIN JÁ EXISTE
     const emailCheck = await query(
-      "SELECT id, name FROM polox.users WHERE email = $1 AND deleted_at IS NULL",
+      "SELECT id, full_name FROM polox.users WHERE email = $1 AND deleted_at IS NULL",
       [companyData.admin_email]
     );
 
@@ -244,7 +244,7 @@ class CompanyController {
 
       const createCompanyQuery = `
         INSERT INTO polox.companies (
-          name, domain, slug, plan, industry, company_size,
+          company_name, company_domain, slug, plan, industry, company_size,
           admin_name, admin_email, admin_phone,
           enabled_modules, settings, status, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', NOW(), NOW())
@@ -272,10 +272,10 @@ class CompanyController {
 
       const createAdminQuery = `
         INSERT INTO polox.users (
-          company_id, name, email, password_hash, role, 
+          company_id, full_name, email, password_hash, user_role, 
           phone, status, permissions, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, 'company_admin', $5, 'active', $6, NOW(), NOW())
-        RETURNING id, name, email, role, status
+        RETURNING id, full_name, email, user_role, status
       `;
 
       const adminResult = await client.query(createAdminQuery, [
@@ -789,7 +789,7 @@ class CompanyController {
 
     // Verificar se empresa existe
     const companyCheck = await query(
-      "SELECT name FROM polox.companies WHERE id = $1 AND deleted_at IS NULL",
+      "SELECT company_name FROM polox.companies WHERE id = $1 AND deleted_at IS NULL",
       [companyId]
     );
 
@@ -855,7 +855,7 @@ class CompanyController {
       JOIN polox.user_gamification_profiles ugp ON u.id = ugp.user_id
       LEFT JOIN polox.user_achievements ua ON u.id = ua.user_id
       WHERE u.company_id = $1 AND u.deleted_at IS NULL
-      GROUP BY u.id, u.name, u.email, ugp.current_level, ugp.total_xp, ugp.current_coins
+      GROUP BY u.id, u.full_name, u.email, ugp.current_level, ugp.total_xp, ugp.current_coins
       ORDER BY ugp.total_xp DESC
       LIMIT 10
     `;

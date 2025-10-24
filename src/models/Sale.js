@@ -143,7 +143,7 @@ class SaleModel {
         c.name as client_name,
         c.email as client_email,
         c.phone as client_phone,
-        u.name as seller_name,
+        u.full_name as seller_name,
         u.email as seller_email,
         (
           SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'slug', t.slug, 'color', t.color))
@@ -279,7 +279,7 @@ class SaleModel {
         s.commission_amount, s.description, s.created_at, s.updated_at,
         c.name as client_name,
         c.email as client_email,
-        u.name as seller_name,
+        u.full_name as seller_name,
         (
           SELECT json_agg(t.name)
           FROM polox.tags t
@@ -598,7 +598,7 @@ class SaleModel {
       FROM polox.users u
       INNER JOIN polox.sales s ON u.id = s.user_id
       ${whereClause}
-      GROUP BY u.id, u.name, u.email
+      GROUP BY u.id, u.full_name, u.email
       ORDER BY total_revenue DESC
       LIMIT $${paramCount}
     `;

@@ -114,7 +114,7 @@ class ProductController {
     }
 
     if (req.query.type) {
-      whereClause += ` AND p.type = $${++paramCount}`;
+      whereClause += ` AND p.product_type = $${++paramCount}`;
       queryParams.push(req.query.type);
     }
 
@@ -315,7 +315,7 @@ class ProductController {
 
       // Registrar no histórico de gamificação
       await client.query(`
-        INSERT INTO gamification_history (id, user_id, company_id, type, amount, reason, action_type)
+        INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type)
         VALUES 
           ($1, $2, $3, 'xp', 15, 'Produto criado', 'product_created'),
           ($4, $2, $3, 'coins', 8, 'Produto criado', 'product_created')
@@ -356,7 +356,7 @@ class ProductController {
       SELECT 
         p.*,
         pc.name as category_name,
-        u.name as created_by_name,
+        u.full_name as created_by_name,
         sales_stats.total_sales,
         sales_stats.total_sold,
         sales_stats.total_revenue,
@@ -778,12 +778,12 @@ class ProductController {
       SELECT 
         pc.*,
         COUNT(p.id) as products_count,
-        u.name as created_by_name
+        u.full_name as created_by_name
       FROM product_categories pc
       LEFT JOIN products p ON pc.id = p.category_id AND p.company_id = pc.company_id AND p.deleted_at IS NULL
       LEFT JOIN users u ON pc.created_by = u.id
       WHERE pc.company_id = $1 AND pc.deleted_at IS NULL
-      GROUP BY pc.id, u.name
+      GROUP BY pc.id, u.full_name
       ORDER BY pc.name ASC
     `;
 

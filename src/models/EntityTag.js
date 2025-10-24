@@ -126,7 +126,7 @@ class EntityTagModel {
         tc.name as category_name,
         tc.slug as category_slug,
         tc.color as category_color,
-        u.name as added_by_name
+        u.full_name as added_by_name
       FROM polox.entity_tags et
       INNER JOIN polox.tags t ON et.tag_id = t.id
       INNER JOIN polox.tag_categories tc ON t.category_id = tc.id
@@ -179,7 +179,7 @@ class EntityTagModel {
         et.added_by_user_id,
         et.created_at,
         t.name as tag_name,
-        u.name as added_by_name
+        u.full_name as added_by_name
       FROM polox.entity_tags et
       INNER JOIN polox.tags t ON et.tag_id = t.id
       INNER JOIN polox.users u ON et.added_by_user_id = u.id

@@ -91,7 +91,7 @@ class ProjectModel {
         p.start_date, p.end_date, p.budget, p.priority, p.status, p.progress,
         p.tags, p.custom_fields, p.created_at, p.updated_at,
         c.name as client_name,
-        u.name as owner_name,
+        u.full_name as owner_name,
         u.email as owner_email,
         (SELECT COUNT(*) FROM polox.project_tasks WHERE project_id = p.id AND deleted_at IS NULL) as tasks_count,
         (SELECT COUNT(*) FROM polox.project_tasks WHERE project_id = p.id AND status = 'completed' AND deleted_at IS NULL) as completed_tasks,
@@ -188,7 +188,7 @@ class ProjectModel {
         p.start_date, p.end_date, p.budget, p.priority, p.status, p.progress,
         p.tags, p.custom_fields, p.created_at, p.updated_at,
         c.name as client_name,
-        u.name as owner_name,
+        u.full_name as owner_name,
         (SELECT COUNT(*) FROM polox.project_tasks WHERE project_id = p.id AND deleted_at IS NULL) as tasks_count,
         (SELECT COUNT(*) FROM polox.project_tasks WHERE project_id = p.id AND status = 'completed' AND deleted_at IS NULL) as completed_tasks
       FROM polox.projects p
@@ -540,7 +540,7 @@ class ProjectModel {
       SELECT 
         p.id, p.name, p.description, p.end_date, p.progress, p.status,
         p.priority, p.owner_user_id,
-        u.name as owner_name,
+        u.full_name as owner_name,
         c.name as client_name,
         (p.end_date - NOW()::date) as days_remaining
       FROM polox.projects p

@@ -70,7 +70,7 @@ class TicketCommentModel {
       SELECT 
         tc.id, tc.ticket_id, tc.user_id, tc.content, tc.is_internal, 
         tc.attachments, tc.created_at, tc.updated_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.avatar_url as user_avatar,
         u.role as user_role,
         t.title as ticket_title,
@@ -130,7 +130,7 @@ class TicketCommentModel {
       SELECT 
         tc.id, tc.ticket_id, tc.user_id, tc.content, tc.is_internal, 
         tc.attachments, tc.created_at, tc.updated_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.avatar_url as user_avatar,
         u.role as user_role
       FROM polox.ticket_comments tc
@@ -183,7 +183,7 @@ class TicketCommentModel {
       SELECT 
         tc.id, tc.ticket_id, tc.user_id, tc.content, tc.is_internal, 
         tc.attachments, tc.created_at, tc.updated_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.avatar_url as user_avatar,
         u.role as user_role
       FROM polox.ticket_comments tc
@@ -364,7 +364,7 @@ class TicketCommentModel {
       SELECT 
         tc.id, tc.ticket_id, tc.user_id, tc.content, tc.is_internal, 
         tc.attachments, tc.created_at, tc.updated_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.avatar_url as user_avatar,
         u.role as user_role
       FROM polox.ticket_comments tc
@@ -424,7 +424,7 @@ class TicketCommentModel {
       SELECT 
         tc.id, tc.ticket_id, tc.user_id, tc.content, tc.is_internal, 
         tc.attachments, tc.created_at, tc.updated_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.avatar_url as user_avatar,
         t.title as ticket_title,
         t.status as ticket_status
@@ -465,7 +465,7 @@ class TicketCommentModel {
       SELECT 
         tc.id, tc.ticket_id, tc.user_id, tc.content, tc.is_internal, 
         tc.attachments, tc.created_at, tc.updated_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.avatar_url as user_avatar
       FROM polox.ticket_comments tc
       INNER JOIN polox.users u ON tc.user_id = u.id
@@ -515,7 +515,7 @@ class TicketCommentModel {
     const statsQuery = `
       SELECT 
         u.id as user_id,
-        u.name as user_name,
+        u.full_name as user_name,
         u.role as user_role,
         COUNT(*) as total_comments,
         COUNT(CASE WHEN tc.is_internal = true THEN 1 END) as internal_comments,
@@ -527,7 +527,7 @@ class TicketCommentModel {
       INNER JOIN polox.users u ON tc.user_id = u.id
       INNER JOIN polox.tickets t ON tc.ticket_id = t.id
       ${whereClause}
-      GROUP BY u.id, u.name, u.role
+      GROUP BY u.id, u.full_name, u.role
       ORDER BY total_comments DESC
     `;
 

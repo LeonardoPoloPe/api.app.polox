@@ -286,7 +286,7 @@ class AuditLogModel {
       SELECT 
         al.id, al.action, al.old_values, al.new_values,
         al.description, al.created_at, al.ip_address,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email
       FROM polox.audit_logs al
       LEFT JOIN polox.users u ON al.user_id = u.id
@@ -635,7 +635,7 @@ class AuditLogModel {
       SELECT 
         al.id, al.action, al.severity, al.description, 
         al.ip_address, al.user_agent, al.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email
       FROM polox.audit_logs al
       LEFT JOIN polox.users u ON al.user_id = u.id
@@ -707,7 +707,7 @@ class AuditLogModel {
       // Atividade fora do horário normal
       afterHoursActivity: `
         SELECT 
-          u.name as user_name,
+          u.full_name as user_name,
           u.email as user_email,
           al.action,
           al.entity_type,
@@ -719,7 +719,7 @@ class AuditLogModel {
         WHERE al.company_id = $1 
           AND al.created_at > NOW() - INTERVAL '${hours} hours'
           AND (EXTRACT(HOUR FROM al.created_at) < 6 OR EXTRACT(HOUR FROM al.created_at) > 22)
-        GROUP BY u.id, u.name, u.email, al.action, al.entity_type
+        GROUP BY u.id, u.full_name, u.email, al.action, al.entity_type
         HAVING COUNT(*) >= 5
         ORDER BY activity_count DESC
       `,
@@ -727,7 +727,7 @@ class AuditLogModel {
       // Múltiplos IPs para mesmo usuário
       multipleIps: `
         SELECT 
-          u.name as user_name,
+          u.full_name as user_name,
           u.email as user_email,
           COUNT(DISTINCT al.ip_address) as unique_ips,
           STRING_AGG(DISTINCT al.ip_address, ', ') as ip_addresses,
@@ -738,7 +738,7 @@ class AuditLogModel {
         WHERE al.company_id = $1 
           AND al.action = 'login'
           AND al.created_at > NOW() - INTERVAL '${hours} hours'
-        GROUP BY u.id, u.name, u.email
+        GROUP BY u.id, u.full_name, u.email
         HAVING COUNT(DISTINCT al.ip_address) >= 3
         ORDER BY unique_ips DESC
       `

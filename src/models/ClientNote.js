@@ -72,7 +72,7 @@ class ClientNoteModel {
         cn.*,
         c.name as client_name,
         c.email as client_email,
-        u.name as created_by_name,
+        u.full_name as created_by_name,
         u.email as created_by_email
       FROM polox.client_notes cn
       INNER JOIN polox.clients c ON cn.client_id = c.id
@@ -139,7 +139,7 @@ class ClientNoteModel {
       SELECT 
         cn.id, cn.client_id, cn.created_by_id, cn.content, cn.type,
         cn.created_at, cn.updated_at,
-        u.name as created_by_name,
+        u.full_name as created_by_name,
         u.email as created_by_email
       FROM polox.client_notes cn
       INNER JOIN polox.clients c ON cn.client_id = c.id
@@ -243,7 +243,7 @@ class ClientNoteModel {
         cn.created_at, cn.updated_at,
         c.name as client_name,
         c.email as client_email,
-        u.name as created_by_name,
+        u.full_name as created_by_name,
         u.email as created_by_email
       FROM polox.client_notes cn
       INNER JOIN polox.clients c ON cn.client_id = c.id
@@ -435,7 +435,7 @@ class ClientNoteModel {
       SELECT 
         cn.id, cn.client_id, cn.created_by_id, cn.content, cn.type,
         cn.created_at, cn.updated_at,
-        u.name as created_by_name
+        u.full_name as created_by_name
       FROM polox.client_notes cn
       INNER JOIN polox.clients c ON cn.client_id = c.id
       LEFT JOIN polox.users u ON cn.created_by_id = u.id

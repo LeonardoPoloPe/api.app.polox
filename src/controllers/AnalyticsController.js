@@ -339,7 +339,7 @@ class AnalyticsController {
     // Top vendedores
     const topSellersQuery = `
       SELECT 
-        u.id, u.name,
+        u.id, u.full_name,
         COUNT(*) as sales_count,
         SUM(s.total_amount) as total_revenue,
         AVG(s.total_amount) as avg_order_value,
@@ -347,7 +347,7 @@ class AnalyticsController {
       FROM sales s
       JOIN users u ON s.user_id = u.id
       WHERE s.company_id = $1 AND s.deleted_at IS NULL ${dateFilter}
-      GROUP BY u.id, u.name
+      GROUP BY u.id, u.full_name
       ORDER BY total_revenue DESC
       LIMIT 10
     `;
@@ -970,7 +970,7 @@ class AnalyticsController {
     // Performance de vendedores
     const sellersPerformanceQuery = `
       SELECT 
-        u.id, u.name,
+        u.id, u.full_name,
         COUNT(DISTINCT s.id) as total_sales,
         SUM(s.total_amount) as total_revenue,
         AVG(s.total_amount) as avg_order_value,
@@ -981,14 +981,14 @@ class AnalyticsController {
       FROM users u
       LEFT JOIN sales s ON u.id = s.user_id AND s.deleted_at IS NULL ${dateFilter}
       WHERE u.company_id = $1 AND u.active = true
-      GROUP BY u.id, u.name
+      GROUP BY u.id, u.full_name
       ORDER BY total_revenue DESC NULLS LAST
     `;
 
     // Performance de tickets por usuário
     const ticketPerformanceQuery = `
       SELECT 
-        u.id, u.name,
+        u.id, u.full_name,
         COUNT(CASE WHEN t.assigned_to = u.id THEN 1 END) as assigned_tickets,
         COUNT(CASE WHEN t.assigned_to = u.id AND t.status IN ('resolved', 'closed') THEN 1 END) as resolved_tickets,
         ROUND(
@@ -1002,7 +1002,7 @@ class AnalyticsController {
       FROM users u
       LEFT JOIN tickets t ON (u.id = t.assigned_to OR u.id = t.created_by) AND t.deleted_at IS NULL ${dateFilter}
       WHERE u.company_id = $1 AND u.active = true
-      GROUP BY u.id, u.name
+      GROUP BY u.id, u.full_name
       HAVING COUNT(CASE WHEN t.assigned_to = u.id THEN 1 END) > 0
       ORDER BY resolution_rate DESC, avg_resolution_hours ASC
     `;
@@ -1010,7 +1010,7 @@ class AnalyticsController {
     // Gamificação por usuário
     const gamificationPerformanceQuery = `
       SELECT 
-        u.id, u.name,
+        u.id, u.full_name,
         ugp.total_xp, ugp.current_coins, ugp.level,
         COUNT(gh.id) as total_actions,
         SUM(CASE WHEN gh.type = 'xp' THEN gh.amount ELSE 0 END) as xp_earned_period,
@@ -1019,7 +1019,7 @@ class AnalyticsController {
       LEFT JOIN user_gamification_profiles ugp ON u.id = ugp.user_id
       LEFT JOIN gamification_history gh ON u.id = gh.user_id AND gh.deleted_at IS NULL ${dateFilter}
       WHERE u.company_id = $1 AND u.active = true
-      GROUP BY u.id, u.name, ugp.total_xp, ugp.current_coins, ugp.level
+      GROUP BY u.id, u.full_name, ugp.total_xp, ugp.current_coins, ugp.level
       ORDER BY ugp.total_xp DESC NULLS LAST
     `;
 

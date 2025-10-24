@@ -139,7 +139,7 @@ class UserActivityLog {
         const query = `
             SELECT 
                 ual.*,
-                u.name as user_name,
+                u.full_name as user_name,
                 u.email as user_email
             FROM ${this.table} ual
             JOIN polox.users u ON ual.user_id = u.id
@@ -204,7 +204,7 @@ class UserActivityLog {
         const query = `
             SELECT 
                 ual.*,
-                u.name as user_name,
+                u.full_name as user_name,
                 u.email as user_email
             FROM ${this.table} ual
             JOIN polox.users u ON ual.user_id = u.id
@@ -350,7 +350,7 @@ class UserActivityLog {
             FROM ${this.table} ual
             JOIN polox.users u ON ual.user_id = u.id
             WHERE ${whereConditions.join(' AND ')}
-            GROUP BY u.id, u.name, u.email
+            GROUP BY u.id, u.full_name, u.email
             ORDER BY total_activities DESC
             LIMIT $${++paramCount}
         `;

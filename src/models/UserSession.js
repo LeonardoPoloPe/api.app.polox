@@ -71,7 +71,7 @@ class UserSessionModel {
       SELECT 
         s.id, s.user_id, s.token_id, s.refresh_token, s.ip_address,
         s.user_agent, s.device_info, s.expires_at, s.revoked_at, s.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         u.company_id,
         c.name as company_name
@@ -99,7 +99,7 @@ class UserSessionModel {
       SELECT 
         s.id, s.user_id, s.token_id, s.refresh_token, s.ip_address,
         s.user_agent, s.device_info, s.expires_at, s.revoked_at, s.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         u.company_id,
         c.name as company_name
@@ -405,7 +405,7 @@ class UserSessionModel {
     const suspiciousQuery = `
       SELECT 
         s.user_id,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email,
         COUNT(DISTINCT s.ip_address) as unique_ips,
         array_agg(DISTINCT s.ip_address) as ip_addresses,
