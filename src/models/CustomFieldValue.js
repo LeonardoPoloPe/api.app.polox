@@ -11,11 +11,35 @@
  * - Limpeza de valores órfãos
  * - Manutenção da integridade referencial da aplicação
  * 
- * ⚠️ RESPONSABILIDADE CRÍTICA:
- * Como entity_id é polimórfico (não tem Foreign Key), a aplicação DEVE:
- * 1. Validar que entity_id existe antes de criar valor
- * 2. Deletar valores antes de deletar entidade
- * 3. Usar deleteAllByEntity(entityId) antes de deletar Lead, Client, etc.
+ * ✅ INTEGRIDADE REFERENCIAL (Migration 031):
+ * A partir de 24/10/2025, a limpeza de valores órfãos é AUTOMÁTICA via Database Triggers!
+ * 
+ * Quando uma entidade é deletada (client, lead, product, etc.), o trigger 
+ * polox.cleanup_custom_field_values() deleta automaticamente os valores relacionados.
+ * 
+ * Triggers criados:
+ * - trg_clients_cleanup_custom_values
+ * - trg_leads_cleanup_custom_values
+ * - trg_products_cleanup_custom_values
+ * - trg_sales_cleanup_custom_values
+ * - trg_tickets_cleanup_custom_values
+ * - trg_events_cleanup_custom_values
+ * - trg_suppliers_cleanup_custom_values
+ * - trg_financial_transactions_cleanup_custom_values
+ * 
+ * ⚠️ RESPONSABILIDADE DA APLICAÇÃO (Ainda Recomendado):
+ * Embora os triggers garantam a limpeza, é recomendado AINDA chamar
+ * deleteAllByEntity(entityId) nos serviços para:
+ * 1. Manter compatibilidade com código existente
+ * 2. Ter controle explícito sobre a limpeza
+ * 3. Permitir logging/auditoria da operação
+ * 
+ * Exemplo:
+ * ```javascript
+ * // Em leadService.deleteLead(id):
+ * await CustomFieldValue.deleteAllByEntity(id); // Explícito (recomendado)
+ * await Lead.delete(id); // Trigger também fará a limpeza (fallback)
+ * ```
  * 
  * Colunas de Valor:
  * - text_value: Para 'text', 'textarea', 'url', 'options'
@@ -309,12 +333,20 @@ class CustomFieldValue {
   /**
    * Deleta todos os valores de uma entidade
    * 
-   * ⚠️ CRÍTICO: Chamar isso ANTES de deletar a entidade principal (Lead, Client, etc.)
+   * ✅ NOTA (Migration 031): Esta função ainda é útil para:
+   * 1. Limpeza explícita antes de delete (defensiva)
+   * 2. Logging/auditoria da operação
+   * 3. Garantir compatibilidade com código existente
    * 
-   * Usado em:
-   * - leadService.deleteLead(id) -> ANTES de Lead.delete(id)
-   * - clientService.deleteClient(id) -> ANTES de Client.delete(id)
-   * - etc.
+   * PORÉM: A partir de 24/10/2025, se você esquecer de chamar esta função,
+   * o trigger polox.cleanup_custom_field_values() fará a limpeza automaticamente!
+   * 
+   * Uso recomendado:
+   * ```javascript
+   * // Em leadService.deleteLead(id):
+   * await CustomFieldValue.deleteAllByEntity(id); // Explícito (recomendado)
+   * await Lead.delete(id); // Trigger também fará limpeza (fallback)
+   * ```
    * 
    * @param {number} entityId - ID da entidade
    * @returns {Promise<number>} Número de valores deletados
