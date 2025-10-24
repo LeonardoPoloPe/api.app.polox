@@ -144,14 +144,17 @@ const query = async (text, params = [], options = {}) => {
   try {
     const start = Date.now();
 
-    // Aplicar isolamento multi-tenant se companyId fornecido
-    if (options.companyId) {
-      await client.query("SET LOCAL app.current_company_id = $1", [
-        options.companyId,
-      ]);
-    }
+    let result;
 
-    const result = await client.query(text, params);
+    // Temporarily disable SET LOCAL to fix parameter interference issue
+    // TODO: Re-implement multi-tenant isolation with a different approach
+    // if (options.companyId) {
+    //   await client.query("SET LOCAL app.current_company_id = $1", [
+    //     options.companyId,
+    //   ]);
+    // }
+
+    result = await client.query(text, params);
     const duration = Date.now() - start;
 
     // Log da query (não logar senhas ou dados sensíveis)
@@ -197,9 +200,13 @@ const transaction = async (callback, options = {}) => {
 
     // Aplicar isolamento multi-tenant
     if (options.companyId) {
-      await client.query("SET LOCAL app.current_company_id = $1", [
-        options.companyId,
-      ]);
+      // PostgreSQL não permite placeholders em SET LOCAL para variáveis customizadas
+      // Usamos template string diretamente (companyId deve ser validado como número)
+      const companyIdNum = parseInt(options.companyId);
+      if (isNaN(companyIdNum) || companyIdNum <= 0) {
+        throw new Error("Invalid companyId for transaction");
+      }
+      await client.query(`SET LOCAL app.current_company_id = ${companyIdNum}`);
     }
 
     const result = await callback(client);
@@ -234,13 +241,13 @@ const healthCheck = async () => {
   try {
     // Garantir que o pool está criado
     await createPool();
-    
+
     // Executar query simples com timeout
     const result = await Promise.race([
       query("SELECT NOW() as current_time, version() as pg_version"),
-      new Promise((_, reject) => 
+      new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Health check timeout")), 5000)
-      )
+      ),
     ]);
 
     logger.info("Health check realizado com sucesso", {

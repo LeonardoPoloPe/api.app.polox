@@ -2,7 +2,7 @@
  * ==========================================
  * 📈 LEAD CONTROLLER - CRM CORE (ATUALIZADO)
  * ==========================================
- * 
+ *
  * Gestão completa de leads/prospects para pipeline de vendas
  * - CRUD completo de leads
  * - Gerenciamento de notas, tags e interests
@@ -11,14 +11,13 @@
  * - Filtros avançados e relatórios
  */
 
-const LeadModel = require('../models/Lead');
-const { logger, auditLogger } = require('../utils/logger');
-const { ApiError, asyncHandler } = require('../utils/errors');
-const { successResponse, paginatedResponse } = require('../utils/formatters');
-const Joi = require('joi');
+const LeadModel = require("../models/Lead");
+const { logger, auditLogger } = require("../utils/logger");
+const { ApiError, asyncHandler } = require("../utils/errors");
+const { successResponse, paginatedResponse } = require("../utils/response");
+const Joi = require("joi");
 
 class LeadController {
-
   /**
    * 📝 VALIDAÇÕES JOI
    */
@@ -26,30 +25,46 @@ class LeadController {
     name: Joi.string().min(2).max(255).required(),
     email: Joi.string().email().allow(null),
     phone: Joi.string().max(20).allow(null),
+    // Aceitar tanto company quanto company_name
     company_name: Joi.string().max(255).allow(null),
+    company: Joi.string().max(255).allow(null),
     position: Joi.string().max(100).allow(null),
     source: Joi.string().max(50).allow(null),
-    status: Joi.string().valid(
-      'new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'
-    ).default('new'),
+    status: Joi.string()
+      .valid(
+        "new",
+        "contacted",
+        "qualified",
+        "proposal",
+        "negotiation",
+        "won",
+        "lost"
+      )
+      .default("new"),
     score: Joi.number().integer().min(0).max(100).allow(null),
-    temperature: Joi.string().valid('cold', 'warm', 'hot').allow(null),
+    // Aceitar tanto value quanto conversion_value
+    conversion_value: Joi.number().min(0).allow(null),
+    value: Joi.number().min(0).allow(null),
+    temperature: Joi.string().valid("cold", "warm", "hot").allow(null),
     city: Joi.string().max(100).allow(null),
     state: Joi.string().max(2).allow(null),
     country: Joi.string().max(100).allow(null),
-    conversion_value: Joi.number().min(0).allow(null),
     owner_id: Joi.number().integer().positive().allow(null),
     // Campos relacionados
     note: Joi.string().max(5000).allow(null),
+    description: Joi.string().max(5000).allow(null), // Aceitar description como note
     tags: Joi.array().items(Joi.string().min(1).max(100)).default([]),
-    interests: Joi.array().items(
-      Joi.object({
-        name: Joi.string().min(1).max(100).required(),
-        category: Joi.string().valid('product', 'service', 'industry', 'technology', 'other')
-          .default('other')
-      })
-    ).default([])
-  });
+    interests: Joi.array()
+      .items(
+        Joi.object({
+          name: Joi.string().min(1).max(100).required(),
+          category: Joi.string()
+            .valid("product", "service", "industry", "technology", "other")
+            .default("other"),
+        })
+      )
+      .default([]),
+  }).unknown(true); // Permite campos não definidos no schema, incluindo custom_fields
 
   static updateLeadSchema = Joi.object({
     name: Joi.string().min(2).max(255),
@@ -59,43 +74,54 @@ class LeadController {
     position: Joi.string().max(100).allow(null),
     source: Joi.string().max(50).allow(null),
     status: Joi.string().valid(
-      'new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'
+      "new",
+      "contacted",
+      "qualified",
+      "proposal",
+      "negotiation",
+      "won",
+      "lost"
     ),
     score: Joi.number().integer().min(0).max(100).allow(null),
-    temperature: Joi.string().valid('cold', 'warm', 'hot').allow(null),
+    temperature: Joi.string().valid("cold", "warm", "hot").allow(null),
     city: Joi.string().max(100).allow(null),
     state: Joi.string().max(2).allow(null),
     country: Joi.string().max(100).allow(null),
     conversion_value: Joi.number().min(0).allow(null),
-    owner_id: Joi.number().integer().positive().allow(null)
+    owner_id: Joi.number().integer().positive().allow(null),
   });
 
   static assignLeadSchema = Joi.object({
-    owner_id: Joi.number().integer().positive().required()
+    owner_id: Joi.number().integer().positive().required(),
   });
 
   static addNoteSchema = Joi.object({
     content: Joi.string().min(1).max(5000).required(),
-    type: Joi.string().valid('general', 'call', 'meeting', 'email', 'whatsapp', 'other')
-      .default('general')
+    type: Joi.string()
+      .valid("general", "call", "meeting", "email", "whatsapp", "other")
+      .default("general"),
   });
 
   static updateNoteSchema = Joi.object({
-    content: Joi.string().min(1).max(5000).required()
+    content: Joi.string().min(1).max(5000).required(),
   });
 
   static addTagsSchema = Joi.object({
-    tags: Joi.array().items(Joi.string().min(1).max(100)).min(1).required()
+    tags: Joi.array().items(Joi.string().min(1).max(100)).min(1).required(),
   });
 
   static addInterestsSchema = Joi.object({
-    interests: Joi.array().items(
-      Joi.object({
-        name: Joi.string().min(1).max(100).required(),
-        category: Joi.string().valid('product', 'service', 'industry', 'technology', 'other')
-          .default('other')
-      })
-    ).min(1).required()
+    interests: Joi.array()
+      .items(
+        Joi.object({
+          name: Joi.string().min(1).max(100).required(),
+          category: Joi.string()
+            .valid("product", "service", "industry", "technology", "other")
+            .default("other"),
+        })
+      )
+      .min(1)
+      .required(),
   });
 
   /**
@@ -105,34 +131,38 @@ class LeadController {
   static index = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    
+
     const options = {
       page,
       limit,
       status: req.query.status,
       source: req.query.source,
-      ownerId: req.query.owner_id,
-      minScore: req.query.score_min,
-      maxScore: req.query.score_max,
+      ownerId: req.query.assigned_to || req.query.owner_id, // Support both parameter names
+      minScore: req.query.value_min || req.query.score_min, // Support both parameter names
+      maxScore: req.query.value_max || req.query.score_max, // Support both parameter names
       temperature: req.query.temperature,
       search: req.query.search,
-      sortBy: req.query.sort || 'created_at',
-      sortOrder: req.query.order || 'desc'
+      sortBy: req.query.sort || "created_at",
+      sortOrder: req.query.order || "desc",
     };
 
     const result = await LeadModel.list(options, req.user.companyId);
 
-    auditLogger.info('Leads listados', {
+    auditLogger("Leads listados", {
       userId: req.user.id,
       companyId: req.user.companyId,
-      filters: options
+      filters: options,
     });
 
-    return res.json(paginatedResponse(
+    return paginatedResponse(
+      res,
       result.leads,
       result.pagination,
-      { stats: result.stats }
-    ));
+      "Leads listados com sucesso",
+      {
+        stats: result.stats,
+      }
+    );
   });
 
   /**
@@ -143,8 +173,22 @@ class LeadController {
     const { error, value } = LeadController.createLeadSchema.validate(req.body);
     if (error) throw new ApiError(400, error.details[0].message);
 
-    const { note, tags, interests, ...leadData } = value;
-    
+    const { note, description, tags, interests, ...leadData } = value;
+
+    // Mapear campos alternativos para os nomes corretos do banco
+    if (leadData.company && !leadData.company_name) {
+      leadData.company_name = leadData.company;
+      delete leadData.company;
+    }
+
+    if (leadData.value && !leadData.conversion_value) {
+      leadData.conversion_value = leadData.value;
+      delete leadData.value;
+    }
+
+    // Usar description como note se note não foi fornecida
+    const noteContent = note || description;
+
     // Adicionar created_by_id
     leadData.created_by_id = req.user.id;
 
@@ -152,8 +196,14 @@ class LeadController {
     const lead = await LeadModel.create(leadData, req.user.companyId);
 
     // Adicionar nota inicial se fornecida
-    if (note) {
-      await LeadModel.addNote(lead.id, req.user.id, note, 'general', req.user.companyId);
+    if (noteContent) {
+      await LeadModel.addNote(
+        lead.id,
+        req.user.id,
+        noteContent,
+        "general",
+        req.user.companyId
+      );
     }
 
     // Adicionar tags se fornecidas
@@ -165,9 +215,9 @@ class LeadController {
     if (interests && interests.length > 0) {
       for (const interest of interests) {
         await LeadModel.addInterest(
-          lead.id, 
-          interest.name, 
-          interest.category || 'other', 
+          lead.id,
+          interest.name,
+          interest.category || "other",
           req.user.companyId
         );
       }
@@ -176,13 +226,13 @@ class LeadController {
     // Buscar lead completo com relacionamentos
     const fullLead = await LeadModel.findById(lead.id, req.user.companyId);
 
-    auditLogger.info('Lead criado', {
+    auditLogger("Lead criado", {
       userId: req.user.id,
       companyId: req.user.companyId,
-      leadId: lead.id
+      leadId: lead.id,
     });
 
-    return res.status(201).json(successResponse(fullLead, 'Lead criado com sucesso'));
+    return successResponse(res, fullLead, "Lead criado com sucesso", 201);
   });
 
   /**
@@ -191,14 +241,14 @@ class LeadController {
    */
   static show = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    
+
     const lead = await LeadModel.findById(leadId, req.user.companyId);
-    
+
     if (!lead) {
-      throw new ApiError(404, 'Lead não encontrado');
+      throw new ApiError(404, "Lead não encontrado");
     }
 
-    return res.json(successResponse(lead));
+    return successResponse(res, lead);
   });
 
   /**
@@ -208,23 +258,27 @@ class LeadController {
   static update = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
     const { error, value } = LeadController.updateLeadSchema.validate(req.body);
-    
+
     if (error) throw new ApiError(400, error.details[0].message);
 
-    const updatedLead = await LeadModel.update(leadId, value, req.user.companyId);
-    
+    const updatedLead = await LeadModel.update(
+      leadId,
+      value,
+      req.user.companyId
+    );
+
     if (!updatedLead) {
-      throw new ApiError(404, 'Lead não encontrado');
+      throw new ApiError(404, "Lead não encontrado");
     }
 
-    auditLogger.info('Lead atualizado', {
+    auditLogger("Lead atualizado", {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
-      changes: value
+      changes: value,
     });
 
-    return res.json(successResponse(updatedLead, 'Lead atualizado com sucesso'));
+    return successResponse(res, updatedLead, "Lead atualizado com sucesso");
   });
 
   /**
@@ -233,20 +287,20 @@ class LeadController {
    */
   static destroy = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    
+
     const deleted = await LeadModel.softDelete(leadId, req.user.companyId);
-    
+
     if (!deleted) {
-      throw new ApiError(404, 'Lead não encontrado');
+      throw new ApiError(404, "Lead não encontrado");
     }
 
-    auditLogger.info('Lead deletado', {
+    auditLogger("Lead deletado", {
       userId: req.user.id,
       companyId: req.user.companyId,
-      leadId
+      leadId,
     });
 
-    return res.json(successResponse(null, 'Lead deletado com sucesso'));
+    return successResponse(res, null, "Lead deletado com sucesso");
   });
 
   /**
@@ -256,27 +310,27 @@ class LeadController {
   static assignTo = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
     const { error, value } = LeadController.assignLeadSchema.validate(req.body);
-    
+
     if (error) throw new ApiError(400, error.details[0].message);
 
     const updatedLead = await LeadModel.update(
-      leadId, 
+      leadId,
       { owner_id: value.owner_id },
       req.user.companyId
     );
-    
+
     if (!updatedLead) {
-      throw new ApiError(404, 'Lead não encontrado');
+      throw new ApiError(404, "Lead não encontrado");
     }
 
-    auditLogger.info('Lead atribuído', {
+    auditLogger("Lead atribuído", {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
-      assignedTo: value.owner_id
+      assignedTo: value.owner_id,
     });
 
-    return res.json(successResponse(updatedLead, 'Lead atribuído com sucesso'));
+    return successResponse(res, updatedLead, "Lead atribuído com sucesso");
   });
 
   /**
@@ -285,8 +339,8 @@ class LeadController {
    */
   static stats = asyncHandler(async (req, res) => {
     const stats = await LeadModel.getStats(req.user.companyId);
-    
-    return res.json(successResponse(stats));
+
+    return successResponse(res, stats);
   });
 
   /**
@@ -295,16 +349,16 @@ class LeadController {
    */
   static convertToClient = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    
+
     // Buscar lead
     const lead = await LeadModel.findById(leadId, req.user.companyId);
-    
+
     if (!lead) {
-      throw new ApiError(404, 'Lead não encontrado');
+      throw new ApiError(404, "Lead não encontrado");
     }
 
     if (lead.converted_to_client_id) {
-      throw new ApiError(400, 'Lead já foi convertido em cliente');
+      throw new ApiError(400, "Lead já foi convertido em cliente");
     }
 
     // Preparar dados do cliente
@@ -317,19 +371,27 @@ class LeadController {
       city: lead.city,
       state: lead.state,
       country: lead.country,
-      ...req.body // Permite override/campos adicionais
+      ...req.body, // Permite override/campos adicionais
     };
 
-    const result = await LeadModel.convertToClient(leadId, clientData, req.user.companyId);
+    const result = await LeadModel.convertToClient(
+      leadId,
+      clientData,
+      req.user.companyId
+    );
 
-    auditLogger.info('Lead convertido para cliente', {
+    auditLogger("Lead convertido para cliente", {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
-      clientId: result.client.id
+      clientId: result.client.id,
     });
 
-    return res.json(successResponse(result, 'Lead convertido em cliente com sucesso'));
+    return successResponse(
+      res,
+      result,
+      "Lead convertido em cliente com sucesso"
+    );
   });
 
   // ==========================================
@@ -341,10 +403,10 @@ class LeadController {
    */
   static getNotes = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    
+
     const notes = await LeadModel.getNotes(leadId, req.user.companyId);
-    
-    return res.json(successResponse(notes));
+
+    return successResponse(res, notes);
   });
 
   /**
@@ -353,7 +415,7 @@ class LeadController {
   static addNote = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
     const { error, value } = LeadController.addNoteSchema.validate(req.body);
-    
+
     if (error) throw new ApiError(400, error.details[0].message);
 
     const note = await LeadModel.addNote(
@@ -364,14 +426,14 @@ class LeadController {
       req.user.companyId
     );
 
-    auditLogger.info('Nota adicionada ao lead', {
+    auditLogger("Nota adicionada ao lead", {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
-      noteId: note.id
+      noteId: note.id,
     });
 
-    return res.status(201).json(successResponse(note, 'Nota adicionada com sucesso'));
+    return successResponse(res, note, "Nota adicionada com sucesso", 201);
   });
 
   /**
@@ -380,21 +442,21 @@ class LeadController {
   static updateNote = asyncHandler(async (req, res) => {
     const noteId = parseInt(req.params.noteId);
     const { error, value } = LeadController.updateNoteSchema.validate(req.body);
-    
+
     if (error) throw new ApiError(400, error.details[0].message);
 
     const note = await LeadModel.updateNote(noteId, { content: value.content });
-    
+
     if (!note) {
-      throw new ApiError(404, 'Nota não encontrada');
+      throw new ApiError(404, "Nota não encontrada");
     }
 
-    auditLogger.info('Nota atualizada', {
+    auditLogger("Nota atualizada", {
       userId: req.user.id,
-      noteId
+      noteId,
     });
 
-    return res.json(successResponse(note, 'Nota atualizada com sucesso'));
+    return successResponse(res, note, "Nota atualizada com sucesso");
   });
 
   /**
@@ -402,19 +464,19 @@ class LeadController {
    */
   static deleteNote = asyncHandler(async (req, res) => {
     const noteId = parseInt(req.params.noteId);
-    
+
     const deleted = await LeadModel.deleteNote(noteId);
-    
+
     if (!deleted) {
-      throw new ApiError(404, 'Nota não encontrada');
+      throw new ApiError(404, "Nota não encontrada");
     }
 
-    auditLogger.info('Nota deletada', {
+    auditLogger("Nota deletada", {
       userId: req.user.id,
-      noteId
+      noteId,
     });
 
-    return res.json(successResponse(null, 'Nota deletada com sucesso'));
+    return successResponse(res, null, "Nota deletada com sucesso");
   });
 
   // ==========================================
@@ -426,10 +488,10 @@ class LeadController {
    */
   static getTags = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    
+
     const tags = await LeadModel.getTags(leadId, req.user.companyId);
-    
-    return res.json(successResponse(tags));
+
+    return successResponse(res, tags);
   });
 
   /**
@@ -438,27 +500,31 @@ class LeadController {
   static addTags = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
     const { error, value } = LeadController.addTagsSchema.validate(req.body);
-    
+
     if (error) throw new ApiError(400, error.details[0].message);
 
     // Buscar tags atuais
     const currentTags = await LeadModel.getTags(leadId, req.user.companyId);
-    const currentTagNames = currentTags.map(t => t.name);
-    
+    const currentTagNames = currentTags.map((t) => t.name);
+
     // Combinar com novas tags
     const allTags = [...new Set([...currentTagNames, ...value.tags])];
-    
-    // Atualizar
-    const tags = await LeadModel.updateTags(leadId, allTags, req.user.companyId);
 
-    auditLogger.info('Tags adicionadas ao lead', {
+    // Atualizar
+    const tags = await LeadModel.updateTags(
+      leadId,
+      allTags,
+      req.user.companyId
+    );
+
+    auditLogger("Tags adicionadas ao lead", {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
-      tags: value.tags
+      tags: value.tags,
     });
 
-    return res.json(successResponse(tags, 'Tags adicionadas com sucesso'));
+    return successResponse(res, tags, "Tags adicionadas com sucesso");
   });
 
   /**
@@ -467,21 +533,25 @@ class LeadController {
   static removeTag = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.leadId);
     const tagId = parseInt(req.params.tagId);
-    
-    const removed = await LeadModel.removeTag(leadId, tagId, req.user.companyId);
-    
+
+    const removed = await LeadModel.removeTag(
+      leadId,
+      tagId,
+      req.user.companyId
+    );
+
     if (!removed) {
-      throw new ApiError(404, 'Tag não encontrada ou não associada ao lead');
+      throw new ApiError(404, "Tag não encontrada ou não associada ao lead");
     }
 
-    auditLogger.info('Tag removida do lead', {
+    auditLogger("Tag removida do lead", {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
-      tagId
+      tagId,
     });
 
-    return res.json(successResponse(null, 'Tag removida com sucesso'));
+    return successResponse(res, null, "Tag removida com sucesso");
   });
 
   // ==========================================
@@ -493,10 +563,10 @@ class LeadController {
    */
   static getInterests = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    
+
     const interests = await LeadModel.getInterests(leadId, req.user.companyId);
-    
-    return res.json(successResponse(interests));
+
+    return successResponse(res, interests);
   });
 
   /**
@@ -504,8 +574,10 @@ class LeadController {
    */
   static addInterests = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    const { error, value } = LeadController.addInterestsSchema.validate(req.body);
-    
+    const { error, value } = LeadController.addInterestsSchema.validate(
+      req.body
+    );
+
     if (error) throw new ApiError(400, error.details[0].message);
 
     const addedInterests = [];
@@ -513,20 +585,24 @@ class LeadController {
       const added = await LeadModel.addInterest(
         leadId,
         interest.name,
-        interest.category || 'other',
+        interest.category || "other",
         req.user.companyId
       );
       addedInterests.push(added);
     }
 
-    auditLogger.info('Interests adicionados ao lead', {
+    auditLogger("Interests adicionados ao lead", {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
-      interests: value.interests.map(i => i.name)
+      interests: value.interests.map((i) => i.name),
     });
 
-    return res.json(successResponse(addedInterests, 'Interests adicionados com sucesso'));
+    return successResponse(
+      res,
+      addedInterests,
+      "Interests adicionados com sucesso"
+    );
   });
 
   /**
@@ -535,21 +611,28 @@ class LeadController {
   static removeInterest = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.leadId);
     const interestId = parseInt(req.params.interestId);
-    
-    const removed = await LeadModel.removeInterest(leadId, interestId, req.user.companyId);
-    
+
+    const removed = await LeadModel.removeInterest(
+      leadId,
+      interestId,
+      req.user.companyId
+    );
+
     if (!removed) {
-      throw new ApiError(404, 'Interest não encontrado ou não associado ao lead');
+      throw new ApiError(
+        404,
+        "Interest não encontrado ou não associado ao lead"
+      );
     }
 
-    auditLogger.info('Interest removido do lead', {
+    auditLogger("Interest removido do lead", {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
-      interestId
+      interestId,
     });
 
-    return res.json(successResponse(null, 'Interest removido com sucesso'));
+    return successResponse(res, null, "Interest removido com sucesso");
   });
 }
 
