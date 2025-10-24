@@ -283,8 +283,10 @@ router.get('/stats', rateLimiter.general, ClientController.getStats);
  *         name: id
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
+ *           format: int64
  *         description: ID do cliente
+ *         example: 1
  *     responses:
  *       200:
  *         description: Detalhes do cliente
@@ -323,8 +325,10 @@ router.get('/:id', rateLimiter.general, ClientController.show);
  *         name: id
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
+ *           format: int64
  *         description: ID do cliente
+ *         example: 1
  *     requestBody:
  *       required: true
  *       content:

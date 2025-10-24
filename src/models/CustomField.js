@@ -89,7 +89,7 @@ class CustomField {
         SELECT * FROM polox.custom_fields
         WHERE (company_id = $1 OR company_id IS NULL)
           AND entity_type = $2
-        ORDER BY sort_order ASC, name ASC
+        ORDER BY sort_order ASC, field_name ASC
       `;
       
       const result = await query(sql, [companyId, entityType]);
@@ -112,7 +112,7 @@ class CustomField {
       const sql = `
         SELECT * FROM polox.custom_fields
         WHERE company_id = $1
-        ORDER BY entity_type ASC, sort_order ASC, name ASC
+        ORDER BY entity_type ASC, sort_order ASC, field_name ASC
       `;
       
       const result = await query(sql, [companyId]);
