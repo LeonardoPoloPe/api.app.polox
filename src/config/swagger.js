@@ -181,10 +181,10 @@ const swaggerOptions = {
           required: ["name", "domain"],
           properties: {
             id: {
-              type: "string",
-              format: "uuid",
+              type: "integer",
+              minimum: 1,
               description: "ID único da empresa",
-              example: "550e8400-e29b-41d4-a716-446655440000",
+              example: 1,
             },
             name: {
               type: "string",
@@ -387,7 +387,7 @@ const swaggerOptions = {
             total_spent: {
               type: "number",
               description: "Total gasto pelo cliente",
-              example: 15000.50,
+              example: 15000.5,
             },
             total_purchases: {
               type: "integer",
@@ -494,7 +494,7 @@ const swaggerOptions = {
             total_amount: {
               type: "number",
               description: "Valor total da venda",
-              example: 1500.00,
+              example: 1500.0,
             },
             status: {
               type: "string",

@@ -4,10 +4,10 @@
  * ==========================================
  */
 
-const express = require('express');
-const CompanyController = require('../controllers/CompanyController');
-const { authenticateToken } = require('../middleware/auth');
-const { rateLimiter } = require('../middleware/rateLimiter');
+const express = require("express");
+const CompanyController = require("../controllers/CompanyController");
+const { authenticateToken } = require("../middleware/auth");
+const { rateLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
@@ -68,7 +68,7 @@ router.use(CompanyController.requireSuperAdmin);
  *       403:
  *         description: Super Admin required
  */
-router.get('/', rateLimiter.admin, CompanyController.index);
+router.get("/", rateLimiter.admin, CompanyController.index);
 
 /**
  * @swagger
@@ -132,7 +132,7 @@ router.get('/', rateLimiter.admin, CompanyController.index);
  *       409:
  *         description: Domínio já existe
  */
-router.post('/', rateLimiter.admin, CompanyController.create);
+router.post("/", rateLimiter.admin, CompanyController.create);
 
 /**
  * @swagger
@@ -147,7 +147,7 @@ router.post('/', rateLimiter.admin, CompanyController.create);
  *       200:
  *         description: Estatísticas globais
  */
-router.get('/stats', rateLimiter.admin, CompanyController.getGlobalStats);
+router.get("/stats", rateLimiter.admin, CompanyController.getGlobalStats);
 
 /**
  * @swagger
@@ -163,15 +163,16 @@ router.get('/stats', rateLimiter.admin, CompanyController.getGlobalStats);
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
  *     responses:
  *       200:
  *         description: Detalhes da empresa
  *       404:
  *         description: Empresa não encontrada
  */
-router.get('/:id', rateLimiter.admin, CompanyController.show);
+router.get("/:id", rateLimiter.admin, CompanyController.show);
 
 /**
  * @swagger
@@ -187,8 +188,9 @@ router.get('/:id', rateLimiter.admin, CompanyController.show);
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
  *     requestBody:
  *       required: true
  *       content:
@@ -223,7 +225,7 @@ router.get('/:id', rateLimiter.admin, CompanyController.show);
  *       404:
  *         description: Empresa não encontrada
  */
-router.put('/:id', rateLimiter.admin, CompanyController.update);
+router.put("/:id", rateLimiter.admin, CompanyController.update);
 
 /**
  * @swagger
@@ -239,15 +241,16 @@ router.put('/:id', rateLimiter.admin, CompanyController.update);
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
  *     responses:
  *       200:
  *         description: Empresa deletada
  *       404:
  *         description: Empresa não encontrada
  */
-router.delete('/:id', rateLimiter.admin, CompanyController.destroy);
+router.delete("/:id", rateLimiter.admin, CompanyController.destroy);
 
 /**
  * @swagger
@@ -263,8 +266,9 @@ router.delete('/:id', rateLimiter.admin, CompanyController.destroy);
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
  *     requestBody:
  *       required: true
  *       content:
@@ -286,7 +290,7 @@ router.delete('/:id', rateLimiter.admin, CompanyController.destroy);
  *       400:
  *         description: Módulos inválidos
  */
-router.put('/:id/modules', rateLimiter.admin, CompanyController.updateModules);
+router.put("/:id/modules", rateLimiter.admin, CompanyController.updateModules);
 
 /**
  * @swagger
@@ -302,8 +306,9 @@ router.put('/:id/modules', rateLimiter.admin, CompanyController.updateModules);
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
  *     requestBody:
  *       required: true
  *       content:
@@ -323,7 +328,7 @@ router.put('/:id/modules', rateLimiter.admin, CompanyController.updateModules);
  *       400:
  *         description: Status inválido
  */
-router.put('/:id/status', rateLimiter.admin, CompanyController.updateStatus);
+router.put("/:id/status", rateLimiter.admin, CompanyController.updateStatus);
 
 /**
  * @swagger
@@ -339,14 +344,15 @@ router.put('/:id/status', rateLimiter.admin, CompanyController.updateStatus);
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
  *     responses:
  *       200:
  *         description: Analytics da empresa
  *       404:
  *         description: Empresa não encontrada
  */
-router.get('/:id/analytics', rateLimiter.admin, CompanyController.getAnalytics);
+router.get("/:id/analytics", rateLimiter.admin, CompanyController.getAnalytics);
 
 module.exports = router;

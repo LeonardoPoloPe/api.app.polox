@@ -116,12 +116,12 @@ class CompanyController {
     }
 
     if (req.query.plan) {
-      whereClause += ` AND c.plan = $${++paramCount}`;
+      whereClause += ` AND c.subscription_plan = $${++paramCount}`;
       queryParams.push(req.query.plan);
     }
 
     if (req.query.search) {
-      whereClause += ` AND (c.name ILIKE $${++paramCount} OR c.domain ILIKE $${++paramCount})`;
+      whereClause += ` AND (c.company_name ILIKE $${++paramCount} OR c.company_domain ILIKE $${++paramCount})`;
       queryParams.push(`%${req.query.search}%`, `%${req.query.search}%`);
       paramCount++; // Segundo parâmetro
     }
@@ -145,7 +145,7 @@ class CompanyController {
             'level', ugp.current_level,
             'total_xp', ugp.total_xp
           ))
-          FROM user_gamification_profiles ugp
+          FROM polox.user_gamification_profiles ugp
           WHERE ugp.company_id = c.id
           LIMIT 5
         ) as top_players
@@ -154,12 +154,12 @@ class CompanyController {
       ${whereClause}
       GROUP BY c.id
       ORDER BY 
-        CASE WHEN $${paramCount + 3} = 'name' THEN c.name END ASC,
+        CASE WHEN $${paramCount + 3} = 'name' THEN c.company_name END ASC,
         CASE WHEN $${paramCount + 3} = 'created_at' THEN c.created_at END DESC,
         CASE WHEN $${
           paramCount + 3
         } = 'users_count' THEN COUNT(DISTINCT u.id) END DESC,
-        c.name ASC
+        c.company_name ASC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
 
@@ -244,7 +244,7 @@ class CompanyController {
 
       const createCompanyQuery = `
         INSERT INTO polox.companies (
-          company_name, company_domain, slug, plan, industry, company_size,
+          company_name, company_domain, slug, subscription_plan, industry, company_size,
           admin_name, admin_email, admin_phone,
           enabled_modules, settings, status, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', NOW(), NOW())
@@ -292,7 +292,7 @@ class CompanyController {
       // 3️⃣ CRIAR PERFIL DE GAMIFICAÇÃO PARA O ADMIN
       await client.query(
         `
-        INSERT INTO user_gamification_profiles (
+        INSERT INTO polox.user_gamification_profiles (
           user_id, company_id, current_level, total_xp, total_coins, 
           available_coins, created_at, updated_at
         ) VALUES ($1, $2, 1, 0, 100, 100, NOW(), NOW())
@@ -331,8 +331,8 @@ class CompanyController {
       for (const achievement of defaultAchievements) {
         await client.query(
           `
-          INSERT INTO achievements (
-            company_id, name, description, category,
+          INSERT INTO polox.achievements (
+            company_id, achievement_name, description, category,
             criteria, xp_reward, coin_reward, is_active, created_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW())
         `,
@@ -357,7 +357,7 @@ class CompanyController {
         companyId: newCompany.id,
         companyName: newCompany.name,
         adminEmail: newAdmin.email,
-        plan: newCompany.plan,
+        plan: newCompany.subscription_plan,
         modules: companyData.enabled_modules,
         ip: req.ip,
       });
@@ -427,23 +427,23 @@ class CompanyController {
         (
           SELECT json_agg(json_build_object(
             'id', u2.id,
-            'name', u2.name,
+            'name', u2.full_name,
             'email', u2.email,
-            'role', u2.role,
+            'role', u2.user_role,
             'last_login_at', u2.last_login_at
           ) ORDER BY u2.created_at ASC)
-          FROM users u2 
+          FROM polox.users u2 
           WHERE u2.company_id = c.id AND u2.deleted_at IS NULL
           LIMIT 10
         ) as recent_users,
         (
           SELECT json_agg(json_build_object(
-            'user_name', u3.name,
+            'user_name', u3.full_name,
             'level', ugp.current_level,
             'total_xp', ugp.total_xp
           ) ORDER BY ugp.total_xp DESC)
-          FROM user_gamification_profiles ugp
-          JOIN users u3 ON ugp.user_id = u3.id
+          FROM polox.user_gamification_profiles ugp
+          JOIN polox.users u3 ON ugp.user_id = u3.id
           WHERE ugp.company_id = c.id
           LIMIT 5
         ) as top_players
@@ -461,9 +461,15 @@ class CompanyController {
 
     const company = result.rows[0];
 
-    // Parse JSON fields
-    company.enabled_modules = JSON.parse(company.enabled_modules || "[]");
-    company.settings = JSON.parse(company.settings || "{}");
+    // Parse JSON fields se forem strings, senão manter como estão
+    company.enabled_modules =
+      typeof company.enabled_modules === "string"
+        ? JSON.parse(company.enabled_modules || "[]")
+        : company.enabled_modules || [];
+    company.settings =
+      typeof company.settings === "string"
+        ? JSON.parse(company.settings || "{}")
+        : company.settings || {};
 
     logger.info("Detalhes da empresa visualizados", {
       superAdminId: req.user.id,
@@ -495,9 +501,9 @@ class CompanyController {
           THEN u.id 
         END) as active_users_7d,
         AVG(user_counts.user_count) as avg_users_per_company,
-        COUNT(DISTINCT CASE WHEN c.plan = 'starter' THEN c.id END) as starter_companies,
-        COUNT(DISTINCT CASE WHEN c.plan = 'professional' THEN c.id END) as professional_companies,
-        COUNT(DISTINCT CASE WHEN c.plan = 'enterprise' THEN c.id END) as enterprise_companies
+        COUNT(DISTINCT CASE WHEN c.subscription_plan = 'starter' THEN c.id END) as starter_companies,
+        COUNT(DISTINCT CASE WHEN c.subscription_plan = 'professional' THEN c.id END) as professional_companies,
+        COUNT(DISTINCT CASE WHEN c.subscription_plan = 'enterprise' THEN c.id END) as enterprise_companies
       FROM polox.companies c
       LEFT JOIN polox.users u ON c.id = u.company_id AND u.deleted_at IS NULL
       LEFT JOIN (
@@ -578,6 +584,14 @@ class CompanyController {
         if (key === "enabled_modules" || key === "settings") {
           setClause.push(`${key} = $${++paramCount}`);
           queryParams.push(JSON.stringify(value));
+        } else if (key === "plan") {
+          // Map plan to subscription_plan
+          setClause.push(`subscription_plan = $${++paramCount}`);
+          queryParams.push(value);
+        } else if (key === "name") {
+          // Map name to company_name
+          setClause.push(`company_name = $${++paramCount}`);
+          queryParams.push(value);
         } else {
           setClause.push(`${key} = $${++paramCount}`);
           queryParams.push(value);
@@ -602,11 +616,15 @@ class CompanyController {
     const result = await query(updateQuery, queryParams);
     const updatedCompany = result.rows[0];
 
-    // Parse JSON fields
-    updatedCompany.enabled_modules = JSON.parse(
-      updatedCompany.enabled_modules || "[]"
-    );
-    updatedCompany.settings = JSON.parse(updatedCompany.settings || "{}");
+    // Parse JSON fields se forem strings, senão manter como estão
+    updatedCompany.enabled_modules =
+      typeof updatedCompany.enabled_modules === "string"
+        ? JSON.parse(updatedCompany.enabled_modules || "[]")
+        : updatedCompany.enabled_modules || [];
+    updatedCompany.settings =
+      typeof updatedCompany.settings === "string"
+        ? JSON.parse(updatedCompany.settings || "{}")
+        : updatedCompany.settings || {};
 
     // Log de auditoria
     auditLogger("Company updated", {
@@ -655,7 +673,7 @@ class CompanyController {
 
       // Deletar todos os usuários da empresa
       await client.query(
-        "UPDATE users SET deleted_at = NOW() WHERE company_id = $1 AND deleted_at IS NULL",
+        "UPDATE polox.users SET deleted_at = NOW() WHERE company_id = $1 AND deleted_at IS NULL",
         [companyId]
       );
 
@@ -725,7 +743,10 @@ class CompanyController {
     }
 
     const updatedCompany = result.rows[0];
-    updatedCompany.enabled_modules = JSON.parse(updatedCompany.enabled_modules);
+    updatedCompany.enabled_modules =
+      typeof updatedCompany.enabled_modules === "string"
+        ? JSON.parse(updatedCompany.enabled_modules)
+        : updatedCompany.enabled_modules;
 
     auditLogger("Company modules updated", {
       superAdminId: req.user.id,
@@ -809,7 +830,7 @@ class CompanyController {
         COALESCE(SUM(ugp.total_xp), 0) as total_xp_company,
         COALESCE(AVG(ugp.total_xp), 0) as avg_xp_per_user,
         COALESCE(MAX(ugp.current_level), 0) as highest_level,
-        COALESCE(SUM(ugp.current_coins), 0) as total_coins_company,
+        COALESCE(SUM(ugp.available_coins), 0) as total_coins_company,
         
         -- Conquistas
         COUNT(DISTINCT ua.id) as total_achievements_unlocked,
@@ -845,17 +866,17 @@ class CompanyController {
     // Top 10 usuários por XP
     const topUsersQuery = `
       SELECT 
-        u.name,
+        u.full_name as name,
         u.email,
         ugp.current_level,
         ugp.total_xp,
-        ugp.current_coins,
+        ugp.available_coins as current_coins,
         COUNT(ua.id) as achievements_count
       FROM polox.users u
       JOIN polox.user_gamification_profiles ugp ON u.id = ugp.user_id
       LEFT JOIN polox.user_achievements ua ON u.id = ua.user_id
       WHERE u.company_id = $1 AND u.deleted_at IS NULL
-      GROUP BY u.id, u.full_name, u.email, ugp.current_level, ugp.total_xp, ugp.current_coins
+      GROUP BY u.id, u.full_name, u.email, ugp.current_level, ugp.total_xp, ugp.available_coins
       ORDER BY ugp.total_xp DESC
       LIMIT 10
     `;
