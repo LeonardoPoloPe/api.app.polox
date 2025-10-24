@@ -222,10 +222,22 @@ class LeadModel {
       source = null,
       temperature = null,
       ownerId = null, // Renomeado de userId
+      minScore = null,
+      maxScore = null,
       search = null,
       sortBy = 'created_at',
       sortOrder = 'DESC'
     } = options;
+
+    // Validar sortBy contra campos permitidos
+    const allowedSortFields = [
+      'id', 'name', 'email', 'company_name', 'status', 'source', 
+      'score', 'temperature', 'created_at', 'updated_at', 
+      'first_contact_at', 'last_contact_at', 'conversion_value'
+    ];
+    
+    const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     const offset = (page - 1) * limit;
     const conditions = ['l.company_id = $1', 'l.deleted_at IS NULL'];
@@ -257,6 +269,18 @@ class LeadModel {
       paramCount++;
     }
 
+    if (minScore !== null && minScore !== undefined) {
+      conditions.push(`l.score >= $${paramCount}`);
+      values.push(minScore);
+      paramCount++;
+    }
+
+    if (maxScore !== null && maxScore !== undefined) {
+      conditions.push(`l.score <= $${paramCount}`);
+      values.push(maxScore);
+      paramCount++;
+    }
+
     if (search) {
       conditions.push(`(l.name ILIKE $${paramCount} OR l.email ILIKE $${paramCount} OR l.company_name ILIKE $${paramCount})`);
       values.push(`%${search}%`);
@@ -272,7 +296,7 @@ class LeadModel {
       ${whereClause}
     `;
 
-    // Query para buscar dados
+    // Query para buscar dados (com sortBy validado e escapado)
     const selectQuery = `
       SELECT 
         l.id, l.name, l.email, l.phone, l.company_name, l.position,
@@ -286,7 +310,7 @@ class LeadModel {
       FROM polox.leads l
       LEFT JOIN polox.users owner ON l.owner_id = owner.id
       ${whereClause}
-      ORDER BY l.${sortBy} ${sortOrder}
+      ORDER BY l.${validSortBy} ${validSortOrder}
       LIMIT $${paramCount} OFFSET $${paramCount + 1}
     `;
 
@@ -299,8 +323,26 @@ class LeadModel {
       const total = parseInt(countResult.rows[0].count);
       const totalPages = Math.ceil(total / limit);
 
+      // Buscar estatísticas básicas
+      const statsQuery = `
+        SELECT 
+          COUNT(*) FILTER (WHERE status = 'new') as new_count,
+          COUNT(*) FILTER (WHERE status = 'contacted') as contacted_count,
+          COUNT(*) FILTER (WHERE status = 'qualified') as qualified_count,
+          COUNT(*) FILTER (WHERE status = 'proposal') as proposal_count,
+          COUNT(*) FILTER (WHERE status = 'negotiation') as negotiation_count,
+          COUNT(*) FILTER (WHERE status = 'won') as won_count,
+          COUNT(*) FILTER (WHERE status = 'lost') as lost_count,
+          AVG(score) as avg_score,
+          SUM(conversion_value) as total_conversion_value
+        FROM polox.leads l
+        ${whereClause}
+      `;
+
+      const statsResult = await query(statsQuery, values, { companyId });
+
       return {
-        data: dataResult.rows,
+        leads: dataResult.rows,
         pagination: {
           page,
           limit,
@@ -308,7 +350,8 @@ class LeadModel {
           totalPages,
           hasNext: page < totalPages,
           hasPrev: page > 1
-        }
+        },
+        stats: statsResult.rows[0]
       };
     } catch (error) {
       throw new ApiError(500, `Erro ao listar leads: ${error.message}`);
@@ -613,6 +656,56 @@ class LeadModel {
       return result.rows;
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar notas: ${error.message}`);
+    }
+  }
+
+  /**
+   * Atualiza uma nota
+   * @param {number} noteId - ID da nota
+   * @param {Object} updateData - Dados para atualizar
+   * @returns {Promise<Object|null>} Nota atualizada ou null
+   */
+  static async updateNote(noteId, updateData) {
+    const { content } = updateData;
+    
+    if (!content || content.trim() === '') {
+      throw new ValidationError('Conteúdo da nota é obrigatório');
+    }
+
+    const updateQuery = `
+      UPDATE polox.lead_notes 
+      SET content = $1, updated_at = NOW()
+      WHERE id = $2 AND deleted_at IS NULL
+      RETURNING 
+        id, lead_id, created_by_id, content, type, 
+        created_at, updated_at
+    `;
+
+    try {
+      const result = await query(updateQuery, [content, noteId]);
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao atualizar nota: ${error.message}`);
+    }
+  }
+
+  /**
+   * Deleta uma nota (soft delete)
+   * @param {number} noteId - ID da nota
+   * @returns {Promise<boolean>} True se deletado com sucesso
+   */
+  static async deleteNote(noteId) {
+    const deleteQuery = `
+      UPDATE polox.lead_notes 
+      SET deleted_at = NOW(), updated_at = NOW()
+      WHERE id = $1 AND deleted_at IS NULL
+    `;
+
+    try {
+      const result = await query(deleteQuery, [noteId]);
+      return result.rowCount > 0;
+    } catch (error) {
+      throw new ApiError(500, `Erro ao deletar nota: ${error.message}`);
     }
   }
 
