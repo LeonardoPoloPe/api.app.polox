@@ -11,11 +11,13 @@
  * - Integração com gamificação
  */
 
-const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
+const { query } = require('../config/database');
 const { logger, auditLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
-const { successResponse, paginatedResponse } = require('../utils/formatters');
+const { successResponse, paginatedResponse } = require('../utils/response');
 const Joi = require('joi');
+const ClientService = require('../services/ClientService');
+const GamificationHistory = require('../models/GamificationHistory');
 
 class ClientController {
 
@@ -33,29 +35,43 @@ class ClientController {
         'string.email': 'Email deve ter formato válido'
       }),
     phone: Joi.string().max(20).allow(null),
-    company: Joi.string().max(255).allow(null),
-    position: Joi.string().max(100).allow(null),
-    source: Joi.string().max(100).allow(null),
-    status: Joi.string().valid('active', 'inactive', 'vip', 'blacklist').default('active'),
-    category: Joi.string().max(100).allow(null),
-    description: Joi.string().max(1000).allow(null),
-    tags: Joi.array().items(Joi.string()).default([]),
-    custom_fields: Joi.object().default({})
-  });
+    status: Joi.string().max(50).default('active'),
+    customFields: Joi.alternatives().try(
+      Joi.array().items(Joi.object({
+        id: Joi.number().required(),
+        value: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean(), Joi.date(), Joi.allow(null))
+      })),
+      Joi.object() // Permitir objeto {name: value}
+    ).default([]),
+    custom_fields: Joi.alternatives().try(
+      Joi.array().items(Joi.object({
+        id: Joi.number().required(),
+        value: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean(), Joi.date(), Joi.allow(null))
+      })),
+      Joi.object() // Permitir objeto {name: value}
+    ).default([])
+  }).unknown(true);
 
   static updateClientSchema = Joi.object({
     name: Joi.string().min(2).max(255),
     email: Joi.string().email().allow(null),
     phone: Joi.string().max(20).allow(null),
-    company: Joi.string().max(255).allow(null),
-    position: Joi.string().max(100).allow(null),
-    source: Joi.string().max(100).allow(null),
-    status: Joi.string().valid('active', 'inactive', 'vip', 'blacklist'),
-    category: Joi.string().max(100).allow(null),
-    description: Joi.string().max(1000).allow(null),
-    tags: Joi.array().items(Joi.string()),
-    custom_fields: Joi.object()
-  });
+    status: Joi.string().max(50),
+    customFields: Joi.alternatives().try(
+      Joi.array().items(Joi.object({
+        id: Joi.number().required(),
+        value: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean(), Joi.date(), Joi.allow(null))
+      })),
+      Joi.object() // Permitir objeto {name: value}
+    ),
+    custom_fields: Joi.alternatives().try(
+      Joi.array().items(Joi.object({
+        id: Joi.number().required(),
+        value: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean(), Joi.date(), Joi.allow(null))
+      })),
+      Joi.object() // Permitir objeto {name: value}
+    )
+  }).unknown(true);
 
   static addNoteSchema = Joi.object({
     note: Joi.string().min(1).max(1000).required(),
@@ -63,7 +79,37 @@ class ClientController {
   });
 
   /**
-   * 📋 LISTAR CLIENTES
+   * � Normaliza payloads que podem vir com customFields/custom_fields em formatos inesperados
+   * - Se vier como string vazia: []
+   * - Se vier como string JSON válida de array: parseia
+   * - Se vier como objeto/qualquer outro tipo: []
+   */
+  static normalizePayload(raw) {
+    const body = { ...(raw || {}) };
+    for (const key of ['customFields', 'custom_fields']) {
+      if (body[key] !== undefined && !Array.isArray(body[key])) {
+        if (typeof body[key] === 'string') {
+          const s = body[key].trim();
+          if (!s) {
+            body[key] = [];
+          } else {
+            try {
+              const parsed = JSON.parse(s);
+              body[key] = Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+              body[key] = [];
+            }
+          }
+        } else {
+          body[key] = [];
+        }
+      }
+    }
+    return body;
+  }
+
+  /**
+   * �📋 LISTAR CLIENTES
    * GET /api/clients
    */
   static index = asyncHandler(async (req, res) => {
@@ -147,9 +193,9 @@ class ClientController {
     const statsQuery = `
       SELECT 
         COUNT(*) as total_clients,
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_clients,
-        COUNT(CASE WHEN status = 'vip' THEN 1 END) as vip_clients,
-        COUNT(CASE WHEN status = 'inactive' THEN 1 END) as inactive_clients,
+        COUNT(CASE WHEN c.status = 'active' THEN 1 END) as active_clients,
+        COUNT(CASE WHEN c.status = 'vip' THEN 1 END) as vip_clients,
+        COUNT(CASE WHEN c.status = 'inactive' THEN 1 END) as inactive_clients,
         COALESCE(AVG(
           CASE WHEN s.total_amount > 0 
           THEN s.total_amount 
@@ -180,76 +226,74 @@ class ClientController {
    * POST /api/clients
    */
   static create = asyncHandler(async (req, res) => {
-    const { error, value } = ClientController.createClientSchema.validate(req.body);
+    const normalized = ClientController.normalizePayload(req.body);
+    const { error, value } = ClientController.createClientSchema.validate(normalized);
     if (error) throw new ApiError(400, error.details[0].message);
 
-    const clientData = value;
-
-    // Verificar se email já existe (se fornecido)
-    if (clientData.email) {
-      const emailCheck = await query(
-        'SELECT id FROM clients WHERE email = $1 AND company_id = $2 AND deleted_at IS NULL',
-        [clientData.email, req.user.companyId]
-      );
-
-      if (emailCheck.rows.length > 0) {
-        throw new ApiError(400, 'Client with this email already exists');
-      }
-    }
-
-    // 🆕 CRIAR CLIENTE
-    const createClientQuery = `
-      INSERT INTO clients (
-        company_id, name, email, phone, company, position,
-        source, status, category, description, tags, custom_fields
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING *
-    `;
-
-    const newClientResult = await query(createClientQuery, [
+    const created = await ClientService.createClient(
       req.user.companyId,
-      clientData.name,
-      clientData.email,
-      clientData.phone,
-      clientData.company,
-      clientData.position,
-      clientData.source,
-      clientData.status,
-      clientData.category,
-      clientData.description,
-      JSON.stringify(clientData.tags),
-      JSON.stringify(clientData.custom_fields)
-    ]);
-
-    const newClient = newClientResult.rows[0];
+      req.user.id,
+      value
+    );
 
     // 🎮 GAMIFICAÇÃO: Conceder XP/Coins por criar cliente
-    await query(`
-      UPDATE user_gamification_profiles 
-      SET total_xp = total_xp + 20, current_coins = current_coins + 10
-      WHERE user_id = $1 AND company_id = $2
-    `, [req.user.id, req.user.companyId]);
+    try {
+      await query(`
+        UPDATE user_gamification_profiles 
+        SET total_xp = total_xp + 20, 
+            total_coins = total_coins + 10,
+            available_coins = available_coins + 10
+        WHERE user_id = $1 AND company_id = $2
+      `, [req.user.id, req.user.companyId]);
 
-    // 📈 Registrar no histórico
-    await query(`
-      INSERT INTO gamification_history (user_id, company_id, type, amount, reason, action_type)
-      VALUES 
-        ($1, $2, 'xp', 20, $3, 'client_created'),
-        ($1, $2, 'coins', 10, $3, 'client_created')
-    `, [req.user.id, req.user.companyId, `Client created: ${clientData.name}`]);
+      // 📈 Registrar no histórico usando o modelo
+      await GamificationHistory.logEvent({
+        user_id: req.user.id,
+        event_type: 'client_created',
+        points_awarded: 20,
+        description: `Cliente criado: ${value.name}`,
+        metadata: {
+          client_id: created.id,
+          client_name: value.name,
+          xp_awarded: 20,
+          coins_awarded: 10
+        },
+        related_entity_type: 'client',
+        related_entity_id: created.id,
+        triggered_by_user_id: req.user.id
+      });
+
+      await GamificationHistory.logEvent({
+        user_id: req.user.id,
+        event_type: 'coins_awarded',
+        points_awarded: 10,
+        description: `Moedas recebidas por criar cliente: ${value.name}`,
+        metadata: {
+          client_id: created.id,
+          client_name: value.name,
+          coins_awarded: 10
+        },
+        related_entity_type: 'client',
+        related_entity_id: created.id,
+        triggered_by_user_id: req.user.id
+      });
+    } catch (gamificationError) {
+      // Gamificação é opcional - não deve impedir a criação do cliente
+      console.warn('⚠️  Gamification error (non-blocking):', gamificationError.message);
+    }
 
     // 📋 Log de auditoria
     auditLogger('Client created', {
       userId: req.user.id,
       companyId: req.user.companyId,
       entityType: 'client',
-      entityId: newClient.id,
+      entityId: created.id,
       action: 'create',
-      changes: clientData,
+      changes: value,
       ip: req.ip
     });
 
-    return successResponse(res, newClient, 'Client created successfully', 201);
+    return successResponse(res, created, 'Client created successfully', 201);
   });
 
   /**
@@ -259,45 +303,39 @@ class ClientController {
   static show = asyncHandler(async (req, res) => {
     const clientId = req.params.id;
 
-    // 🔍 Buscar cliente com estatísticas
-    const clientQuery = `
+    const client = await ClientService.getClientById(clientId, req.user.companyId);
+
+    // Estatísticas de vendas e notas recentes
+    const statsQuery = `
       SELECT 
-        c.*,
         COUNT(DISTINCT s.id) as total_sales,
         COALESCE(SUM(s.total_amount), 0) as total_spent,
         MAX(s.sale_date) as last_purchase_date,
         MIN(s.sale_date) as first_purchase_date,
         COALESCE(AVG(s.total_amount), 0) as average_ticket
-      FROM clients c
-      LEFT JOIN sales s ON c.id = s.client_id AND s.deleted_at IS NULL AND s.status != 'cancelled'
-      WHERE c.id = $1 AND c.company_id = $2 AND c.deleted_at IS NULL
-      GROUP BY c.id
+      FROM sales s
+      WHERE s.client_id = $1 AND s.deleted_at IS NULL AND s.status != 'cancelled'
     `;
-    
-    const clientResult = await query(clientQuery, [clientId, req.user.companyId]);
-    
-    if (clientResult.rows.length === 0) {
-      throw new ApiError(404, 'Client not found');
-    }
+    const statsRes = await query(statsQuery, [clientId]);
 
-    // 📝 Buscar notas recentes
-    const notesQuery = `
-      SELECT 
-        cn.*,
-        u.name as created_by_name
+    const notesRes = await query(`
+      SELECT cn.*, u.name as created_by_name
       FROM client_notes cn
       LEFT JOIN users u ON cn.created_by_id = u.id
       WHERE cn.client_id = $1
       ORDER BY cn.created_at DESC
       LIMIT 10
-    `;
+    `, [clientId]);
 
-    const notesResult = await query(notesQuery, [clientId]);
-
-    const client = clientResult.rows[0];
-    client.recent_notes = notesResult.rows;
-
-    return successResponse(res, client);
+    return successResponse(res, {
+      ...client,
+      total_sales: Number(statsRes.rows?.[0]?.total_sales || 0),
+      total_spent: Number(statsRes.rows?.[0]?.total_spent || 0),
+      last_purchase_date: statsRes.rows?.[0]?.last_purchase_date || null,
+      first_purchase_date: statsRes.rows?.[0]?.first_purchase_date || null,
+      average_ticket: Number(statsRes.rows?.[0]?.average_ticket || 0),
+      recent_notes: notesRes.rows || []
+    });
   });
 
   /**
@@ -306,64 +344,11 @@ class ClientController {
    */
   static update = asyncHandler(async (req, res) => {
     const clientId = req.params.id;
-    const { error, value } = ClientController.updateClientSchema.validate(req.body);
+    const normalized = ClientController.normalizePayload(req.body);
+    const { error, value } = ClientController.updateClientSchema.validate(normalized);
     if (error) throw new ApiError(400, error.details[0].message);
 
-    const updateData = value;
-
-    // Verificar se cliente existe
-    const clientCheck = await query(
-      'SELECT * FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [clientId, req.user.companyId]
-    );
-
-    if (clientCheck.rows.length === 0) {
-      throw new ApiError(404, 'Client not found');
-    }
-
-    const currentClient = clientCheck.rows[0];
-
-    // Verificar email único (se mudou)
-    if (updateData.email && updateData.email !== currentClient.email) {
-      const emailCheck = await query(
-        'SELECT id FROM clients WHERE email = $1 AND company_id = $2 AND id != $3 AND deleted_at IS NULL',
-        [updateData.email, req.user.companyId, clientId]
-      );
-
-      if (emailCheck.rows.length > 0) {
-        throw new ApiError(400, 'Client with this email already exists');
-      }
-    }
-
-    // 🔄 CONSTRUIR QUERY DE UPDATE
-    const updateFields = [];
-    const updateValues = [];
-    let paramCount = 0;
-
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== undefined) {
-        paramCount++;
-        updateFields.push(`${key} = $${paramCount}`);
-        
-        if (key === 'tags' || key === 'custom_fields') {
-          updateValues.push(JSON.stringify(updateData[key]));
-        } else {
-          updateValues.push(updateData[key]);
-        }
-      }
-    });
-
-    updateFields.push(`updated_at = NOW()`);
-    updateValues.push(clientId, req.user.companyId);
-
-    const updateQuery = `
-      UPDATE clients 
-      SET ${updateFields.join(', ')}
-      WHERE id = $${paramCount + 1} AND company_id = $${paramCount + 2}
-      RETURNING *
-    `;
-
-    const updatedClientResult = await query(updateQuery, updateValues);
+    const updated = await ClientService.updateClient(clientId, req.user.companyId, value);
 
     // 📋 Log de auditoria
     auditLogger('Client updated', {
@@ -372,11 +357,11 @@ class ClientController {
       entityType: 'client',
       entityId: clientId,
       action: 'update',
-      changes: updateData,
+      changes: value,
       ip: req.ip
     });
 
-    return successResponse(res, updatedClientResult.rows[0], 'Client updated successfully');
+    return successResponse(res, updated, 'Client updated successfully');
   });
 
   /**
@@ -385,18 +370,6 @@ class ClientController {
    */
   static destroy = asyncHandler(async (req, res) => {
     const clientId = req.params.id;
-
-    // Verificar se cliente existe
-    const clientCheck = await query(
-      'SELECT id, name FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [clientId, req.user.companyId]
-    );
-
-    if (clientCheck.rows.length === 0) {
-      throw new ApiError(404, 'Client not found');
-    }
-
-    const client = clientCheck.rows[0];
 
     // Verificar se tem vendas ativas
     const salesCheck = await query(
@@ -408,12 +381,7 @@ class ClientController {
       throw new ApiError(400, 'Cannot delete client with active sales. Please cancel sales first.');
     }
 
-    // Soft delete
-    await query(`
-      UPDATE clients 
-      SET deleted_at = NOW(), updated_at = NOW()
-      WHERE id = $1
-    `, [clientId]);
+    await ClientService.deleteClient(clientId, req.user.companyId);
 
     // 📋 Log de auditoria
     auditLogger('Client deleted', {
@@ -422,7 +390,7 @@ class ClientController {
       entityType: 'client',
       entityId: clientId,
       action: 'delete',
-      changes: { name: client.name },
+      changes: {},
       ip: req.ip
     });
 
@@ -534,7 +502,9 @@ class ClientController {
     // 🎮 GAMIFICAÇÃO: Pequeno XP por anotação (incentiva documentação)
     await query(`
       UPDATE user_gamification_profiles 
-      SET total_xp = total_xp + 2, current_coins = current_coins + 1
+      SET total_xp = total_xp + 2, 
+          total_coins = total_coins + 1,
+          available_coins = available_coins + 1
       WHERE user_id = $1 AND company_id = $2
     `, [req.user.id, req.user.companyId]);
 
