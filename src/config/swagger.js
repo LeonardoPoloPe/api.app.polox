@@ -21,19 +21,19 @@ const swaggerOptions = {
     servers: [
       {
         url: "http://localhost:3000/api",
-        description: "Servidor de Desenvolvimento Local",
+        description: "Servidor Local (Node.js)",
       },
       {
-        url: "https://tzy8wvl5i2.execute-api.sa-east-1.amazonaws.com/dev/api",
-        description: "Servidor de Desenvolvimento AWS",
+        url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api",
+        description: "Desenvolvimento AWS Lambda",
       },
       {
-        url: "https://6tyjc51bgl.execute-api.sa-east-1.amazonaws.com/sandbox/api",
-        description: "Servidor de Sandbox/Testes",
+        url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api",
+        description: "Sandbox AWS Lambda",
       },
       {
-        url: "https://te1b2dv2jd.execute-api.sa-east-1.amazonaws.com/prod/api",
-        description: "Servidor de Produção",
+        url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api",
+        description: "Produção AWS Lambda",
       },
     ],
     components: {

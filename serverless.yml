@@ -38,6 +38,13 @@ provider:
   stage: ${opt:stage, 'dev'}
   timeout: 15
   memorySize: 512
+  vpc:
+    securityGroupIds:
+      - sg-08caf7023512d2d69  # Security group do RDS
+    subnetIds:
+      - subnet-09e31f88ffe864c21  # Private subnet 1
+      - subnet-05b6cbd90f2ca7c9d  # Private subnet 2
+      - subnet-0e39fb3446bf485c0  # Private subnet 3
   environment:
     NODE_ENV: ${self:provider.stage}
     DB_HOST: ${env:DB_HOST, 'database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com'}

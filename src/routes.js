@@ -49,12 +49,20 @@ if (process.env.NODE_ENV !== "production") {
         },
         servers: [
           {
-            url: "http://localhost:3000/dev/api",
-            description: "Servidor de Desenvolvimento (Serverless Offline)",
-          },
-          {
             url: "http://localhost:3000/api",
             description: "Servidor Local (Node.js)",
+          },
+          {
+            url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api",
+            description: "Desenvolvimento AWS Lambda",
+          },
+          {
+            url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api",
+            description: "Sandbox AWS Lambda",
+          },
+          {
+            url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api",
+            description: "Produção AWS Lambda",
           },
         ],
         components: {

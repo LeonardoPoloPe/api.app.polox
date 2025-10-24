@@ -10,7 +10,12 @@ const {
 
 class SecretsManager {
   constructor() {
-    this.client = new SecretsManagerClient({ region: "sa-east-1" });
+    this.client = new SecretsManagerClient({ 
+      region: "sa-east-1",
+      requestHandler: {
+        requestTimeout: 2000, // 2 segundos de timeout
+      }
+    });
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutos
   }
@@ -86,7 +91,13 @@ class SecretsManager {
         `⏳ Tentando carregar credenciais do Secrets Manager: ${secretName}`
       );
 
-      const secrets = await this.getSecret(secretName);
+      // Adicionar timeout de 3 segundos para não travar o Lambda
+      const secrets = await Promise.race([
+        this.getSecret(secretName),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout loading secret")), 3000)
+        ),
+      ]);
 
       return {
         host:

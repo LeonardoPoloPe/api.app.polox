@@ -81,30 +81,34 @@ async function createPool() {
             rejectUnauthorized: false,
           },
 
-    // Configurações de pool otimizadas para multi-tenant
-    max: parseInt(process.env.DB_POOL_MAX) || 20,
+    // Configurações de pool otimizadas para Lambda (pg específicas)
+    max: parseInt(process.env.DB_POOL_MAX) || 5, // Reduzido para Lambda
     min: parseInt(process.env.DB_POOL_MIN) || 0,
-    acquire: 30000,
-    idle: 10000,
-    evict: 1000,
-    connectionTimeoutMillis: 30000,
-    idleTimeoutMillis: 30000,
-    statement_timeout: 30000,
-    query_timeout: 30000,
+    connectionTimeoutMillis: 10000, // 10 segundos
+    idleTimeoutMillis: 10000, // 10 segundos
+    statement_timeout: 10000, // 10 segundos
+    query_timeout: 10000, // 10 segundos
   });
 
-  // Configurar schema padrão para multi-tenancy
-  pool.on("connect", (client) => {
-    // Definir search_path para incluir schema polox
-    client.query("SET search_path TO polox, public");
+  // Configurar schema padrão para multi-tenancy (async)
+  pool.on("connect", async (client) => {
+    try {
+      // Definir search_path para incluir schema polox
+      await client.query("SET search_path TO polox, public");
 
-    // Log de conexão
-    logger.info("Nova conexão PostgreSQL estabelecida", {
-      database: config.database,
-      host: finalHost,
-      source: config.source,
-      timestamp: new Date().toISOString(),
-    });
+      // Log de conexão
+      logger.info("Nova conexão PostgreSQL estabelecida", {
+        database: config.database,
+        host: finalHost,
+        source: config.source,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Erro ao configurar cliente PostgreSQL:", {
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   // Event listeners para monitoramento
@@ -228,9 +232,16 @@ const transaction = async (callback, options = {}) => {
  */
 const healthCheck = async () => {
   try {
-    const result = await query(
-      "SELECT NOW() as current_time, version() as pg_version"
-    );
+    // Garantir que o pool está criado
+    await createPool();
+    
+    // Executar query simples com timeout
+    const result = await Promise.race([
+      query("SELECT NOW() as current_time, version() as pg_version"),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Health check timeout")), 5000)
+      )
+    ]);
 
     logger.info("Health check realizado com sucesso", {
       time: result.rows[0].current_time,
@@ -327,5 +338,7 @@ module.exports = {
   getPoolStats,
   // Exportar função para inicialização manual se necessário
   initializeDatabase,
+  initializePool: createPool, // Alias para compatibilidade
+  getPool: () => pool, // Função para obter o pool
   logger,
 };

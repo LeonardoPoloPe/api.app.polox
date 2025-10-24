@@ -1,6 +1,6 @@
 # 📚 Índice de Documentação - API Polox
 
-**Última Atualização:** 23 de outubro de 2025
+**Última Atualização:** 24 de outubro de 2025
 
 ---
 
@@ -36,7 +36,8 @@
 - [📖 README.md](./README.md) - Visão geral e quick start
 - [⚡ COMANDOS_DEPLOY.md](./COMANDOS_DEPLOY.md) - Comandos de deploy atualizados (Serverless Framework)
 - [🔧 AWS_SETUP_INSTRUCTIONS.md](./AWS_SETUP_INSTRUCTIONS.md) - Configuração AWS
-- [📊 ATUALIZACAO_21_10_2025.md](./ATUALIZACAO_21_10_2025.md) - **LOG DE MUDANÇAS RECENTES**
+- [� ATUALIZACAO_24_10_2025.md](./ATUALIZACAO_24_10_2025.md) - **CORREÇÃO CRÍTICA - LEITURA OBRIGATÓRIA**
+- [📊 ATUALIZACAO_21_10_2025.md](./ATUALIZACAO_21_10_2025.md) - Log de mudanças Serverless Framework
 
 ### 🔐 **Segurança** ✅ **IMPLEMENTADO COM SUCESSO**
 
@@ -106,7 +107,21 @@ curl https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/health
 
 ---
 
-## 🆕 **Principais Mudanças 21/10/2025**
+## 🆕 **Principais Mudanças 24/10/2025**
+
+🔥 **CORREÇÃO CRÍTICA: API estava retornando erro 500 em todos os ambientes**
+
+✅ **Corrigido erro `initializePool is not a function`**  
+✅ **Configurado VPC para acesso ao RDS**  
+✅ **Otimizado timeout do Secrets Manager (fallback rápido)**  
+✅ **Corrigido configurações do Pool PostgreSQL**  
+✅ **Todos os 3 ambientes (dev/sandbox/prod) funcionando ✅**  
+
+📋 **[Ver detalhes completos da correção](./ATUALIZACAO_24_10_2025.md)**
+
+---
+
+## 📝 **Mudanças Anteriores 21/10/2025**
 
 ✅ **Migração para Serverless Framework v3.40.0**  
 ✅ **Novos endpoints AWS Lambda (URLs atualizadas)**  
