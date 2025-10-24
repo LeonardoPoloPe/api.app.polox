@@ -13,8 +13,8 @@ class CompanyModel {
    */
   static async create(companyData) {
     const {
-      name,
-      domain,
+      company_name,
+      company_domain,
       slug,
       plan = 'starter',
       industry,
@@ -29,13 +29,13 @@ class CompanyModel {
     } = companyData;
 
     // Validar dados obrigatórios
-    if (!name || !domain || !slug) {
+    if (!company_name || !company_domain || !slug) {
       throw new ValidationError('Nome, domínio e slug são obrigatórios');
     }
 
     const insertQuery = `
       INSERT INTO polox.companies (
-        name, domain, slug, plan, industry, company_size, 
+        company_name, company_domain, slug, plan, industry, company_size, 
         country, timezone, language, enabled_modules,
         admin_name, admin_email, admin_phone,
         created_at, updated_at
@@ -47,14 +47,14 @@ class CompanyModel {
         NOW(), NOW()
       )
       RETURNING 
-        id, name, domain, slug, plan, status, industry, company_size,
+        id, company_name, company_domain, slug, plan, status, industry, company_size,
         country, timezone, language, enabled_modules, max_users, max_storage_mb,
         admin_name, admin_email, admin_phone, created_at, updated_at
     `;
 
     try {
       const result = await query(insertQuery, [
-        name, domain, slug, plan, industry, company_size,
+        company_name, company_domain, slug, plan, industry, company_size,
         country, timezone, language, JSON.stringify(enabled_modules),
         admin_name, admin_email, admin_phone
       ]);
@@ -81,7 +81,7 @@ class CompanyModel {
   static async findById(id) {
     const selectQuery = `
       SELECT 
-        id, name, domain, slug, plan, status, industry, company_size,
+        id, company_name, company_domain, slug, plan, status, industry, company_size,
         country, timezone, language, enabled_modules, max_users, max_storage_mb,
         admin_name, admin_email, admin_phone, 
         created_at, updated_at, last_activity,
@@ -100,23 +100,23 @@ class CompanyModel {
 
   /**
    * Busca empresa por domínio
-   * @param {string} domain - Domínio da empresa
+   * @param {string} company_domain - Domínio da empresa
    * @returns {Promise<Object|null>} Empresa encontrada ou null
    */
-  static async findByDomain(domain) {
+  static async findByDomain(company_domain) {
     const selectQuery = `
       SELECT 
-        id, name, domain, slug, plan, status, industry, company_size,
+        id, company_name, company_domain, slug, plan, status, industry, company_size,
         country, timezone, language, enabled_modules, max_users, max_storage_mb,
         admin_name, admin_email, admin_phone, 
         created_at, updated_at, last_activity,
         trial_ends_at, subscription_ends_at
       FROM polox.companies 
-      WHERE domain = $1 AND deleted_at IS NULL
+      WHERE company_domain = $1 AND deleted_at IS NULL
     `;
 
     try {
-      const result = await query(selectQuery, [domain]);
+      const result = await query(selectQuery, [company_domain]);
       return result.rows[0] || null;
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar empresa por domínio: ${error.message}`);
@@ -131,7 +131,7 @@ class CompanyModel {
    */
   static async update(id, updateData) {
     const allowedFields = [
-      'name', 'industry', 'company_size', 'country', 'timezone', 
+      'company_name', 'industry', 'company_size', 'country', 'timezone', 
       'language', 'enabled_modules', 'admin_name', 'admin_email', 
       'admin_phone', 'settings'
     ];
@@ -166,7 +166,7 @@ class CompanyModel {
       SET ${updates.join(', ')}
       WHERE id = $${paramCount} AND deleted_at IS NULL
       RETURNING 
-        id, name, domain, slug, plan, status, industry, company_size,
+        id, company_name, company_domain, slug, plan, status, industry, company_size,
         country, timezone, language, enabled_modules, max_users, max_storage_mb,
         admin_name, admin_email, admin_phone, 
         created_at, updated_at, last_activity
@@ -208,7 +208,7 @@ class CompanyModel {
         updated_at = NOW()
       WHERE id = $4 AND deleted_at IS NULL
       RETURNING 
-        id, name, plan, max_users, max_storage_mb, updated_at
+        id, company_name, plan, max_users, max_storage_mb, updated_at
     `;
 
     try {
@@ -353,7 +353,7 @@ class CompanyModel {
     }
 
     if (search) {
-      conditions.push(`(name ILIKE $${paramCount} OR domain ILIKE $${paramCount} OR admin_email ILIKE $${paramCount})`);
+      conditions.push(`(company_name ILIKE $${paramCount} OR company_domain ILIKE $${paramCount} OR admin_email ILIKE $${paramCount})`);
       values.push(`%${search}%`);
       paramCount++;
     }
@@ -366,7 +366,7 @@ class CompanyModel {
     // Query para buscar dados
     const selectQuery = `
       SELECT 
-        id, name, domain, slug, plan, status, industry, company_size,
+        id, company_name, company_domain, slug, plan, status, industry, company_size,
         country, timezone, language, enabled_modules, max_users, max_storage_mb,
         admin_name, admin_email, admin_phone, 
         created_at, updated_at, last_activity,
@@ -451,7 +451,7 @@ class CompanyModel {
   static async getStats(companyId) {
     const statsQuery = `
       SELECT 
-        c.name,
+        c.company_name,
         c.plan,
         c.created_at,
         c.last_activity,
@@ -467,7 +467,7 @@ class CompanyModel {
       LEFT JOIN polox.clients cl ON c.id = cl.company_id AND cl.deleted_at IS NULL
       LEFT JOIN polox.sales s ON c.id = s.company_id AND s.deleted_at IS NULL AND s.status = 'confirmed'
       WHERE c.id = $1 AND c.deleted_at IS NULL
-      GROUP BY c.id, c.name, c.plan, c.created_at, c.last_activity
+      GROUP BY c.id, c.company_name, c.plan, c.created_at, c.last_activity
     `;
 
     try {

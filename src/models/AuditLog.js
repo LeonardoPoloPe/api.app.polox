@@ -15,7 +15,7 @@ class AuditLogModel {
   static async create(logData, companyId) {
     const {
       user_id = null,
-      action,
+      audit_action,
       entity_type,
       entity_id,
       entity_name = null,
@@ -31,7 +31,7 @@ class AuditLogModel {
     } = logData;
 
     // Validar dados obrigatórios
-    if (!action) {
+    if (!audit_action) {
       throw new ValidationError('Ação é obrigatória');
     }
 
@@ -50,7 +50,7 @@ class AuditLogModel {
       'download', 'share', 'archive', 'restore'
     ];
 
-    if (!validActions.includes(action)) {
+    if (!validActions.includes(audit_action)) {
       throw new ValidationError(`Ação deve ser uma de: ${validActions.join(', ')}`);
     }
 
@@ -62,7 +62,7 @@ class AuditLogModel {
 
     const insertQuery = `
       INSERT INTO polox.audit_logs (
-        company_id, user_id, action, entity_type, entity_id,
+        company_id, user_id, audit_action, entity_type, entity_id,
         entity_name, old_values, new_values, ip_address,
         user_agent, session_id, category, severity, description,
         metadata, created_at
@@ -74,13 +74,13 @@ class AuditLogModel {
         $15, NOW()
       )
       RETURNING 
-        id, action, entity_type, entity_id, entity_name,
+        id, audit_action, entity_type, entity_id, entity_name,
         category, severity, created_at
     `;
 
     try {
       const result = await query(insertQuery, [
-        companyId, user_id, action, entity_type, entity_id,
+        companyId, user_id, audit_action, entity_type, entity_id,
         entity_name, old_values, new_values, ip_address,
         user_agent, session_id, category, severity, description,
         metadata
@@ -103,7 +103,7 @@ class AuditLogModel {
       page = 1,
       limit = 50,
       user_id = null,
-      action = null,
+      audit_action = null,
       entity_type = null,
       entity_id = null,
       category = null,
@@ -171,7 +171,7 @@ class AuditLogModel {
 
     if (search) {
       conditions.push(`(
-        action ILIKE $${paramCount} OR 
+        audit_action ILIKE $${paramCount} OR 
         entity_name ILIKE $${paramCount} OR 
         description ILIKE $${paramCount}
       )`);
@@ -191,10 +191,10 @@ class AuditLogModel {
     // Query para buscar dados
     const selectQuery = `
       SELECT 
-        al.id, al.action, al.entity_type, al.entity_id, al.entity_name,
+        al.id, al.audit_action, al.entity_type, al.entity_id, al.entity_name,
         al.category, al.severity, al.description, al.ip_address,
         al.created_at,
-        u.name as user_name,
+        u.full_name as user_name,
         u.email as user_email
       FROM polox.audit_logs al
       LEFT JOIN polox.users u ON al.user_id = u.id
@@ -215,7 +215,7 @@ class AuditLogModel {
       return {
         data: dataResult.rows.map(log => ({
           ...log,
-          action_display: this.getActionDisplay(log.action),
+          action_display: this.getActionDisplay(log.audit_action),
           severity_display: this.getSeverityDisplay(log.severity),
           time_ago: this.getTimeAgo(log.created_at)
         })),

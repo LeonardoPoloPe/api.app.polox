@@ -16,10 +16,10 @@ class UserModel {
   static async create(userData) {
     const {
       company_id,
-      name,
+      full_name,
       email,
       password,
-      role = 'user',
+      user_role = 'user',
       permissions = [],
       avatar_url = null,
       phone,
@@ -31,7 +31,7 @@ class UserModel {
     } = userData;
 
     // Validar dados obrigatórios
-    if (!company_id || !name || !email || !password) {
+    if (!company_id || !full_name || !email || !password) {
       throw new ValidationError('Company ID, nome, email e senha são obrigatórios');
     }
 
@@ -40,7 +40,7 @@ class UserModel {
 
     const insertQuery = `
       INSERT INTO polox.users (
-        company_id, name, email, password_hash, role, permissions,
+        company_id, full_name, email, password_hash, user_role, permissions,
         avatar_url, phone, position, department, language, timezone, 
         preferences, status, failed_login_attempts, created_at, updated_at
       )
@@ -50,14 +50,14 @@ class UserModel {
         $13, 'active', 0, NOW(), NOW()
       )
       RETURNING 
-        id, company_id, name, email, role, permissions,
+        id, company_id, full_name, email, user_role, permissions,
         avatar_url, phone, position, department, language, timezone, 
         preferences, status, created_at, updated_at
     `;
 
     try {
       const result = await query(insertQuery, [
-        company_id, name, email, passwordHash, role, JSON.stringify(permissions),
+        company_id, full_name, email, passwordHash, user_role, JSON.stringify(permissions),
         avatar_url, phone, position, department, language, timezone, 
         JSON.stringify(preferences)
       ], { companyId: company_id });
@@ -88,12 +88,12 @@ class UserModel {
       // Busca com isolamento multi-tenant
       selectQuery = `
         SELECT 
-          u.id, u.company_id, u.name, u.email, u.password_hash, u.role, 
+          u.id, u.company_id, u.full_name, u.email, u.password_hash, u.user_role, 
           u.permissions, u.status, u.avatar_url, u.phone, u.position, u.department,
           u.language, u.timezone, u.preferences, u.last_login_at, u.last_login_ip,
           u.failed_login_attempts, u.locked_until, u.email_verified_at,
           u.created_at, u.updated_at,
-          c.name as company_name, c.domain as company_domain, 
+          c.company_name, c.company_domain, 
           c.plan as company_plan, c.enabled_modules as company_modules,
           c.status as company_status
         FROM polox.users u
@@ -107,11 +107,11 @@ class UserModel {
       // Busca global (para super admin)
       selectQuery = `
         SELECT 
-          u.id, u.company_id, u.name, u.email, u.password_hash, u.role, 
+          u.id, u.company_id, u.full_name, u.email, u.password_hash, u.user_role, 
           u.permissions, u.status, u.phone, u.position, u.department,
           u.language, u.timezone, u.preferences, u.last_login_at,
           u.created_at, u.updated_at,
-          c.name as company_name, c.domain as company_domain, 
+          c.company_name, c.company_domain, 
           c.plan as company_plan, c.enabled_modules as company_modules,
           c.status as company_status
         FROM users u
@@ -143,10 +143,10 @@ class UserModel {
       // Busca com isolamento multi-tenant
       selectQuery = `
         SELECT 
-          u.id, u.company_id, u.name, u.email, u.role, u.permissions, 
+          u.id, u.company_id, u.full_name, u.email, u.user_role, u.permissions, 
           u.status, u.phone, u.position, u.department, u.language, 
           u.timezone, u.preferences, u.last_login_at, u.created_at, u.updated_at,
-          c.name as company_name, c.domain as company_domain, 
+          c.company_name, c.company_domain, 
           c.plan as company_plan, c.enabled_modules as company_modules,
           c.status as company_status
         FROM users u
@@ -160,10 +160,10 @@ class UserModel {
       // Busca global (para super admin)
       selectQuery = `
         SELECT 
-          u.id, u.company_id, u.name, u.email, u.role, u.permissions, 
+          u.id, u.company_id, u.full_name, u.email, u.user_role, u.permissions, 
           u.status, u.phone, u.position, u.department, u.language, 
           u.timezone, u.preferences, u.last_login_at, u.created_at, u.updated_at,
-          c.name as company_name, c.domain as company_domain, 
+          c.company_name, c.company_domain, 
           c.plan as company_plan, c.enabled_modules as company_modules,
           c.status as company_status
         FROM users u
@@ -204,8 +204,8 @@ class UserModel {
    */
   static async update(id, updateData, companyId = null) {
     const allowedFields = [
-      'name', 'email', 'phone', 'position', 'department', 
-      'language', 'timezone', 'preferences', 'role', 'permissions'
+      'full_name', 'email', 'phone', 'position', 'department', 
+      'language', 'timezone', 'preferences', 'user_role', 'permissions'
     ];
     
     const updates = [];
@@ -245,7 +245,7 @@ class UserModel {
       SET ${updates.join(', ')}
       WHERE ${whereClause}
       RETURNING 
-        id, company_id, name, email, role, permissions, status,
+        id, company_id, full_name, email, user_role, permissions, status,
         phone, position, department, language, timezone, preferences,
         created_at, updated_at
     `;
@@ -482,10 +482,10 @@ class UserModel {
     // Query para buscar dados
     const selectQuery = `
       SELECT 
-        u.id, u.company_id, u.name, u.email, u.role, u.permissions,
+        u.id, u.company_id, u.full_name, u.email, u.user_role, u.permissions,
         u.status, u.phone, u.position, u.department, u.language,
         u.timezone, u.last_login_at, u.created_at, u.updated_at,
-        c.name as company_name, c.domain as company_domain
+        c.company_name, c.company_domain
       FROM users u
       LEFT JOIN companies c ON u.company_id = c.id
       ${whereClause}
@@ -529,9 +529,9 @@ class UserModel {
         COUNT(*) as total,
         COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
         COUNT(CASE WHEN status = 'inactive' THEN 1 END) as inactive,
-        COUNT(CASE WHEN role = 'company_admin' THEN 1 END) as admins,
-        COUNT(CASE WHEN role = 'manager' THEN 1 END) as managers,
-        COUNT(CASE WHEN role = 'user' THEN 1 END) as users
+        COUNT(CASE WHEN user_role = 'company_admin' THEN 1 END) as admins,
+        COUNT(CASE WHEN user_role = 'manager' THEN 1 END) as managers,
+        COUNT(CASE WHEN user_role = 'user' THEN 1 END) as users
       FROM users
       WHERE company_id = $1 AND deleted_at IS NULL
     `;
@@ -546,13 +546,13 @@ class UserModel {
 
   /**
    * Busca usuários por role
-   * @param {string} role - Role a buscar
+   * @param {string} user_role - Role a buscar
    * @param {number} companyId - ID da empresa
    * @returns {Promise<Array>} Lista de usuários
    */
-  static async findByRole(role, companyId = null) {
-    let whereClause = 'role = $1 AND status = \'active\' AND deleted_at IS NULL';
-    let params = [role];
+  static async findByRole(user_role, companyId = null) {
+    let whereClause = 'user_role = $1 AND status = \'active\' AND deleted_at IS NULL';
+    let params = [user_role];
 
     if (companyId) {
       whereClause += ' AND company_id = $2';
@@ -561,11 +561,11 @@ class UserModel {
 
     const selectQuery = `
       SELECT 
-        id, company_id, name, email, role, phone, position,
+        id, company_id, full_name, email, user_role, phone, position,
         created_at, updated_at
       FROM users
       WHERE ${whereClause}
-      ORDER BY name
+      ORDER BY full_name
     `;
 
     try {
