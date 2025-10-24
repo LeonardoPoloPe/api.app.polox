@@ -47,7 +47,7 @@ const authMiddleware = async (req, res, next) => {
     const userResult = await query(
       `
       SELECT 
-        id, name, email, role, company_id, created_at
+        id, full_name, email, user_role, company_id, created_at
       FROM users
       WHERE id = $1 AND deleted_at IS NULL
     `,
@@ -64,9 +64,9 @@ const authMiddleware = async (req, res, next) => {
     req.user = {
       id: user.id,
       companyId: user.company_id,
-      name: user.name,
+      name: user.full_name,
       email: user.email,
-      role: user.role,
+      role: user.user_role,
       createdAt: user.created_at,
     };
 

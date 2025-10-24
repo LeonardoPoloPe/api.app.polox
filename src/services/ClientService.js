@@ -6,8 +6,8 @@ const { NotFoundError, ValidationError, ApiError } = require('../utils/errors');
 // Campos realmente existentes na tabela polox.clients (baseado na estrutura real do DB)
 // Removido: user_id, notes (não existem na tabela atual)
 const STANDARD_CLIENT_FIELDS = new Set([
-  'name', 'email', 'phone', 'company_name', 'document_number', 'document_type',
-  'type', 'category', 'status', 'address_street', 'address_number', 
+  'client_name', 'email', 'phone', 'company_name', 'document_number', 'document_type',
+  'client_type', 'category', 'status', 'address_street', 'address_number', 
   'address_complement', 'address_neighborhood', 'address_city', 'address_state',
   'address_country', 'address_postal_code', 'total_spent', 'total_orders',
   'average_order_value', 'lifetime_value', 'acquisition_date', 'last_purchase_date',
@@ -26,10 +26,18 @@ function splitClientPayload(raw) {
   const standard = {};
   const eavFromExtras = {}; // name->value
 
+  // Mapear nome do campo frontend para o nome correto da coluna
+  const fieldMapping = {
+    'name': 'client_name',
+    'type': 'client_type'
+  };
+
   // Mover somente campos padrão
   for (const [key, val] of Object.entries(rest)) {
-    if (STANDARD_CLIENT_FIELDS.has(key)) {
-      standard[key] = val;
+    const mappedKey = fieldMapping[key] || key;
+    
+    if (STANDARD_CLIENT_FIELDS.has(mappedKey)) {
+      standard[mappedKey] = val;
     } else {
       // Qualquer outra chave vira candidato a EAV (mapeada por nome)
       eavFromExtras[key] = val;
@@ -104,7 +112,7 @@ class ClientService {
   static async createClient(companyId, userId, data) {
     const { standard, eavFromExtras, customFields } = splitClientPayload(data);
 
-    if (!standard.name || String(standard.name).trim().length < 1) {
+    if (!standard.client_name || String(standard.client_name).trim().length < 1) {
       throw new ValidationError('Nome é obrigatório');
     }
 

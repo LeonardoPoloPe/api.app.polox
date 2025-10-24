@@ -140,7 +140,7 @@ class ClientController {
 
     if (req.query.search) {
       whereClause += ` AND (
-        c.name ILIKE $${++paramCount} OR 
+        c.client_name ILIKE $${++paramCount} OR 
         c.email ILIKE $${++paramCount} OR 
         c.company ILIKE $${++paramCount}
       )`;
@@ -160,8 +160,8 @@ class ClientController {
     }
 
     // 📊 ORDENAÇÃO
-    const validSortFields = ['name', 'total_spent', 'last_purchase_at', 'created_at'];
-    const sortField = validSortFields.includes(req.query.sort) ? req.query.sort : 'name';
+    const validSortFields = ['client_name', 'total_spent', 'last_purchase_at', 'created_at'];
+    const sortField = validSortFields.includes(req.query.sort) ? req.query.sort : 'client_name';
     const sortOrder = req.query.order === 'desc' ? 'DESC' : 'ASC';
 
     // 🔍 QUERY PRINCIPAL com estatísticas de vendas
@@ -558,7 +558,7 @@ class ClientController {
     const topClientsQuery = `
       SELECT 
         c.id,
-        c.name,
+        c.client_name as name,
         c.email,
         c.status,
         COALESCE(SUM(s.total_amount), 0) as total_spent,
@@ -566,7 +566,7 @@ class ClientController {
       FROM clients c
       LEFT JOIN sales s ON c.id = s.client_id AND s.deleted_at IS NULL AND s.status != 'cancelled'
       WHERE c.company_id = $1 AND c.deleted_at IS NULL
-      GROUP BY c.id, c.name, c.email, c.status
+      GROUP BY c.id, c.client_name, c.email, c.status
       HAVING SUM(s.total_amount) > 0
       ORDER BY total_spent DESC
       LIMIT 10

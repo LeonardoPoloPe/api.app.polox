@@ -93,8 +93,8 @@ const updateClientValidation = Joi.object({
  *         name: sort
  *         schema:
  *           type: string
- *           enum: [name, total_spent, last_purchase_at, created_at]
- *           default: name
+ *           enum: [client_name, total_spent, last_purchase_at, created_at]
+ *           default: client_name
  *         description: Campo para ordenação
  *       - in: query
  *         name: order

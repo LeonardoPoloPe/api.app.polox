@@ -24,6 +24,7 @@ const notificationsRoutes = require("./routes/notifications");
 const scheduleRoutes = require("./routes/schedule");
 const suppliersRoutes = require("./routes/suppliers");
 const analyticsRoutes = require("./routes/analytics");
+const usersRoutes = require("./routes/users");
 
 const router = express.Router();
 
@@ -210,42 +211,7 @@ router.post("/auth/refresh", AuthController.refreshToken);
 // ==========================================
 // 👤 ROTAS DE USUÁRIO
 // ==========================================
-
-/**
- * @swagger
- * /users:
- *   get:
- *     summary: Listar usuários
- *     tags: [Usuários]
- *     responses:
- *       200:
- *         description: Lista de usuários
- */
-router.get("/users", authenticateToken, UserController.getUsers);
-
-/**
- * @swagger
- * /users/profile:
- *   get:
- *     summary: Obter perfil do usuário logado
- *     tags: [Usuários]
- *     responses:
- *       200:
- *         description: Perfil do usuário
- */
-router.get("/users/profile", authenticateToken, UserController.getProfile);
-
-/**
- * @swagger
- * /users/profile:
- *   put:
- *     summary: Atualizar perfil do usuário logado
- *     tags: [Usuários]
- *     responses:
- *       200:
- *         description: Perfil atualizado com sucesso
- */
-router.put("/users/profile", authenticateToken, UserController.updateProfile);
+router.use("/users", usersRoutes);
 
 // ==========================================
 // 🏢 ROTAS DE EMPRESAS (SUPER ADMIN)
