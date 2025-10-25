@@ -82,7 +82,7 @@ class LeadModel {
         if (notes && notes.trim() !== "") {
           await client.query(
             `
-          INSERT INTO polox.lead_notes (lead_id, created_by_id, content, note_type)
+          INSERT INTO polox.lead_notes (lead_id, created_by_id, note_content, note_type)
           VALUES ($1, $2, $3, 'general')
         `,
             [lead.id, created_by_id, notes]
@@ -93,15 +93,19 @@ class LeadModel {
         if (tags && tags.length > 0) {
           for (const tagName of tags) {
             if (tagName && tagName.trim() !== "") {
-              // Inserir tag se não existir
+              const trimmedName = tagName.trim();
+              const slug = trimmedName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+              
+              // Inserir tag se não existir (específica da empresa)
               const tagResult = await client.query(
                 `
-              INSERT INTO polox.tags (tag_name)
-              VALUES ($1)
-              ON CONFLICT (tag_name) DO UPDATE SET tag_name = EXCLUDED.tag_name
+              INSERT INTO polox.tags (company_id, tag_name, slug, color)
+              VALUES ($1, $2, $3, '#3498db')
+              ON CONFLICT (company_id, tag_name, slug) WHERE company_id IS NOT NULL
+              DO UPDATE SET tag_name = EXCLUDED.tag_name
               RETURNING id
             `,
-                [tagName.trim()]
+                [companyId, trimmedName, slug]
               );
 
               const tagId = tagResult.rows[0].id;
@@ -200,7 +204,7 @@ class LeadModel {
       const notesResult = await query(
         `
         SELECT 
-          ln.id, ln.content, ln.type, ln.created_at, ln.updated_at,
+          ln.id, ln.note_content as content, ln.note_type as type, ln.created_at, ln.updated_at,
           u.full_name as created_by_name
         FROM polox.lead_notes ln
         LEFT JOIN polox.users u ON ln.created_by_id = u.id
@@ -729,10 +733,10 @@ class LeadModel {
     }
 
     const insertQuery = `
-      INSERT INTO polox.lead_notes (lead_id, created_by_id, content, note_type)
+      INSERT INTO polox.lead_notes (lead_id, created_by_id, note_content, note_type)
       VALUES ($1, $2, $3, $4)
       RETURNING 
-        id, lead_id, created_by_id, content, note_type, 
+        id, lead_id, created_by_id, note_content as content, note_type as type, 
         created_at, updated_at
     `;
 
@@ -755,7 +759,7 @@ class LeadModel {
   static async getNotes(leadId, companyId) {
     const selectQuery = `
       SELECT 
-        ln.id, ln.content, ln.type, ln.created_at, ln.updated_at,
+        ln.id, ln.note_content as content, ln.note_type as type, ln.created_at, ln.updated_at,
         u.full_name as created_by_name, u.email as created_by_email
       FROM polox.lead_notes ln
       LEFT JOIN polox.users u ON ln.created_by_id = u.id
@@ -786,10 +790,10 @@ class LeadModel {
 
     const updateQuery = `
       UPDATE polox.lead_notes 
-      SET content = $1, updated_at = NOW()
+      SET note_content = $1, updated_at = NOW()
       WHERE id = $2 AND deleted_at IS NULL
       RETURNING 
-        id, lead_id, created_by_id, content, type, 
+        id, lead_id, created_by_id, note_content as content, note_type as type, 
         created_at, updated_at
     `;
 
@@ -835,15 +839,19 @@ class LeadModel {
 
     return await transaction(
       async (client) => {
-        // Inserir tag se não existir
+        const trimmedName = tagName.trim();
+        const slug = trimmedName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+        
+        // Inserir tag se não existir (específica da empresa)
         const tagResult = await client.query(
           `
-        INSERT INTO polox.tags (tag_name)
-        VALUES ($1)
-        ON CONFLICT (tag_name) DO UPDATE SET tag_name = EXCLUDED.tag_name
+        INSERT INTO polox.tags (company_id, tag_name, slug, color)
+        VALUES ($1, $2, $3, '#3498db')
+        ON CONFLICT (company_id, tag_name, slug) WHERE company_id IS NOT NULL
+        DO UPDATE SET tag_name = EXCLUDED.tag_name
         RETURNING id, tag_name as name, color
       `,
-          [tagName.trim()]
+          [companyId, trimmedName, slug]
         );
 
         const tag = tagResult.rows[0];
@@ -930,15 +938,19 @@ class LeadModel {
         if (tagNames && tagNames.length > 0) {
           for (const tagName of tagNames) {
             if (tagName && tagName.trim() !== "") {
-              // Inserir tag se não existir
+              const trimmedName = tagName.trim();
+              const slug = trimmedName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+              
+              // Inserir tag se não existir (específica da empresa)
               const tagResult = await client.query(
                 `
-              INSERT INTO polox.tags (tag_name)
-              VALUES ($1)
-              ON CONFLICT (tag_name) DO UPDATE SET tag_name = EXCLUDED.tag_name
+              INSERT INTO polox.tags (company_id, tag_name, slug, color)
+              VALUES ($1, $2, $3, '#3498db')
+              ON CONFLICT (company_id, tag_name, slug) WHERE company_id IS NOT NULL
+              DO UPDATE SET tag_name = EXCLUDED.tag_name
               RETURNING id
             `,
-                [tagName.trim()]
+                [companyId, trimmedName, slug]
               );
 
               const tagId = tagResult.rows[0].id;
