@@ -130,7 +130,7 @@ class SaleController {
 
     if (req.query.search) {
       whereClause += ` AND (
-        c.name ILIKE $${++paramCount} OR 
+        c.client_name ILIKE $${++paramCount} OR 
         c.email ILIKE $${++paramCount} OR 
         s.description ILIKE $${++paramCount}
       )`;
@@ -142,7 +142,7 @@ class SaleController {
     // 📊 ORDENAÇÃO
     const validSortFields = ['sale_date', 'total_amount', 'client_name', 'status', 'payment_status'];
     const sortField = validSortFields.includes(req.query.sort) ? 
-      (req.query.sort === 'client_name' ? 'c.name' : `s.${req.query.sort}`) : 
+      (req.query.sort === 'client_name' ? 'c.client_name' : `s.${req.query.sort}`) : 
       's.sale_date';
     const sortOrder = req.query.order === 'asc' ? 'ASC' : 'DESC';
 
@@ -150,9 +150,9 @@ class SaleController {
     const salesQuery = `
       SELECT 
         s.*,
-        c.name as client_name,
+        c.client_name,
         c.email as client_email,
-        c.company as client_company,
+        c.company_name as client_company,
         u.full_name as seller_name,
         u.email as seller_email,
         COUNT(si.id) as items_count
@@ -161,7 +161,7 @@ class SaleController {
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN sale_items si ON s.id = si.sale_id
       ${whereClause}
-      GROUP BY s.id, c.name, c.email, c.company, u.full_name, u.email
+      GROUP BY s.id, c.client_name, c.email, c.company_name, u.full_name, u.email
       ORDER BY ${sortField} ${sortOrder}
       LIMIT $${++paramCount} OFFSET $${++paramCount}
     `;
@@ -217,7 +217,7 @@ class SaleController {
 
     // 🔍 Verificar se cliente existe
     const clientCheck = await query(
-      'SELECT id, client_name as name, email FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      'SELECT id, client_name, email FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
       [saleData.client_id, req.user.companyId]
     );
 
@@ -340,7 +340,7 @@ class SaleController {
         req.user.id, 
         req.user.companyId, 
         xpReward, 
-        `Sale completed: ${client.name} - R$ ${totalAmount.toFixed(2)}`,
+        `Sale completed: ${client.client_name} - R$ ${totalAmount.toFixed(2)}`,
         coinReward
       ], transaction);
 
@@ -353,7 +353,7 @@ class SaleController {
       const completeSaleQuery = `
         SELECT 
           s.*,
-          c.name as client_name,
+          c.client_name,
           c.email as client_email,
           json_agg(
             json_build_object(
@@ -369,7 +369,7 @@ class SaleController {
         LEFT JOIN clients c ON s.client_id = c.id
         LEFT JOIN sale_items si ON s.id = si.sale_id
         WHERE s.id = $1
-        GROUP BY s.id, c.name, c.email
+        GROUP BY s.id, c.client_name, c.email
       `;
 
       const completeSaleResult = await query(completeSaleQuery, [newSale.id]);
@@ -383,7 +383,7 @@ class SaleController {
         action: 'create',
         changes: {
           client_id: saleData.client_id,
-          client_name: client.name,
+          client_name: client.client_name,
           total_amount: totalAmount,
           items_count: saleData.items.length
         },
@@ -408,10 +408,10 @@ class SaleController {
     const saleQuery = `
       SELECT 
         s.*,
-        c.name as client_name,
+        c.client_name,
         c.email as client_email,
         c.phone as client_phone,
-        c.company as client_company,
+        c.company_name as client_company,
         u.full_name as seller_name,
         u.email as seller_email,
         json_agg(
@@ -429,7 +429,7 @@ class SaleController {
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN sale_items si ON s.id = si.sale_id
       WHERE s.id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL
-      GROUP BY s.id, c.name, c.email, c.phone, c.company, u.full_name, u.email
+      GROUP BY s.id, c.client_name, c.email, c.phone, c.company_name, u.full_name, u.email
     `;
     
     const saleResult = await query(saleQuery, [saleId, req.user.companyId]);
@@ -516,7 +516,7 @@ class SaleController {
 
     // 🔍 Verificar se venda existe
     const saleCheck = await query(
-      `SELECT s.*, c.name as client_name 
+      `SELECT s.*, c.client_name 
        FROM sales s 
        LEFT JOIN clients c ON s.client_id = c.id
        WHERE s.id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL`,
