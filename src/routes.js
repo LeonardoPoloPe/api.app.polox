@@ -35,7 +35,7 @@ if (process.env.NODE_ENV !== "production") {
   try {
     const swaggerUi = require("swagger-ui-express");
     const swaggerJsdoc = require("swagger-jsdoc");
-    
+
     const swaggerOptions = {
       definition: {
         openapi: "3.0.0",
@@ -81,28 +81,27 @@ if (process.env.NODE_ENV !== "production") {
           },
         ],
       },
-      apis: [
-        "./src/routes.js",
-        "./src/routes/*.js",
-        "./src/controllers/*.js",
-      ],
+      apis: ["./src/routes.js", "./src/routes/*.js", "./src/controllers/*.js"],
     };
 
     const swaggerSpec = swaggerJsdoc(swaggerOptions);
-    
+
     // Rota para a UI do Swagger
     router.use("/docs", swaggerUi.serve);
-    router.get("/docs", swaggerUi.setup(swaggerSpec, {
-      customCss: '.swagger-ui .topbar { display: none }',
-      customSiteTitle: "Polox API Docs",
-    }));
-    
+    router.get(
+      "/docs",
+      swaggerUi.setup(swaggerSpec, {
+        customCss: ".swagger-ui .topbar { display: none }",
+        customSiteTitle: "Polox API Docs",
+      })
+    );
+
     // Rota para o JSON do Swagger
     router.get("/docs.json", (req, res) => {
       res.setHeader("Content-Type", "application/json");
       res.send(swaggerSpec);
     });
-    
+
     console.log("📚 Swagger configurado em /api/docs");
   } catch (error) {
     console.warn("⚠️  Swagger não pôde ser carregado:", error.message);
@@ -124,6 +123,15 @@ if (process.env.NODE_ENV !== "production") {
  *     summary: Login de usuário
  *     tags: [Autenticação]
  *     security: []
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
  *     requestBody:
  *       required: true
  *       content:
@@ -158,6 +166,15 @@ router.post("/auth/login", AuthController.login);
  *     summary: Registrar novo usuário
  *     tags: [Autenticação]
  *     security: []
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
  *     requestBody:
  *       required: true
  *       content:
@@ -189,6 +206,15 @@ router.post("/auth/register", AuthController.register);
  *   post:
  *     summary: Logout do usuário
  *     tags: [Autenticação]
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
  *     responses:
  *       200:
  *         description: Logout realizado com sucesso
@@ -202,6 +228,15 @@ router.post("/auth/logout", authenticateToken, AuthController.logout);
  *     summary: Renovar token de acesso
  *     tags: [Autenticação]
  *     security: []
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
  *     responses:
  *       200:
  *         description: Token renovado com sucesso
@@ -285,6 +320,15 @@ router.use("/analytics", analyticsRoutes);
  *     description: Endpoint público para testar a API sem autenticação
  *     tags: [Demo]
  *     security: []
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
  *     responses:
  *       200:
  *         description: Resposta de demonstração pública
@@ -322,6 +366,15 @@ router.get("/demo/public", (req, res) => {
  *     summary: Rota protegida de demonstração
  *     description: Endpoint que requer autenticação para testar o middleware
  *     tags: [Demo]
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
  *     responses:
  *       200:
  *         description: Resposta de demonstração protegida

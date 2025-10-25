@@ -1,0 +1,60 @@
+{
+  "api": {
+    "welcome": "Bienvenido a la API Polox",
+    "version": "Versión",
+    "status": "Estado de la API",
+    "healthy": "Saludable",
+    "database_connected": "Base de datos conectada",
+    "environment": "Ambiente"
+  },
+  "errors": {
+    "internal_server_error": "Error interno del servidor",
+    "not_found": "Recurso no encontrado",
+    "bad_request": "Solicitud incorrecta",
+    "unauthorized": "No autorizado",
+    "forbidden": "Acceso denegado",
+    "validation_error": "Error de validación",
+    "database_error": "Error en la base de datos",
+    "connection_error": "Error de conexión"
+  },
+  "validation": {
+    "required_field": "Campo obligatorio",
+    "invalid_email": "Email inválido",
+    "invalid_phone": "Teléfono inválido",
+    "invalid_date": "Fecha inválida",
+    "min_length": "Mínimo {{count}} caracteres",
+    "max_length": "Máximo {{count}} caracteres",
+    "invalid_format": "Formato inválido"
+  },
+  "messages": {
+    "success": "Operación completada con éxito",
+    "created": "Creado con éxito",
+    "updated": "Actualizado con éxito",
+    "deleted": "Eliminado con éxito",
+    "no_data": "No se encontraron datos",
+    "loading": "Cargando...",
+    "processing": "Procesando..."
+  },
+  "user": {
+    "profile": "Perfil",
+    "settings": "Configuración",
+    "preferences": "Preferencias",
+    "notifications": "Notificaciones",
+    "account": "Cuenta",
+    "logout": "Cerrar sesión"
+  },
+  "company": {
+    "name": "Nombre de la empresa",
+    "settings": "Configuración de la empresa",
+    "users": "Usuarios",
+    "plan": "Plan",
+    "billing": "Facturación"
+  },
+  "datetime": {
+    "date_format": "dd/MM/yyyy",
+    "datetime_format": "dd/MM/yyyy HH:mm:ss",
+    "time_format": "HH:mm:ss",
+    "timezone": "America/Sao_Paulo",
+    "locale": "es-ES"
+  }
+}

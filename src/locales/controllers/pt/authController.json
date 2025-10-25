@@ -1,0 +1,41 @@
+{
+  "login": {
+    "success": "Login realizado com sucesso",
+    "invalid_credentials": "Credenciais inválidas",
+    "missing_fields": "Email e senha são obrigatórios"
+  },
+  "register": {
+    "success": "Usuário registrado com sucesso",
+    "missing_fields": "Nome, email e senha são obrigatórios",
+    "email_exists": "Email já cadastrado"
+  },
+  "logout": {
+    "success": "Logout realizado com sucesso"
+  },
+  "refresh": {
+    "not_implemented": "Refresh token não implementado ainda"
+  },
+  "password": {
+    "recover_instructions": "Se o email estiver cadastrado, você receberá instruções para redefinir sua senha",
+    "reset_not_implemented": "Reset de senha não implementado ainda"
+  },
+  "profile": {
+    "get_not_implemented": "Get profile não implementado ainda"
+  },
+  "sessions": {
+    "get_not_implemented": "Get sessions não implementado ainda",
+    "revoke_not_implemented": "Revoke session não implementado ainda"
+  },
+  "token": {
+    "valid": "Token válido",
+    "user_data_unavailable": "Dados do usuário não disponíveis"
+  },
+  "errors": {
+    "login_error": "Erro no login",
+    "register_error": "Erro no registro",
+    "jwt_secret_missing": "JWT_SECRET não configurado!"
+  },
+  "codes": {
+    "not_implemented": "NOT_IMPLEMENTED"
+  }
+}

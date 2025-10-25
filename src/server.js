@@ -17,6 +17,11 @@ const {
 const { healthCheck } = require("./config/database");
 const { logger } = require("./utils/logger");
 const { utils } = require("./config/auth");
+const { i18nMiddleware } = require("./config/i18n");
+const {
+  responseHelpers,
+  healthCheckResponse,
+} = require("./utils/response-helpers");
 
 async function startServer() {
   try {
@@ -36,36 +41,67 @@ async function startServer() {
     // ROTAS DA APLICAÇÃO
     // ==========================================
 
-    // Rota raiz com informações da API
+    // Rota raiz com informações da API (com i18n)
     app.get("/", (req, res) => {
-      res.json({
-        success: true,
-        message: "Polox CRM API - Sistema Multi-Tenant Enterprise",
-        version: process.env.npm_package_version || "1.0.0",
-        environment: process.env.NODE_ENV || "development",
-        timestamp: new Date().toISOString(),
-        documentation:
-          process.env.ENABLE_SWAGGER === "true" ? "/api/docs" : null,
-        endpoints: {
-          health: "/health",
-          auth: "/api/auth",
-          users: "/api/users",
-          companies: "/api/companies",
-          leads: "/api/leads",
-          clients: "/api/clients",
-          sales: "/api/sales",
+      res.sendSuccess(
+        {
+          message: req.t("api.welcome"),
+          version:
+            req.t("api.version") +
+            ": " +
+            (process.env.npm_package_version || "1.0.0"),
+          environment:
+            req.t("api.environment") +
+            ": " +
+            (process.env.NODE_ENV || "development"),
+          timestamp: new Date().toISOString(),
+          language: {
+            current: req.language || "pt",
+            supported: ["pt", "en", "es"],
+          },
+          documentation:
+            process.env.ENABLE_SWAGGER === "true" ? "/api/docs" : null,
+          endpoints: {
+            health: "/health",
+            languages: "/languages",
+            auth: "/api/auth",
+            users: "/api/users",
+            companies: "/api/companies",
+            leads: "/api/leads",
+            clients: "/api/clients",
+            sales: "/api/sales",
+          },
+          features: {
+            multiTenant: true,
+            multiLanguage: true,
+            authentication: "JWT Enterprise",
+            database: "PostgreSQL",
+            gamification: process.env.GAMIFICATION_ENABLED === "true",
+            swagger: process.env.ENABLE_SWAGGER === "true",
+            rateLimiting: true,
+            monitoring: true,
+            auditLogs: true,
+          },
         },
-        features: {
-          multiTenant: true,
-          authentication: "JWT Enterprise",
-          database: "PostgreSQL",
-          gamification: process.env.GAMIFICATION_ENABLED === "true",
-          swagger: process.env.ENABLE_SWAGGER === "true",
-          rateLimiting: true,
-          monitoring: true,
-          auditLogs: true,
+        "api.welcome"
+      );
+    });
+
+    // Endpoint para informações de idiomas
+    app.get("/languages", (req, res) => {
+      const {
+        getSupportedLanguages,
+        getLanguagesInfo,
+      } = require("./config/i18n");
+
+      res.sendSuccess(
+        {
+          current: req.language || "pt",
+          supported: getSupportedLanguages(),
+          details: getLanguagesInfo(),
         },
-      });
+        "messages.success"
+      );
     });
 
     // TODO: Importar e usar as rotas da API enterprise
@@ -89,35 +125,48 @@ async function startServer() {
       }
     }
 
-    // Health check endpoint expandido
+    // Health check endpoint expandido (com i18n)
     app.get("/health", async (req, res) => {
       try {
         const dbHealthy = await healthCheck();
+        const statusCode = dbHealthy ? 200 : 503;
 
         const healthData = {
-          status: dbHealthy ? "healthy" : "unhealthy",
-          timestamp: new Date().toISOString(),
-          version: process.env.npm_package_version || "1.0.0",
-          environment: process.env.NODE_ENV || "development",
-          uptime: process.uptime(),
-          memory: process.memoryUsage(),
-          checks: {
-            database: dbHealthy ? "OK" : "FAIL",
-            // Adicionar mais checks conforme necessário
+          success: dbHealthy,
+          message: req.t("api.status"),
+          data: {
+            status: dbHealthy ? req.t("api.healthy") : "unhealthy",
+            timestamp: new Date().toISOString(),
+            environment:
+              req.t("api.environment") +
+              ": " +
+              (process.env.NODE_ENV || "development"),
+            database: dbHealthy
+              ? req.t("api.database_connected")
+              : "disconnected",
+            language: {
+              current: req.language || "pt",
+              supported: ["pt", "en", "es"],
+            },
+            version: process.env.npm_package_version || "1.0.0",
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            checks: {
+              database: dbHealthy ? "OK" : "FAIL",
+            },
           },
         };
 
-        const statusCode = dbHealthy ? 200 : 503;
-        res.status(statusCode).json({
-          success: dbHealthy,
-          ...healthData,
-        });
+        res.status(statusCode).json(healthData);
       } catch (error) {
         res.status(503).json({
           success: false,
-          status: "unhealthy",
-          error: error.message,
-          timestamp: new Date().toISOString(),
+          message: req.t("errors.internal_server_error"),
+          error: {
+            code: "HEALTH_CHECK_FAILED",
+            message: error.message,
+            timestamp: new Date().toISOString(),
+          },
         });
       }
     });

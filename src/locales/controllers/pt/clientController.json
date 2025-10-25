@@ -1,0 +1,39 @@
+{
+  "validation": {
+    "name_min_length": "Nome deve ter pelo menos 2 caracteres",
+    "name_required": "Nome é obrigatório",
+    "email_invalid": "Email deve ter formato válido",
+    "tags_must_be_array": "Tags devem ser um array"
+  },
+  "create": {
+    "success": "Cliente criado com sucesso"
+  },
+  "update": {
+    "success": "Cliente atualizado com sucesso"
+  },
+  "delete": {
+    "success": "Cliente excluído com sucesso",
+    "has_active_sales": "Não é possível excluir cliente com vendas ativas"
+  },
+  "show": {
+    "not_found": "Cliente não encontrado"
+  },
+  "notes": {
+    "add_success": "Anotação adicionada com sucesso"
+  },
+  "tags": {
+    "update_success": "Tags atualizadas com sucesso"
+  },
+  "gamification": {
+    "client_created": "Cliente criado: {{clientName}}",
+    "coins_awarded": "Moedas recebidas por criar cliente: {{clientName}}",
+    "gamification_error": "⚠️  Erro de gamificação (não crítico):"
+  },
+  "audit": {
+    "client_created": "Cliente criado",
+    "client_updated": "Cliente atualizado",
+    "client_deleted": "Cliente excluído",
+    "client_note_added": "Anotação do cliente adicionada",
+    "client_tags_updated": "Tags do cliente atualizadas"
+  }
+}

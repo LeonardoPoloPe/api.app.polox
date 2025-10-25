@@ -1,0 +1,60 @@
+{
+  "api": {
+    "welcome": "Welcome to Polox API",
+    "version": "Version",
+    "status": "API Status",
+    "healthy": "Healthy",
+    "database_connected": "Database connected",
+    "environment": "Environment"
+  },
+  "errors": {
+    "internal_server_error": "Internal server error",
+    "not_found": "Resource not found",
+    "bad_request": "Bad request",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "validation_error": "Validation error",
+    "database_error": "Database error",
+    "connection_error": "Connection error"
+  },
+  "validation": {
+    "required_field": "Required field",
+    "invalid_email": "Invalid email",
+    "invalid_phone": "Invalid phone",
+    "invalid_date": "Invalid date",
+    "min_length": "Minimum {{count}} characters",
+    "max_length": "Maximum {{count}} characters",
+    "invalid_format": "Invalid format"
+  },
+  "messages": {
+    "success": "Operation completed successfully",
+    "created": "Created successfully",
+    "updated": "Updated successfully",
+    "deleted": "Deleted successfully",
+    "no_data": "No data found",
+    "loading": "Loading...",
+    "processing": "Processing..."
+  },
+  "user": {
+    "profile": "Profile",
+    "settings": "Settings",
+    "preferences": "Preferences",
+    "notifications": "Notifications",
+    "account": "Account",
+    "logout": "Logout"
+  },
+  "company": {
+    "name": "Company name",
+    "settings": "Company settings",
+    "users": "Users",
+    "plan": "Plan",
+    "billing": "Billing"
+  },
+  "datetime": {
+    "date_format": "MM/dd/yyyy",
+    "datetime_format": "MM/dd/yyyy HH:mm:ss",
+    "time_format": "HH:mm:ss",
+    "timezone": "America/Sao_Paulo",
+    "locale": "en-US"
+  }
+}

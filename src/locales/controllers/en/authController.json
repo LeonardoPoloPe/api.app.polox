@@ -1,0 +1,41 @@
+{
+  "login": {
+    "success": "Login successful",
+    "invalid_credentials": "Invalid credentials",
+    "missing_fields": "Email and password are required"
+  },
+  "register": {
+    "success": "User registered successfully",
+    "missing_fields": "Name, email and password are required",
+    "email_exists": "Email already registered"
+  },
+  "logout": {
+    "success": "Logout successful"
+  },
+  "refresh": {
+    "not_implemented": "Refresh token not implemented yet"
+  },
+  "password": {
+    "recover_instructions": "If the email is registered, you will receive instructions to reset your password",
+    "reset_not_implemented": "Password reset not implemented yet"
+  },
+  "profile": {
+    "get_not_implemented": "Get profile not implemented yet"
+  },
+  "sessions": {
+    "get_not_implemented": "Get sessions not implemented yet",
+    "revoke_not_implemented": "Revoke session not implemented yet"
+  },
+  "token": {
+    "valid": "Valid token",
+    "user_data_unavailable": "User data not available"
+  },
+  "errors": {
+    "login_error": "Login error",
+    "register_error": "Registration error",
+    "jwt_secret_missing": "JWT_SECRET not configured!"
+  },
+  "codes": {
+    "not_implemented": "NOT_IMPLEMENTED"
+  }
+}

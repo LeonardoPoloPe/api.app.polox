@@ -8,7 +8,26 @@ const swaggerOptions = {
     info: {
       title: "Polox API",
       version: "1.0.0",
-      description: "API Node.js Serverless para AWS Lambda com PostgreSQL RDS",
+      description: `
+        API Node.js Serverless para AWS Lambda com PostgreSQL RDS
+        
+        ## 🌐 Suporte Multi-Idiomas
+        
+        Esta API oferece suporte completo a internacionalização (i18n) com 3 idiomas:
+        - **pt** - Português (padrão)
+        - **en** - English
+        - **es** - Español
+        
+        ### Como usar:
+        1. Adicione o header \`Accept-Language\` com o valor desejado (pt, en, es)
+        2. Ou use o parâmetro de query \`?lang=en\`
+        3. A API responderá automaticamente no idioma selecionado
+        
+        ### Exemplos:
+        - \`Accept-Language: pt\` → Respostas em português
+        - \`Accept-Language: en\` → Respostas em inglês
+        - \`Accept-Language: es\` → Respostas em espanhol
+      `,
       contact: {
         name: "Polox Team",
         email: "contato@polox.com",
@@ -43,6 +62,20 @@ const swaggerOptions = {
           scheme: "bearer",
           bearerFormat: "JWT",
           description: "JWT Token obtido via login",
+        },
+      },
+      parameters: {
+        AcceptLanguage: {
+          in: "header",
+          name: "Accept-Language",
+          schema: {
+            type: "string",
+            enum: ["pt", "en", "es"],
+            default: "pt",
+          },
+          description:
+            "Define o idioma da resposta (pt=Português, en=English, es=Español).",
+          required: false,
         },
       },
       schemas: {

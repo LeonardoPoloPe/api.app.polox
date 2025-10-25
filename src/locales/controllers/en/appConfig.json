@@ -1,0 +1,21 @@
+{
+  "cors": {
+    "not_allowed": "Not allowed by CORS"
+  },
+  "rateLimit": {
+    "login_attempts": "Too many login attempts. Try again in 15 minutes.",
+    "register_attempts": "Too many registrations. Try again in 1 hour.",
+    "forgot_password_attempts": "Too many recovery requests. Try again in 1 hour.",
+    "general_requests": "Too many requests. Please try again later."
+  },
+  "validation": {
+    "invalid_json": "Invalid JSON"
+  },
+  "security": {
+    "invalid_request": "Invalid request"
+  },
+  "health": {
+    "status": "healthy",
+    "message": "API working correctly"
+  }
+}

@@ -6,6 +6,12 @@ const cors = require("cors");
 const helmet = require("helmet");
 const routes = require("./routes");
 const { initializePool, closePool, logger, healthCheck } = require("./models");
+const { i18nMiddleware } = require("./config/i18n");
+const {
+  responseHelpers,
+  errorHandler,
+  notFoundHandler,
+} = require("./utils/response-helpers");
 
 // Configuração do Express
 const app = express();
@@ -44,6 +50,12 @@ app.use(
 // Middlewares para parsing
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Middleware de internacionalização
+app.use(i18nMiddleware);
+
+// Middleware para helpers de resposta
+app.use(responseHelpers);
 
 // Inicializar Sentry
 initSentry();
@@ -84,6 +96,15 @@ app.use((req, res, next) => {
  *     description: Verifica o status da aplicação e conexão com banco de dados
  *     tags: [Health]
  *     security: []
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
  *     responses:
  *       200:
  *         description: Aplicação saudável
@@ -102,22 +123,33 @@ app.use((req, res, next) => {
 app.get("/health", async (req, res) => {
   try {
     const dbHealthy = await healthCheck();
-    const status = dbHealthy ? "healthy" : "unhealthy";
     const statusCode = dbHealthy ? 200 : 503;
 
     res.status(statusCode).json({
-      status,
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV,
-      database: dbHealthy ? "connected" : "disconnected",
-      version: process.env.npm_package_version || "1.0.0",
+      success: true,
+      message: req.t("api.status"),
+      data: {
+        status: dbHealthy ? req.t("api.healthy") : "unhealthy",
+        timestamp: new Date().toISOString(),
+        environment: req.t("api.environment") + ": " + process.env.NODE_ENV,
+        database: dbHealthy ? req.t("api.database_connected") : "disconnected",
+        language: {
+          current: req.language || "pt",
+          supported: ["pt", "en", "es"],
+        },
+        version: process.env.npm_package_version || "1.0.0",
+      },
     });
   } catch (error) {
     logger.error("Health check falhou:", error);
     res.status(503).json({
-      status: "unhealthy",
-      timestamp: new Date().toISOString(),
-      error: error.message,
+      success: false,
+      message: req.t("errors.internal_server_error"),
+      error: {
+        code: "HEALTH_CHECK_FAILED",
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 });
@@ -130,6 +162,15 @@ app.get("/health", async (req, res) => {
  *     description: Retorna informações básicas sobre a API Polox
  *     tags: [Health]
  *     security: []
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
  *     responses:
  *       200:
  *         description: Informações da API
@@ -161,18 +202,91 @@ app.get("/health", async (req, res) => {
  *                       type: string
  *                       example: /docs
  */
-// Rota raiz
+// Rota raiz com suporte a i18n
 app.get("/", (req, res) => {
-  res.json({
-    message: "API Polox - Serverless AWS Lambda",
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      health: "/health",
-      api: "/api",
-      docs: "/api/docs", // Swagger será servido via rotas da API
+  res.sendSuccess(
+    {
+      message: req.t("api.welcome"),
+      version:
+        req.t("api.version") +
+        ": " +
+        (process.env.npm_package_version || "1.0.0"),
+      environment: req.t("api.environment") + ": " + process.env.NODE_ENV,
+      timestamp: new Date().toISOString(),
+      language: {
+        current: req.language || "pt",
+        supported: ["pt", "en", "es"],
+      },
+      endpoints: {
+        health: "/health",
+        api: "/api",
+        docs: "/api/docs",
+        languages: "/languages",
+      },
     },
-  });
+    "api.welcome"
+  );
+});
+
+/**
+ * @swagger
+ * /languages:
+ *   get:
+ *     summary: Obter informações de idiomas suportados
+ *     description: Retorna informações sobre os idiomas suportados pela API
+ *     tags: [Multi-Idiomas]
+ *     security: []
+ *     parameters:
+ *       - in: header
+ *         name: Accept-Language
+ *         schema:
+ *           type: string
+ *           enum: [pt, en, es]
+ *           default: pt
+ *         description: "Define o idioma da resposta (pt, en, es)."
+ *         required: false
+ *     responses:
+ *       200:
+ *         description: Informações de idiomas obtidas com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Operação realizada com sucesso"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     current:
+ *                       type: string
+ *                       example: "pt"
+ *                     supported:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["pt", "en", "es"]
+ *                     details:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ */
+// Endpoint para informações de idiomas
+app.get("/languages", (req, res) => {
+  const { getSupportedLanguages, getLanguagesInfo } = require("./config/i18n");
+
+  res.sendSuccess(
+    {
+      current: req.language || "pt",
+      supported: getSupportedLanguages(),
+      details: getLanguagesInfo(),
+    },
+    "messages.success"
+  );
 });
 
 /**
@@ -232,31 +346,13 @@ app.use("/api", routes);
 
 // Error handling middleware personalizado será aplicado automaticamente
 
-// Middleware para rotas não encontradas
-app.use("*", (req, res) => {
-  // Capturar 404 no Sentry com contexto
-  captureMessage(
-    `Rota não encontrada: ${req.method} ${req.originalUrl}`,
-    "warning",
-    {
-      request: {
-        method: req.method,
-        url: req.originalUrl,
-        headers: req.headers,
-        user_agent: req.get("User-Agent"),
-      },
-    }
-  );
+// Middleware para rotas não encontradas (com i18n)
+app.use("*", notFoundHandler);
 
-  res.status(404).json({
-    error: "Rota não encontrada",
-    method: req.method,
-    url: req.originalUrl,
-    timestamp: new Date().toISOString(),
-  });
-});
+// Middleware global de tratamento de erros (com i18n)
+app.use(errorHandler);
 
-// Middleware global de tratamento de erros (integrado com Sentry)
+// Middleware original de tratamento de erros (para casos específicos do Sentry)
 app.use((error, req, res, next) => {
   // Capturar erro no Sentry com contexto completo
   captureError(error, {

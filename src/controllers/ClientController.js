@@ -15,6 +15,7 @@ const { query } = require("../config/database");
 const { logger, auditLogger } = require("../utils/logger");
 const { ApiError, asyncHandler } = require("../utils/errors");
 const { successResponse, paginatedResponse } = require("../utils/response");
+const { tc } = require("../config/i18n");
 const Joi = require("joi");
 const ClientService = require("../services/ClientService");
 const GamificationHistory = require("../models/GamificationHistory");
@@ -24,13 +25,8 @@ class ClientController {
    * 📝 VALIDAÇÕES JOI
    */
   static createClientSchema = Joi.object({
-    name: Joi.string().min(2).max(255).required().messages({
-      "string.min": "Nome deve ter pelo menos 2 caracteres",
-      "any.required": "Nome é obrigatório",
-    }),
-    email: Joi.string().email().allow(null).messages({
-      "string.email": "Email deve ter formato válido",
-    }),
+    name: Joi.string().min(2).max(255).required(),
+    email: Joi.string().email().allow(null),
     phone: Joi.string().max(20).allow(null),
     status: Joi.string().max(50).default("active"),
     customFields: Joi.alternatives()
@@ -114,7 +110,30 @@ class ClientController {
   });
 
   /**
-   * � Normaliza payloads que podem vir com customFields/custom_fields em formatos inesperados
+   * 🌐 Valida dados com mensagens traduzidas
+   * @param {Object} req - Request object
+   * @param {Object} schema - Joi schema
+   * @param {Object} data - Data to validate
+   * @returns {Object} Validated data
+   */
+  static validateWithTranslation(req, schema, data) {
+    const { error, value } = schema.validate(data);
+    if (error) {
+      const field = error.details[0].path[0];
+      const type = error.details[0].type;
+
+      let messageKey = "validation.invalid";
+      if (type === "any.required") messageKey = "validation.name_required";
+      else if (type === "string.min") messageKey = "validation.name_min_length";
+      else if (type === "string.email") messageKey = "validation.email_invalid";
+
+      throw new ApiError(400, tc(req, "clientController", messageKey));
+    }
+    return value;
+  }
+
+  /**
+   * ⚙️ Normaliza payloads que podem vir com customFields/custom_fields em formatos inesperados
    * - Se vier como string vazia: []
    * - Se vier como string JSON válida de array: parseia
    * - Se vier como objeto/qualquer outro tipo: []
@@ -269,9 +288,11 @@ class ClientController {
    */
   static create = asyncHandler(async (req, res) => {
     const normalized = ClientController.normalizePayload(req.body);
-    const { error, value } =
-      ClientController.createClientSchema.validate(normalized);
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = ClientController.validateWithTranslation(
+      req,
+      ClientController.createClientSchema,
+      normalized
+    );
 
     const created = await ClientService.createClient(
       req.user.companyId,
@@ -297,7 +318,12 @@ class ClientController {
         user_id: req.user.id,
         event_type: "client_created",
         points_awarded: 20,
-        description: `Cliente criado: ${value.name}`,
+        description: tc(
+          req,
+          "clientController",
+          "gamification.client_created",
+          { clientName: value.name }
+        ),
         metadata: {
           client_id: created.id,
           client_name: value.name,
@@ -313,7 +339,9 @@ class ClientController {
         user_id: req.user.id,
         event_type: "coins_awarded",
         points_awarded: 10,
-        description: `Moedas recebidas por criar cliente: ${value.name}`,
+        description: tc(req, "clientController", "gamification.coins_awarded", {
+          clientName: value.name,
+        }),
         metadata: {
           client_id: created.id,
           client_name: value.name,
@@ -326,13 +354,13 @@ class ClientController {
     } catch (gamificationError) {
       // Gamificação é opcional - não deve impedir a criação do cliente
       console.warn(
-        "⚠️  Gamification error (non-blocking):",
+        tc(req, "clientController", "gamification.gamification_error"),
         gamificationError.message
       );
     }
 
     // 📋 Log de auditoria
-    auditLogger("Client created", {
+    auditLogger(tc(req, "clientController", "audit.client_created"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       entityType: "client",
@@ -342,7 +370,12 @@ class ClientController {
       ip: req.ip,
     });
 
-    return successResponse(res, created, "Client created successfully", 201);
+    return successResponse(
+      res,
+      created,
+      tc(req, "clientController", "create.success"),
+      201
+    );
   });
 
   /**
@@ -400,9 +433,11 @@ class ClientController {
   static update = asyncHandler(async (req, res) => {
     const clientId = req.params.id;
     const normalized = ClientController.normalizePayload(req.body);
-    const { error, value } =
-      ClientController.updateClientSchema.validate(normalized);
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = ClientController.validateWithTranslation(
+      req,
+      ClientController.updateClientSchema,
+      normalized
+    );
 
     const updated = await ClientService.updateClient(
       clientId,
@@ -411,7 +446,7 @@ class ClientController {
     );
 
     // 📋 Log de auditoria
-    auditLogger("Client updated", {
+    auditLogger(tc(req, "clientController", "audit.client_updated"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       entityType: "client",
@@ -421,7 +456,11 @@ class ClientController {
       ip: req.ip,
     });
 
-    return successResponse(res, updated, "Client updated successfully");
+    return successResponse(
+      res,
+      updated,
+      tc(req, "clientController", "update.success")
+    );
   });
 
   /**
@@ -440,14 +479,14 @@ class ClientController {
     if (parseInt(salesCheck.rows[0].count) > 0) {
       throw new ApiError(
         400,
-        "Cannot delete client with active sales. Please cancel sales first."
+        tc(req, "clientController", "delete.has_active_sales")
       );
     }
 
     await ClientService.deleteClient(clientId, req.user.companyId);
 
     // 📋 Log de auditoria
-    auditLogger("Client deleted", {
+    auditLogger(tc(req, "clientController", "audit.client_deleted"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       entityType: "client",
@@ -460,7 +499,7 @@ class ClientController {
     return successResponse(
       res,
       { id: clientId },
-      "Client deleted successfully"
+      tc(req, "clientController", "delete.success")
     );
   });
 
@@ -478,7 +517,7 @@ class ClientController {
     );
 
     if (clientCheck.rows.length === 0) {
-      throw new ApiError(404, "Client not found");
+      throw new ApiError(404, tc(req, "clientController", "show.not_found"));
     }
 
     // 📊 Buscar histórico de vendas completo
@@ -548,7 +587,7 @@ class ClientController {
     );
 
     if (clientCheck.rows.length === 0) {
-      throw new ApiError(404, "Client not found");
+      throw new ApiError(404, tc(req, "clientController", "show.not_found"));
     }
 
     // 📝 Criar anotação
@@ -579,7 +618,7 @@ class ClientController {
     );
 
     // 📋 Log de auditoria
-    auditLogger("Client note added", {
+    auditLogger(tc(req, "clientController", "audit.client_note_added"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       entityType: "client_note",
@@ -594,7 +633,7 @@ class ClientController {
     return successResponse(
       res,
       noteResult.rows[0],
-      "Note added successfully",
+      tc(req, "clientController", "notes.add_success"),
       201
     );
   });
@@ -670,7 +709,10 @@ class ClientController {
     const { tags } = req.body;
 
     if (!Array.isArray(tags)) {
-      throw new ApiError(400, "Tags must be an array");
+      throw new ApiError(
+        400,
+        tc(req, "clientController", "validation.tags_must_be_array")
+      );
     }
 
     // Verificar se cliente existe
@@ -680,7 +722,7 @@ class ClientController {
     );
 
     if (clientCheck.rows.length === 0) {
-      throw new ApiError(404, "Client not found");
+      throw new ApiError(404, tc(req, "clientController", "show.not_found"));
     }
 
     // 🏷️ Get current tags
@@ -739,7 +781,7 @@ class ClientController {
     }
 
     // 📋 Log de auditoria
-    auditLogger("Client tags updated", {
+    auditLogger(tc(req, "clientController", "audit.client_tags_updated"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       entityType: "client",
@@ -755,7 +797,7 @@ class ClientController {
     return successResponse(
       res,
       { id: clientId, tags },
-      "Tags updated successfully"
+      tc(req, "clientController", "tags.update_success")
     );
   });
 }

@@ -11,6 +11,7 @@ const jwt = require("jsonwebtoken");
 const { query } = require("../config/database");
 const { logger } = require("../utils/logger");
 const { ApiError, asyncHandler } = require("../utils/errors");
+const { tc } = require("../config/i18n");
 
 /**
  * Controller de autenticação simplificado para testes
@@ -25,7 +26,10 @@ class AuthController {
     try {
       // Validação básica
       if (!email || !password) {
-        throw new ApiError(400, "Email e senha são obrigatórios");
+        throw new ApiError(
+          400,
+          tc(req, "authController", "login.missing_fields")
+        );
       }
 
       // 1. Buscar usuário por email (versão simplificada)
@@ -40,7 +44,10 @@ class AuthController {
       );
 
       if (userResult.rows.length === 0) {
-        throw new ApiError(401, "Credenciais inválidas");
+        throw new ApiError(
+          401,
+          tc(req, "authController", "login.invalid_credentials")
+        );
       }
 
       const user = userResult.rows[0];
@@ -52,7 +59,10 @@ class AuthController {
       );
 
       if (!isValidPassword) {
-        throw new ApiError(401, "Credenciais inválidas");
+        throw new ApiError(
+          401,
+          tc(req, "authController", "login.invalid_credentials")
+        );
       }
 
       // 3. Gerar token JWT simples
@@ -65,7 +75,9 @@ class AuthController {
         },
         process.env.JWT_SECRET ||
           (() => {
-            throw new Error("JWT_SECRET não configurado!");
+            throw new Error(
+              tc(req, "authController", "errors.jwt_secret_missing")
+            );
           })(),
         { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
       );
@@ -80,7 +92,7 @@ class AuthController {
       // 5. Resposta de sucesso
       res.json({
         success: true,
-        message: "Login realizado com sucesso",
+        message: tc(req, "authController", "login.success"),
         data: {
           user: {
             id: user.id,
@@ -113,7 +125,10 @@ class AuthController {
     try {
       // Validação básica
       if (!name || !email || !password) {
-        throw new ApiError(400, "Nome, email e senha são obrigatórios");
+        throw new ApiError(
+          400,
+          tc(req, "authController", "register.missing_fields")
+        );
       }
 
       // 1. Verificar se email já existe (simplificado)
@@ -126,7 +141,10 @@ class AuthController {
       );
 
       if (existingUser.rows.length > 0) {
-        throw new ApiError(409, "Email já cadastrado");
+        throw new ApiError(
+          409,
+          tc(req, "authController", "register.email_exists")
+        );
       }
 
       // 2. Criptografar senha
@@ -157,7 +175,7 @@ class AuthController {
       // 5. Resposta de sucesso
       res.status(201).json({
         success: true,
-        message: "Usuário registrado com sucesso",
+        message: tc(req, "authController", "register.success"),
         data: {
           user: {
             id: newUser.id,
@@ -185,7 +203,7 @@ class AuthController {
   static logout = asyncHandler(async (req, res) => {
     res.json({
       success: true,
-      message: "Logout realizado com sucesso",
+      message: tc(req, "authController", "logout.success"),
     });
   });
 
@@ -195,8 +213,8 @@ class AuthController {
   static refreshToken = asyncHandler(async (req, res) => {
     res.status(501).json({
       success: false,
-      message: "Refresh token não implementado ainda",
-      code: "NOT_IMPLEMENTED",
+      message: tc(req, "authController", "refresh.not_implemented"),
+      code: tc(req, "authController", "codes.not_implemented"),
     });
   });
 
@@ -206,8 +224,7 @@ class AuthController {
   static recoverPassword = asyncHandler(async (req, res) => {
     res.json({
       success: true,
-      message:
-        "Se o email estiver cadastrado, você receberá instruções para redefinir sua senha",
+      message: tc(req, "authController", "password.recover_instructions"),
     });
   });
 
@@ -217,8 +234,8 @@ class AuthController {
   static resetPassword = asyncHandler(async (req, res) => {
     res.status(501).json({
       success: false,
-      message: "Reset de senha não implementado ainda",
-      code: "NOT_IMPLEMENTED",
+      message: tc(req, "authController", "password.reset_not_implemented"),
+      code: tc(req, "authController", "codes.not_implemented"),
     });
   });
 
@@ -228,8 +245,8 @@ class AuthController {
   static getProfile = asyncHandler(async (req, res) => {
     res.status(501).json({
       success: false,
-      message: "Get profile não implementado ainda",
-      code: "NOT_IMPLEMENTED",
+      message: tc(req, "authController", "profile.get_not_implemented"),
+      code: tc(req, "authController", "codes.not_implemented"),
     });
   });
 
@@ -239,8 +256,8 @@ class AuthController {
   static getSessions = asyncHandler(async (req, res) => {
     res.status(501).json({
       success: false,
-      message: "Get sessions não implementado ainda",
-      code: "NOT_IMPLEMENTED",
+      message: tc(req, "authController", "sessions.get_not_implemented"),
+      code: tc(req, "authController", "codes.not_implemented"),
     });
   });
 
@@ -250,8 +267,8 @@ class AuthController {
   static revokeSession = asyncHandler(async (req, res) => {
     res.status(501).json({
       success: false,
-      message: "Revoke session não implementado ainda",
-      code: "NOT_IMPLEMENTED",
+      message: tc(req, "authController", "sessions.revoke_not_implemented"),
+      code: tc(req, "authController", "codes.not_implemented"),
     });
   });
 
@@ -262,9 +279,11 @@ class AuthController {
     // Se chegou até aqui, o token já foi validado pelo middleware
     res.json({
       success: true,
-      message: "Token válido",
+      message: tc(req, "authController", "token.valid"),
       data: {
-        user: req.user || { message: "Dados do usuário não disponíveis" },
+        user: req.user || {
+          message: tc(req, "authController", "token.user_data_unavailable"),
+        },
       },
     });
   });

@@ -1,0 +1,60 @@
+{
+  "api": {
+    "welcome": "Bem-vindo à API Polox",
+    "version": "Versão",
+    "status": "Status da API",
+    "healthy": "Saudável",
+    "database_connected": "Banco de dados conectado",
+    "environment": "Ambiente"
+  },
+  "errors": {
+    "internal_server_error": "Erro interno do servidor",
+    "not_found": "Recurso não encontrado",
+    "bad_request": "Requisição inválida",
+    "unauthorized": "Não autorizado",
+    "forbidden": "Acesso negado",
+    "validation_error": "Erro de validação",
+    "database_error": "Erro no banco de dados",
+    "connection_error": "Erro de conexão"
+  },
+  "validation": {
+    "required_field": "Campo obrigatório",
+    "invalid_email": "Email inválido",
+    "invalid_phone": "Telefone inválido",
+    "invalid_date": "Data inválida",
+    "min_length": "Mínimo de {{count}} caracteres",
+    "max_length": "Máximo de {{count}} caracteres",
+    "invalid_format": "Formato inválido"
+  },
+  "messages": {
+    "success": "Operação realizada com sucesso",
+    "created": "Criado com sucesso",
+    "updated": "Atualizado com sucesso",
+    "deleted": "Excluído com sucesso",
+    "no_data": "Nenhum dado encontrado",
+    "loading": "Carregando...",
+    "processing": "Processando..."
+  },
+  "user": {
+    "profile": "Perfil",
+    "settings": "Configurações",
+    "preferences": "Preferências",
+    "notifications": "Notificações",
+    "account": "Conta",
+    "logout": "Sair"
+  },
+  "company": {
+    "name": "Nome da empresa",
+    "settings": "Configurações da empresa",
+    "users": "Usuários",
+    "plan": "Plano",
+    "billing": "Faturamento"
+  },
+  "datetime": {
+    "date_format": "dd/MM/yyyy",
+    "datetime_format": "dd/MM/yyyy HH:mm:ss",
+    "time_format": "HH:mm:ss",
+    "timezone": "America/Sao_Paulo",
+    "locale": "pt-BR"
+  }
+}
