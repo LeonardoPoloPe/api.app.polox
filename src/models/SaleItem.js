@@ -81,7 +81,7 @@ class SaleItemModel {
       SELECT 
         si.id, si.sale_id, si.product_id, si.quantity, si.unit_price, 
         si.discount_amount, si.total_amount, si.created_at,
-        p.name as product_name,
+        p.product_name,
         p.code as product_code,
         p.barcode as product_barcode,
         s.sale_number,
@@ -111,7 +111,7 @@ class SaleItemModel {
       SELECT 
         si.id, si.sale_id, si.product_id, si.quantity, si.unit_price, 
         si.discount_amount, si.total_amount, si.created_at,
-        p.name as product_name,
+        p.product_name,
         p.code as product_code,
         p.barcode as product_barcode,
         p.description as product_description,
@@ -170,7 +170,7 @@ class SaleItemModel {
         s.sale_number,
         s.sale_date,
         s.status as sale_status,
-        c.name as client_name
+        c.client_name
       FROM polox.sale_items si
       INNER JOIN polox.sales s ON si.sale_id = s.id
       LEFT JOIN polox.clients c ON s.client_id = c.id
@@ -477,7 +477,7 @@ class SaleItemModel {
     const topProductsQuery = `
       SELECT 
         p.id,
-        p.name,
+        p.product_name,
         p.code,
         p.featured_image_url,
         COUNT(DISTINCT s.id) as sales_count,
@@ -488,7 +488,7 @@ class SaleItemModel {
       INNER JOIN polox.sales s ON si.sale_id = s.id
       INNER JOIN polox.products p ON si.product_id = p.id
       ${whereClause}
-      GROUP BY p.id, p.name, p.code, p.featured_image_url
+      GROUP BY p.id, p.product_name, p.code, p.featured_image_url
       ORDER BY total_quantity_sold DESC
       LIMIT $${params.length + 1}
     `;

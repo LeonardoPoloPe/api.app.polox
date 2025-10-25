@@ -140,7 +140,7 @@ class SaleModel {
     const selectQuery = `
       SELECT 
         s.*,
-        c.name as client_name,
+        c.client_name,
         c.email as client_email,
         c.phone as client_phone,
         u.full_name as seller_name,
@@ -175,7 +175,7 @@ class SaleModel {
       const itemsQuery = `
         SELECT 
           si.*,
-          p.name as product_full_name,
+          p.product_name as product_full_name,
           p.code as product_code
         FROM polox.sale_items si
         LEFT JOIN polox.products p ON si.product_id = p.id
@@ -256,7 +256,7 @@ class SaleModel {
     }
 
     if (search) {
-      conditions.push(`(s.sale_number ILIKE $${paramCount} OR s.description ILIKE $${paramCount} OR c.name ILIKE $${paramCount})`);
+      conditions.push(`(s.sale_number ILIKE $${paramCount} OR s.description ILIKE $${paramCount} OR c.client_name ILIKE $${paramCount})`);
       values.push(`%${search}%`);
       paramCount++;
     }
@@ -277,7 +277,7 @@ class SaleModel {
         s.id, s.sale_number, s.total_amount, s.discount_amount, s.net_amount,
         s.status, s.payment_status, s.sale_date, s.payment_date, s.payment_due_date,
         s.commission_amount, s.description, s.created_at, s.updated_at,
-        c.name as client_name,
+        c.client_name,
         c.email as client_email,
         u.full_name as seller_name,
         (

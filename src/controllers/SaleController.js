@@ -15,9 +15,8 @@
 const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
 const { logger, auditLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
-const { successResponse, paginatedResponse } = require('../utils/formatters');
+const { successResponse, paginatedResponse } = require('../utils/response');
 const Joi = require('joi');
-const { v4: uuidv4 } = require('uuid');
 
 class SaleController {
 
@@ -197,10 +196,17 @@ class SaleController {
       query(statsQuery, [req.user.companyId])
     ]);
 
+    const totalItems = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(totalItems / limit);
+
     return paginatedResponse(res, salesResult.rows, {
       page,
       limit,
-      total: parseInt(countResult.rows[0].total),
+      totalItems,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1
+    }, 'Sales retrieved successfully', {
       stats: statsResult.rows[0]
     });
   });
@@ -229,10 +235,10 @@ class SaleController {
 
     // 💰 Calcular totais
     const subtotal = saleData.items.reduce((sum, item) => sum + item.total_price, 0);
-    const totalAmount = subtotal - saleData.discount_amount + saleData.tax_amount;
+    const netAmount = subtotal - saleData.discount_amount + saleData.tax_amount;
 
-    if (totalAmount < 0) {
-      throw new ApiError(400, 'Total amount cannot be negative');
+    if (netAmount < 0) {
+      throw new ApiError(400, 'Net amount cannot be negative');
     }
 
     const transaction = await beginTransaction();
@@ -241,15 +247,14 @@ class SaleController {
       // 1️⃣ CRIAR VENDA
       const createSaleQuery = `
         INSERT INTO sales (
-          id, company_id, client_id, user_id, description, sale_date,
-          payment_method, payment_status, subtotal, discount_amount,
-          tax_amount, total_amount, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'completed')
+          company_id, client_id, user_id, description, sale_date,
+          payment_method, payment_status, total_amount, discount_amount,
+          tax_amount, net_amount, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'completed')
         RETURNING *
       `;
 
       const newSaleResult = await query(createSaleQuery, [
-        uuidv4(),
         req.user.companyId,
         saleData.client_id,
         req.user.id,
@@ -260,7 +265,7 @@ class SaleController {
         subtotal,
         saleData.discount_amount,
         saleData.tax_amount,
-        totalAmount
+        netAmount
       ], transaction);
 
       const newSale = newSaleResult.rows[0];
@@ -269,10 +274,9 @@ class SaleController {
       for (const item of saleData.items) {
         await query(`
           INSERT INTO sale_items (
-            id, sale_id, product_id, product_name, quantity, unit_price, total_price
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            sale_id, product_id, product_name, quantity, unit_price, total_price
+          ) VALUES ($1, $2, $3, $4, $5, $6)
         `, [
-          uuidv4(),
           newSale.id,
           item.product_id,
           item.product_name,
@@ -285,19 +289,19 @@ class SaleController {
         if (item.product_id) {
           const stockUpdate = await query(`
             UPDATE products 
-            SET current_stock = current_stock - $1, updated_at = NOW()
-            WHERE id = $2 AND company_id = $3 AND track_stock = true
-            RETURNING current_stock, min_stock_level
+            SET stock_quantity = stock_quantity - $1, updated_at = NOW()
+            WHERE id = $2 AND company_id = $3
+            RETURNING stock_quantity, min_stock_level
           `, [item.quantity, item.product_id, req.user.companyId], transaction);
 
           // 🚨 Verificar se estoque ficou abaixo do mínimo
           if (stockUpdate.rows.length > 0) {
-            const { current_stock, min_stock_level } = stockUpdate.rows[0];
-            if (current_stock <= min_stock_level) {
+            const { stock_quantity, min_stock_level } = stockUpdate.rows[0];
+            if (min_stock_level && stock_quantity <= min_stock_level) {
               // TODO: Criar notificação de estoque baixo
               logger.warn('Low stock alert', {
                 productId: item.product_id,
-                currentStock: current_stock,
+                currentStock: stock_quantity,
                 minLevel: min_stock_level,
                 companyId: req.user.companyId
               });
@@ -311,41 +315,52 @@ class SaleController {
         UPDATE clients 
         SET 
           total_spent = COALESCE(total_spent, 0) + $1,
-          total_purchases = COALESCE(total_purchases, 0) + 1,
-          last_purchase_at = NOW(),
+          total_orders = COALESCE(total_orders, 0) + 1,
+          last_purchase_date = NOW(),
           updated_at = NOW()
         WHERE id = $2
-      `, [totalAmount, saleData.client_id], transaction);
+      `, [netAmount, saleData.client_id], transaction);
 
       // 4️⃣ GAMIFICAÇÃO: Conceder XP/Coins pela venda
-      const xpReward = Math.floor(totalAmount / 100) + 30; // 1 XP por R$ 100 + bonus fixo
-      const coinReward = Math.floor(totalAmount / 200) + 15; // 1 coin por R$ 200 + bonus fixo
+      const xpReward = Math.floor(netAmount / 100) + 30; // 1 XP por R$ 100 + bonus fixo
+      const coinReward = Math.floor(netAmount / 200) + 15; // 1 coin por R$ 200 + bonus fixo
 
       await query(`
         UPDATE user_gamification_profiles 
         SET 
           total_xp = total_xp + $1, 
-          current_coins = current_coins + $2,
+          available_coins = available_coins + $2,
+          total_coins = total_coins + $2,
           updated_at = NOW()
         WHERE user_id = $3 AND company_id = $4
       `, [xpReward, coinReward, req.user.id, req.user.companyId], transaction);
 
       // 5️⃣ Registrar no histórico de gamificação
       await query(`
-        INSERT INTO gamification_history (user_id, company_id, event_type, amount, reason, action_type)
+        INSERT INTO gamification_history (
+          user_id, event_type, points_awarded, description, 
+          related_entity_type, related_entity_id, metadata
+        )
         VALUES 
-          ($1, $2, 'xp', $3, $4, 'sale_completed'),
-          ($1, $2, 'coins', $5, $4, 'sale_completed')
+          ($1, 'sale_completed_xp', $2, $3, 'sale', $4, $5),
+          ($1, 'sale_completed_coins', $6, $7, 'sale', $4, $5)
       `, [
-        req.user.id, 
-        req.user.companyId, 
-        xpReward, 
-        `Sale completed: ${client.client_name} - R$ ${totalAmount.toFixed(2)}`,
-        coinReward
+        req.user.id,
+        xpReward,
+        `XP earned from sale: ${client.client_name} - R$ ${netAmount.toFixed(2)}`,
+        newSale.id,
+        JSON.stringify({ 
+          client_id: saleData.client_id, 
+          client_name: client.client_name,
+          net_amount: netAmount,
+          company_id: req.user.companyId 
+        }),
+        coinReward,
+        `Coins earned from sale: ${client.client_name} - R$ ${netAmount.toFixed(2)}`
       ], transaction);
 
       // 6️⃣ VERIFICAR CONQUISTAS relacionadas a vendas
-      await SaleController.checkSaleAchievements(transaction, req.user.id, req.user.companyId, totalAmount);
+      await SaleController.checkSaleAchievements(transaction, req.user.id, req.user.companyId, netAmount);
 
       await commitTransaction(transaction);
 
@@ -384,7 +399,8 @@ class SaleController {
         changes: {
           client_id: saleData.client_id,
           client_name: client.client_name,
-          total_amount: totalAmount,
+          total_amount: subtotal,
+          net_amount: netAmount,
           items_count: saleData.items.length
         },
         ip: req.ip
@@ -553,8 +569,8 @@ class SaleController {
       for (const item of saleItemsQuery.rows) {
         await query(`
           UPDATE products 
-          SET current_stock = current_stock + $1, updated_at = NOW()
-          WHERE id = $2 AND company_id = $3 AND track_stock = true
+          SET stock_quantity = stock_quantity + $1, updated_at = NOW()
+          WHERE id = $2 AND company_id = $3
         `, [item.quantity, item.product_id, req.user.companyId], transaction);
       }
 
@@ -563,10 +579,10 @@ class SaleController {
         UPDATE clients 
         SET 
           total_spent = COALESCE(total_spent, 0) - $1,
-          total_purchases = COALESCE(total_purchases, 1) - 1,
+          total_orders = GREATEST(COALESCE(total_orders, 1) - 1, 0),
           updated_at = NOW()
         WHERE id = $2
-      `, [sale.total_amount, sale.client_id], transaction);
+      `, [sale.net_amount || sale.total_amount, sale.client_id], transaction);
 
       await commitTransaction(transaction);
 
@@ -667,21 +683,31 @@ class SaleController {
         if (achievement.xp_reward > 0 || achievement.coin_reward > 0) {
           await query(`
             UPDATE user_gamification_profiles 
-            SET total_xp = total_xp + $1, current_coins = current_coins + $2
+            SET total_xp = total_xp + $1, available_coins = available_coins + $2, total_coins = total_coins + $2
             WHERE user_id = $3 AND company_id = $4
           `, [achievement.xp_reward, achievement.coin_reward, userId, companyId], transaction);
 
           // Registrar no histórico
           await query(`
-            INSERT INTO gamification_history (user_id, company_id, event_type, amount, reason, action_type)
+            INSERT INTO gamification_history (
+              user_id, event_type, points_awarded, description,
+              related_entity_type, related_entity_id, metadata
+            )
             VALUES 
-              ($1, $2, 'xp', $3, $4, 'achievement_unlocked'),
-              ($1, $2, 'coins', $5, $4, 'achievement_unlocked')
+              ($1, 'achievement_unlocked_xp', $2, $3, 'achievement', $4, $5),
+              ($1, 'achievement_unlocked_coins', $6, $7, 'achievement', $4, $5)
           `, [
-            userId, companyId, 
-            achievement.xp_reward, 
-            `Achievement unlocked: ${achievement.name}`,
-            achievement.coin_reward
+            userId,
+            achievement.xp_reward,
+            `XP reward from achievement: ${achievement.name}`,
+            achievement.id,
+            JSON.stringify({ 
+              achievement_code: achievementCode,
+              achievement_name: achievement.name,
+              company_id: companyId 
+            }),
+            achievement.coin_reward,
+            `Coins reward from achievement: ${achievement.name}`
           ], transaction);
         }
 
