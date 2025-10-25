@@ -121,10 +121,10 @@ class FileUploadModel {
         u.full_name as uploaded_by_name,
         u.email as uploaded_by_email,
         CASE 
-          WHEN f.entity_type = 'clients' THEN c.name
-          WHEN f.entity_type = 'leads' THEN l.name
+          WHEN f.entity_type = 'clients' THEN c.client_name
+          WHEN f.entity_type = 'leads' THEN l.lead_name
           WHEN f.entity_type = 'sales' THEN s.sale_number
-          WHEN f.entity_type = 'products' THEN p.name
+          WHEN f.entity_type = 'products' THEN p.product_name
           WHEN f.entity_type = 'tickets' THEN t.number
           ELSE NULL
         END as entity_name
@@ -287,10 +287,10 @@ class FileUploadModel {
         f.entity_type, f.entity_id, f.description, f.uploaded_at,
         u.full_name as uploaded_by_name,
         CASE 
-          WHEN f.entity_type = 'clients' THEN c.name
-          WHEN f.entity_type = 'leads' THEN l.name
+          WHEN f.entity_type = 'clients' THEN c.client_name
+          WHEN f.entity_type = 'leads' THEN l.lead_name
           WHEN f.entity_type = 'sales' THEN s.sale_number
-          WHEN f.entity_type = 'products' THEN p.name
+          WHEN f.entity_type = 'products' THEN p.product_name
           WHEN f.entity_type = 'tickets' THEN t.number
           ELSE NULL
         END as entity_name

@@ -84,7 +84,7 @@ class ProductCategoryModel {
         c.id, c.company_id, c.name, c.description, c.parent_id, c.slug,
         c.meta_title, c.meta_description, c.is_active, c.sort_order,
         c.created_at, c.updated_at,
-        p.name as parent_name,
+        p.category_name as parent_name,
         (SELECT COUNT(*) FROM polox.product_categories WHERE parent_id = c.id AND deleted_at IS NULL) as children_count,
         (SELECT COUNT(*) FROM polox.products WHERE category_id = c.id AND deleted_at IS NULL) as products_count
       FROM polox.product_categories c
@@ -112,7 +112,7 @@ class ProductCategoryModel {
         c.id, c.company_id, c.name, c.description, c.parent_id, c.slug,
         c.meta_title, c.meta_description, c.is_active, c.sort_order,
         c.created_at, c.updated_at,
-        p.name as parent_name
+        p.category_name as parent_name
       FROM polox.product_categories c
       LEFT JOIN polox.product_categories p ON c.parent_id = p.id
       WHERE c.slug = $1 AND c.company_id = $2 AND c.deleted_at IS NULL
@@ -169,7 +169,7 @@ class ProductCategoryModel {
       c.id, c.company_id, c.name, c.description, c.parent_id, c.slug,
       c.meta_title, c.meta_description, c.is_active, c.sort_order,
       c.created_at, c.updated_at,
-      p.name as parent_name,
+      p.category_name as parent_name,
       (SELECT COUNT(*) FROM polox.product_categories WHERE parent_id = c.id AND deleted_at IS NULL) as children_count,
       (SELECT COUNT(*) FROM polox.products WHERE category_id = c.id AND deleted_at IS NULL) as products_count
     `;

@@ -48,7 +48,7 @@ const authMiddleware = async (req, res, next) => {
       `
       SELECT 
         id, full_name, email, user_role, company_id, created_at
-      FROM users
+      FROM polox.users
       WHERE id = $1 AND deleted_at IS NULL
     `,
       [decoded.id]

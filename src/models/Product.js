@@ -57,8 +57,8 @@ class ProductModel {
       // Inserir produto
       const insertQuery = `
         INSERT INTO polox.products (
-          company_id, category_id, supplier_id, name, description, code, barcode,
-          type, status, cost_price, sale_price, markup_percentage,
+          company_id, category_id, supplier_id, product_name, description, code, barcode,
+          product_type, status, cost_price, sale_price, markup_percentage,
           stock_quantity, min_stock_level, max_stock_level, stock_unit,
           weight, length, width, height, slug, meta_title, meta_description,
           featured_image_url, gallery_images,
@@ -94,11 +94,11 @@ class ProductModel {
           if (tagName && tagName.trim() !== '') {
             // Inserir tag se não existir (específica da empresa)
             const tagResult = await client.query(`
-              INSERT INTO polox.tags (name, slug, company_id, created_at, updated_at)
+              INSERT INTO polox.tags (tag_name, slug, company_id, created_at, updated_at)
               VALUES ($1, $2, $3, NOW(), NOW())
-              ON CONFLICT (company_id, name, slug) 
+              ON CONFLICT (company_id, tag_name, slug) 
               WHERE company_id IS NOT NULL 
-              DO UPDATE SET name = EXCLUDED.name
+              DO UPDATE SET tag_name = EXCLUDED.tag_name
               RETURNING id
             `, [
               tagName.trim(),
@@ -133,11 +133,11 @@ class ProductModel {
     const selectQuery = `
       SELECT 
         p.*,
-        pc.name as category_name,
-        s.name as supplier_name,
+        pc.category_name as category_name,
+        s.supplier_name as supplier_name,
         s.company_name as supplier_company_name,
         (
-          SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'slug', t.slug, 'color', t.color))
+          SELECT json_agg(json_build_object('id', t.id, 'tag_name', t.tag_name, 'slug', t.slug, 'color', t.color))
           FROM polox.tags t
           INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
           WHERE pt.product_id = p.id
@@ -319,8 +319,8 @@ class ProductModel {
    */
   static async update(id, updateData, companyId) {
     const allowedFields = [
-      'category_id', 'supplier_id', 'name', 'description', 'code', 'barcode',
-      'type', 'status', 'cost_price', 'sale_price', 'markup_percentage',
+      'category_id', 'supplier_id', 'product_name', 'description', 'code', 'barcode',
+      'product_type', 'status', 'cost_price', 'sale_price', 'markup_percentage',
       'min_stock_level', 'max_stock_level', 'stock_unit', 'weight', 'length',
       'width', 'height', 'slug', 'meta_title', 'meta_description',
       'featured_image_url', 'gallery_images', 'is_featured', 'is_digital',
@@ -331,14 +331,22 @@ class ProductModel {
     const values = [];
     let paramCount = 1;
 
+    // Map input field names to database column names
+    const fieldMapping = {
+      'name': 'product_name',
+      'type': 'product_type'
+    };
+
     // Construir query dinamicamente
     for (const [key, value] of Object.entries(updateData)) {
-      if (allowedFields.includes(key)) {
-        if (key === 'gallery_images') {
-          updates.push(`${key} = $${paramCount}`);
+      const dbField = fieldMapping[key] || key;
+      
+      if (allowedFields.includes(dbField)) {
+        if (dbField === 'gallery_images') {
+          updates.push(`${dbField} = $${paramCount}`);
           values.push(JSON.stringify(value));
         } else {
-          updates.push(`${key} = $${paramCount}`);
+          updates.push(`${dbField} = $${paramCount}`);
           values.push(value);
         }
         paramCount++;
@@ -357,7 +365,7 @@ class ProductModel {
       SET ${updates.join(', ')}
       WHERE id = $${paramCount} AND company_id = $${paramCount + 1} AND deleted_at IS NULL
       RETURNING 
-        id, name, description, code, sale_price, stock_quantity, status,
+        id, product_name, description, code, sale_price, stock_quantity, status,
         created_at, updated_at
     `;
 
@@ -402,7 +410,7 @@ class ProductModel {
       UPDATE polox.products 
       SET ${updateExpression}, updated_at = NOW()
       WHERE id = $2 AND company_id = $3 AND deleted_at IS NULL
-      RETURNING id, name, stock_quantity, min_stock_level, max_stock_level
+      RETURNING id, product_name, stock_quantity, min_stock_level, max_stock_level
     `;
 
     try {
@@ -421,7 +429,7 @@ class ProductModel {
   static async getLowStockProducts(companyId) {
     const selectQuery = `
       SELECT 
-        id, name, code, stock_quantity, min_stock_level, 
+        id, product_name, code, stock_quantity, min_stock_level, 
         sale_price, featured_image_url
       FROM polox.products 
       WHERE company_id = $1 
@@ -469,7 +477,7 @@ class ProductModel {
 
     const selectQuery = `
       SELECT 
-        p.id, p.name, p.code, p.sale_price, p.featured_image_url,
+        p.id, p.product_name, p.code, p.sale_price, p.featured_image_url,
         SUM(si.quantity) as total_quantity_sold,
         COUNT(si.id) as total_sales,
         SUM(si.total_price) as total_revenue
@@ -477,7 +485,7 @@ class ProductModel {
       INNER JOIN polox.sale_items si ON p.id = si.product_id
       INNER JOIN polox.sales s ON si.sale_id = s.id
       ${whereClause}
-      GROUP BY p.id, p.name, p.code, p.sale_price, p.featured_image_url
+      GROUP BY p.id, p.product_name, p.code, p.sale_price, p.featured_image_url
       ORDER BY total_quantity_sold DESC
       LIMIT $${paramCount}
     `;
@@ -525,8 +533,8 @@ class ProductModel {
         COUNT(*) as total_products,
         COUNT(CASE WHEN status = 'active' THEN 1 END) as active_products,
         COUNT(CASE WHEN status = 'inactive' THEN 1 END) as inactive_products,
-        COUNT(CASE WHEN type = 'product' THEN 1 END) as physical_products,
-        COUNT(CASE WHEN type = 'service' THEN 1 END) as services,
+        COUNT(CASE WHEN product_type = 'product' THEN 1 END) as physical_products,
+        COUNT(CASE WHEN product_type = 'service' THEN 1 END) as services,
         COUNT(CASE WHEN is_featured = true THEN 1 END) as featured_products,
         COUNT(CASE WHEN stock_quantity <= min_stock_level AND min_stock_level > 0 THEN 1 END) as low_stock_products,
         COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out_of_stock_products,
@@ -558,11 +566,11 @@ class ProductModel {
 
     const selectQuery = `
       SELECT 
-        id, name, description, code, sale_price, stock_quantity,
+        id, product_name, description, code, sale_price, stock_quantity,
         featured_image_url, is_featured, status, created_at
       FROM polox.products 
       WHERE category_id = $1 AND company_id = $2 AND deleted_at IS NULL AND status = 'active'
-      ORDER BY is_featured DESC, name ASC
+      ORDER BY is_featured DESC, product_name ASC
       LIMIT $3 OFFSET $4
     `;
 
@@ -622,12 +630,12 @@ class ProductModel {
 
       // Inserir tag se não existir (específica da empresa)
       const tagResult = await client.query(`
-        INSERT INTO polox.tags (name, slug, company_id)
+        INSERT INTO polox.tags (tag_name, slug, company_id)
         VALUES ($1, $2, $3)
-        ON CONFLICT (company_id, name, slug) 
+        ON CONFLICT (company_id, tag_name, slug) 
         WHERE company_id IS NOT NULL 
-        DO UPDATE SET name = EXCLUDED.name
-        RETURNING id, name, slug, color
+        DO UPDATE SET tag_name = EXCLUDED.tag_name
+        RETURNING id, tag_name, slug, color
       `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
 
       const tag = tagResult.rows[0];
@@ -651,11 +659,11 @@ class ProductModel {
    */
   static async getTags(productId, companyId) {
     const selectQuery = `
-      SELECT t.id, t.name, t.slug, t.color, t.description
+      SELECT t.id, t.tag_name, t.slug, t.color, t.description
       FROM polox.tags t
       INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
       WHERE pt.product_id = $1
-      ORDER BY t.name
+      ORDER BY t.tag_name
     `;
 
     try {
@@ -717,11 +725,11 @@ class ProductModel {
           if (tagName && tagName.trim() !== '') {
             // Inserir tag se não existir
             const tagResult = await client.query(`
-              INSERT INTO polox.tags (name, slug, company_id)
+              INSERT INTO polox.tags (tag_name, slug, company_id)
               VALUES ($1, $2, $3)
-              ON CONFLICT (company_id, name, slug) 
+              ON CONFLICT (company_id, tag_name, slug) 
               WHERE company_id IS NOT NULL 
-              DO UPDATE SET name = EXCLUDED.name
+              DO UPDATE SET tag_name = EXCLUDED.tag_name
               RETURNING id
             `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
 
@@ -739,11 +747,11 @@ class ProductModel {
 
       // Retornar tags atualizadas
       const result = await client.query(`
-        SELECT t.id, t.name, t.slug, t.color
+        SELECT t.id, t.tag_name, t.slug, t.color
         FROM polox.tags t
         INNER JOIN polox.product_tags pt ON t.id = pt.tag_id
         WHERE pt.product_id = $1
-        ORDER BY t.name
+        ORDER BY t.tag_name
       `, [productId]);
 
       return result.rows;

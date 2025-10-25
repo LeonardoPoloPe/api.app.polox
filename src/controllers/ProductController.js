@@ -1,4 +1,4 @@
-const { query, beginTransaction, commit, rollback } = require('../models/database');
+const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../config/database');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
 const Joi = require('joi');
@@ -119,44 +119,45 @@ class ProductController {
     }
 
     if (req.query.is_active !== undefined) {
-      whereClause += ` AND p.is_active = $${++paramCount}`;
-      queryParams.push(req.query.is_active === 'true');
+      const statusValue = req.query.is_active === 'true' ? 'active' : 'inactive';
+      whereClause += ` AND p.status = $${++paramCount}`;
+      queryParams.push(statusValue);
     }
 
     if (req.query.low_stock === 'true') {
-      whereClause += ` AND p.track_stock = true AND p.current_stock <= p.min_stock AND p.min_stock > 0`;
+      whereClause += ` AND p.stock_quantity <= p.min_stock_level AND p.min_stock_level > 0`;
     }
 
     if (req.query.search) {
-      whereClause += ` AND (p.name ILIKE $${++paramCount} OR p.sku ILIKE $${++paramCount} OR p.description ILIKE $${++paramCount})`;
+      whereClause += ` AND (p.product_name ILIKE $${++paramCount} OR p.sku ILIKE $${++paramCount} OR p.description ILIKE $${++paramCount})`;
       const searchTerm = `%${req.query.search}%`;
       queryParams.push(searchTerm, searchTerm, searchTerm);
       paramCount += 2;
     }
 
     // Ordenação
-    const validSortFields = ['name', 'price', 'current_stock', 'created_at'];
-    const sortField = validSortFields.includes(req.query.sort) ? req.query.sort : 'name';
+    const validSortFields = ['product_name', 'sale_price', 'stock_quantity', 'created_at'];
+    const sortField = validSortFields.includes(req.query.sort) ? req.query.sort : 'product_name';
     const sortOrder = req.query.order === 'desc' ? 'DESC' : 'ASC';
 
     // Query principal
     const productsQuery = `
       SELECT 
         p.*,
-        pc.name as category_name,
+        pc.category_name as category_name,
         COALESCE(sales_stats.total_sales, 0) as total_sales,
         COALESCE(sales_stats.total_sold, 0) as total_sold,
         COALESCE(sales_stats.total_revenue, 0) as total_revenue
-      FROM products p
-      LEFT JOIN product_categories pc ON p.category_id = pc.id AND pc.company_id = p.company_id
+      FROM polox.products p
+      LEFT JOIN polox.product_categories pc ON p.category_id = pc.id AND pc.company_id = p.company_id
       LEFT JOIN (
         SELECT 
           si.product_id,
           COUNT(DISTINCT s.id) as total_sales,
           SUM(si.quantity) as total_sold,
           SUM(si.total_price) as total_revenue
-        FROM sale_items si
-        INNER JOIN sales s ON si.sale_id = s.id
+        FROM polox.sale_items si
+        INNER JOIN polox.sales s ON si.sale_id = s.id
         WHERE s.company_id = $1 AND s.deleted_at IS NULL AND s.status != 'cancelled'
         GROUP BY si.product_id
       ) sales_stats ON p.id = sales_stats.product_id
@@ -168,19 +169,19 @@ class ProductController {
     queryParams.push(limit, offset);
 
     // Query de contagem
-    const countQuery = `SELECT COUNT(*) as total FROM products p ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) as total FROM polox.products p ${whereClause}`;
 
     // Query de estatísticas
     const statsQuery = `
       SELECT 
         COUNT(*) as total_products,
-        COUNT(CASE WHEN type = 'product' THEN 1 END) as physical_products,
-        COUNT(CASE WHEN type = 'service' THEN 1 END) as services,
-        COUNT(CASE WHEN is_active = true THEN 1 END) as active_products,
-        COUNT(CASE WHEN track_stock = true AND current_stock <= min_stock AND min_stock > 0 THEN 1 END) as low_stock_products,
-        COALESCE(AVG(price), 0) as average_price,
-        COALESCE(SUM(CASE WHEN track_stock = true THEN current_stock * cost_price ELSE 0 END), 0) as inventory_value
-      FROM products p
+        COUNT(CASE WHEN product_type = 'product' THEN 1 END) as physical_products,
+        COUNT(CASE WHEN product_type = 'service' THEN 1 END) as services,
+        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_products,
+        COUNT(CASE WHEN stock_quantity <= min_stock_level AND min_stock_level > 0 THEN 1 END) as low_stock_products,
+        COALESCE(AVG(sale_price), 0) as average_price,
+        COALESCE(SUM(stock_quantity * cost_price), 0) as inventory_value
+      FROM polox.products p
       WHERE p.company_id = $1 AND p.deleted_at IS NULL
     `;
 
@@ -213,12 +214,11 @@ class ProductController {
     if (error) throw new ApiError(400, error.details[0].message);
 
     const productData = value;
-    const productId = uuidv4();
 
     // Verificar se SKU já existe (se fornecido)
     if (productData.sku) {
       const skuCheck = await query(
-        'SELECT id FROM products WHERE sku = $1 AND company_id = $2 AND deleted_at IS NULL',
+        'SELECT id FROM polox.products WHERE code = $1 AND company_id = $2 AND deleted_at IS NULL',
         [productData.sku, req.user.companyId]
       );
 
@@ -236,7 +236,7 @@ class ProductController {
       if (productData.category_name && !categoryId) {
         // Tentar encontrar categoria existente
         const existingCategory = await client.query(
-          'SELECT id FROM product_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
+          'SELECT id FROM polox.product_categories WHERE category_name = $1 AND company_id = $2 AND deleted_at IS NULL',
           [productData.category_name, req.user.companyId]
         );
 
@@ -245,8 +245,8 @@ class ProductController {
         } else {
           // Criar nova categoria
           const newCategoryResult = await client.query(
-            'INSERT INTO product_categories (id, company_id, name, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
-            [uuidv4(), req.user.companyId, productData.category_name, req.user.id]
+            'INSERT INTO polox.product_categories (company_id, category_name, created_at, updated_at) VALUES ($1, $2, NOW(), NOW()) RETURNING id',
+            [req.user.companyId, productData.category_name]
           );
           categoryId = newCategoryResult.rows[0].id;
         }
@@ -254,17 +254,18 @@ class ProductController {
 
       // Criar produto
       const createProductQuery = `
-        INSERT INTO products (
-          id, company_id, name, description, sku, category_id, type,
-          price, cost_price, track_stock, current_stock, min_stock,
-          max_stock, unit, weight, dimensions, is_active, tags, 
-          custom_fields, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        INSERT INTO polox.products (
+          company_id, product_name, description, code, category_id, product_type,
+          sale_price, cost_price, stock_quantity, min_stock_level,
+          max_stock_level, stock_unit, weight, slug,
+          status, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())
         RETURNING *
       `;
 
+      const statusValue = productData.is_active !== false ? 'active' : 'inactive';
+
       const newProductResult = await client.query(createProductQuery, [
-        productId,
         req.user.companyId,
         productData.name,
         productData.description,
@@ -273,68 +274,36 @@ class ProductController {
         productData.type,
         productData.price,
         productData.cost_price,
-        productData.track_stock,
         productData.current_stock,
         productData.min_stock,
         productData.max_stock,
         productData.unit,
         productData.weight,
-        JSON.stringify(productData.dimensions),
-        productData.is_active,
-        JSON.stringify(productData.tags),
-        JSON.stringify(productData.custom_fields),
-        req.user.id
+        productData.name.toLowerCase().replace(/\s+/g, '-'),
+        statusValue
       ]);
 
       const newProduct = newProductResult.rows[0];
 
-      // Registrar movimento de estoque inicial (se aplicável)
-      if (productData.track_stock && productData.current_stock > 0) {
-        await client.query(`
-          INSERT INTO stock_movements (
-            id, company_id, product_id, type, quantity, reason, 
-            stock_before, stock_after, cost_price, user_id
-          ) VALUES ($1, $2, $3, 'in', $4, 'Estoque inicial', 0, $5, $6, $7)
-        `, [
-          uuidv4(),
-          req.user.companyId,
-          newProduct.id,
-          productData.current_stock,
-          productData.current_stock,
-          productData.cost_price,
-          req.user.id
-        ]);
+      // TODO: Registrar movimento de estoque inicial (tabela stock_movements não existe ainda)
+      /*
+      if (productData.current_stock > 0) {
+        await client.query(`...`);
       }
+      */
 
-      // Conceder XP/Coins por criar produto
-      await client.query(`
-        UPDATE user_gamification_profiles 
-        SET total_xp = total_xp + 15, current_coins = current_coins + 8
-        WHERE user_id = $1 AND company_id = $2
-      `, [req.user.id, req.user.companyId]);
+      // TODO: Gamificação (tabelas não existem ainda)
+      /*
+      await client.query(`UPDATE polox.user_gamification_profiles...`);
+      await client.query(`INSERT INTO polox.gamification_history...`);
+      */
 
-      // Registrar no histórico de gamificação
-      await client.query(`
-        INSERT INTO gamification_history (id, user_id, company_id, event_type, amount, reason, action_type)
-        VALUES 
-          ($1, $2, $3, 'xp', 15, 'Produto criado', 'product_created'),
-          ($4, $2, $3, 'coins', 8, 'Produto criado', 'product_created')
-      `, [uuidv4(), req.user.id, req.user.companyId, uuidv4()]);
+      // TODO: Log de auditoria (tabela audit_logs não existe ainda)
+      /*
+      await client.query(`INSERT INTO polox.audit_logs...`);
+      */
 
-      // Log de auditoria
-      await client.query(`
-        INSERT INTO audit_logs (id, user_id, company_id, action, entity_type, entity_id, description, ip_address)
-        VALUES ($1, $2, $3, 'create', 'product', $4, $5, $6)
-      `, [
-        uuidv4(),
-        req.user.id,
-        req.user.companyId,
-        newProduct.id,
-        `Produto criado: ${newProduct.name} (${productData.type})`,
-        req.ip
-      ]);
-
-      await commit(client);
+      await commitTransaction(client);
 
       return res.status(201).json({
         success: true,
@@ -343,7 +312,7 @@ class ProductController {
       });
 
     } catch (error) {
-      await rollback(client);
+      await rollbackTransaction(client);
       throw error;
     }
   });
@@ -355,16 +324,16 @@ class ProductController {
     const productQuery = `
       SELECT 
         p.*,
-        pc.name as category_name,
+        pc.category_name as category_name,
         u.full_name as created_by_name,
         sales_stats.total_sales,
         sales_stats.total_sold,
         sales_stats.total_revenue,
         sales_stats.avg_sale_price,
         recent_movements.movements
-      FROM products p
-      LEFT JOIN product_categories pc ON p.category_id = pc.id AND pc.company_id = p.company_id
-      LEFT JOIN users u ON p.created_by = u.id
+      FROM polox.products p
+      LEFT JOIN polox.product_categories pc ON p.category_id = pc.id AND pc.company_id = p.company_id
+      LEFT JOIN polox.users u ON p.created_by = u.id
       LEFT JOIN (
         SELECT 
           si.product_id,
@@ -372,8 +341,8 @@ class ProductController {
           SUM(si.quantity) as total_sold,
           SUM(si.total_price) as total_revenue,
           AVG(si.unit_price) as avg_sale_price
-        FROM sale_items si
-        INNER JOIN sales s ON si.sale_id = s.id
+        FROM polox.sale_items si
+        INNER JOIN polox.sales s ON si.sale_id = s.id
         WHERE s.company_id = $2 AND s.deleted_at IS NULL AND s.status != 'cancelled'
         GROUP BY si.product_id
       ) sales_stats ON p.id = sales_stats.product_id
@@ -391,8 +360,8 @@ class ProductController {
               'user_name', u_mov.name
             ) ORDER BY sm.created_at DESC
           ) as movements
-        FROM stock_movements sm
-        LEFT JOIN users u_mov ON sm.user_id = u_mov.id
+        FROM polox.stock_movements sm
+        LEFT JOIN polox.users u_mov ON sm.user_id = u_mov.id
         WHERE sm.company_id = $2
         GROUP BY sm.product_id
       ) recent_movements ON p.id = recent_movements.product_id
@@ -428,7 +397,7 @@ class ProductController {
 
     // Verificar se produto existe
     const existingProduct = await query(
-      'SELECT * FROM products WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      'SELECT * FROM polox.products WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
       [productId, req.user.companyId]
     );
 
@@ -439,9 +408,9 @@ class ProductController {
     const product = existingProduct.rows[0];
 
     // Verificar SKU duplicado (se alterado)
-    if (updateData.sku && updateData.sku !== product.sku) {
+    if (updateData.sku && updateData.sku !== product.code) {
       const skuCheck = await query(
-        'SELECT id FROM products WHERE sku = $1 AND company_id = $2 AND id != $3 AND deleted_at IS NULL',
+        'SELECT id FROM polox.products WHERE code = $1 AND company_id = $2 AND id != $3 AND deleted_at IS NULL',
         [updateData.sku, req.user.companyId, productId]
       );
 
@@ -458,7 +427,7 @@ class ProductController {
       
       if (updateData.category_name && !updateData.category_id) {
         const existingCategory = await client.query(
-          'SELECT id FROM product_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
+          'SELECT id FROM polox.product_categories WHERE category_name = $1 AND company_id = $2 AND deleted_at IS NULL',
           [updateData.category_name, req.user.companyId]
         );
 
@@ -467,8 +436,8 @@ class ProductController {
         } else {
           // Criar nova categoria
           const newCategoryResult = await client.query(
-            'INSERT INTO product_categories (id, company_id, name, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
-            [uuidv4(), req.user.companyId, updateData.category_name, req.user.id]
+            'INSERT INTO polox.product_categories (company_id, category_name, created_at, updated_at) VALUES ($1, $2, NOW(), NOW()) RETURNING id',
+            [req.user.companyId, updateData.category_name]
           );
           categoryId = newCategoryResult.rows[0].id;
         }
@@ -480,22 +449,18 @@ class ProductController {
       let paramCount = 0;
 
       const updateableFields = {
-        name: updateData.name,
+        product_name: updateData.name,
         description: updateData.description,
-        sku: updateData.sku,
+        code: updateData.sku,
         category_id: categoryId,
-        type: updateData.type,
-        price: updateData.price,
+        product_type: updateData.type,
+        sale_price: updateData.price,
         cost_price: updateData.cost_price,
-        track_stock: updateData.track_stock,
-        min_stock: updateData.min_stock,
-        max_stock: updateData.max_stock,
-        unit: updateData.unit,
+        min_stock_level: updateData.min_stock,
+        max_stock_level: updateData.max_stock,
+        stock_unit: updateData.unit,
         weight: updateData.weight,
-        dimensions: updateData.dimensions ? JSON.stringify(updateData.dimensions) : undefined,
-        is_active: updateData.is_active,
-        tags: updateData.tags ? JSON.stringify(updateData.tags) : undefined,
-        custom_fields: updateData.custom_fields ? JSON.stringify(updateData.custom_fields) : undefined
+        status: updateData.is_active !== undefined ? (updateData.is_active ? 'active' : 'inactive') : undefined
       };
 
       Object.entries(updateableFields).forEach(([field, value]) => {
@@ -515,7 +480,7 @@ class ProductController {
       values.push(productId, req.user.companyId);
 
       const updateQuery = `
-        UPDATE products 
+        UPDATE polox.products 
         SET ${fieldsToUpdate.join(', ')}
         WHERE id = $${++paramCount} AND company_id = $${++paramCount} AND deleted_at IS NULL
         RETURNING *
@@ -524,20 +489,19 @@ class ProductController {
       const updatedProductResult = await client.query(updateQuery, values);
       const updatedProduct = updatedProductResult.rows[0];
 
-      // Log de auditoria
-      await client.query(`
-        INSERT INTO audit_logs (id, user_id, company_id, action, entity_type, entity_id, description, ip_address)
+        await client.query(`
+        INSERT INTO polox.audit_logs (id, user_id, company_id, action, entity_type, entity_id, description, ip_address)
         VALUES ($1, $2, $3, 'update', 'product', $4, $5, $6)
       `, [
         uuidv4(),
         req.user.id,
         req.user.companyId,
         updatedProduct.id,
-        `Produto atualizado: ${updatedProduct.name}`,
+        `Produto atualizado: ${updatedProduct.product_name}`,
         req.ip
       ]);
 
-      await commit(client);
+      await commitTransaction(client);
 
       return res.status(200).json({
         success: true,
@@ -546,7 +510,7 @@ class ProductController {
       });
 
     } catch (error) {
-      await rollback(client);
+      await rollbackTransaction(client);
       throw error;
     }
   });
@@ -557,7 +521,7 @@ class ProductController {
 
     // Verificar se produto existe
     const existingProduct = await query(
-      'SELECT * FROM products WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      'SELECT * FROM polox.products WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
       [productId, req.user.companyId]
     );
 
@@ -569,7 +533,7 @@ class ProductController {
 
     // Verificar se produto tem vendas associadas
     const salesCheck = await query(
-      'SELECT COUNT(*) as count FROM sale_items si INNER JOIN sales s ON si.sale_id = s.id WHERE si.product_id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL',
+      'SELECT COUNT(*) as count FROM polox.sale_items si INNER JOIN polox.sales s ON si.sale_id = s.id WHERE si.product_id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL',
       [productId, req.user.companyId]
     );
 
@@ -582,24 +546,23 @@ class ProductController {
     try {
       // Soft delete do produto
       await client.query(
-        'UPDATE products SET deleted_at = NOW() WHERE id = $1 AND company_id = $2',
+        'UPDATE polox.products SET deleted_at = NOW() WHERE id = $1 AND company_id = $2',
         [productId, req.user.companyId]
       );
 
       // Log de auditoria
       await client.query(`
-        INSERT INTO audit_logs (id, user_id, company_id, action, entity_type, entity_id, description, ip_address)
-        VALUES ($1, $2, $3, 'delete', 'product', $4, $5, $6)
+        INSERT INTO polox.audit_logs (user_id, company_id, action, entity_type, entity_id, description, ip_address)
+        VALUES ($1, $2, 'delete', 'product', $3, $4, $5)
       `, [
-        uuidv4(),
         req.user.id,
         req.user.companyId,
         productId,
-        `Produto deletado: ${product.name}`,
+        `Produto deletado: ${product.product_name}`,
         req.ip
       ]);
 
-      await commit(client);
+      await commitTransaction(client);
 
       return res.status(200).json({
         success: true,
@@ -607,7 +570,7 @@ class ProductController {
       });
 
     } catch (error) {
-      await rollback(client);
+      await rollbackTransaction(client);
       throw error;
     }
   });
@@ -622,14 +585,14 @@ class ProductController {
 
     // Buscar produto
     const productQuery = `
-      SELECT * FROM products 
-      WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL AND track_stock = true
+      SELECT * FROM polox.products 
+      WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
     `;
     
     const productResult = await query(productQuery, [productId, req.user.companyId]);
     
     if (productResult.rows.length === 0) {
-      throw new ApiError(404, 'Produto não encontrado ou controle de estoque desabilitado');
+      throw new ApiError(404, 'Produto não encontrado');
     }
 
     const product = productResult.rows[0];
@@ -638,10 +601,10 @@ class ProductController {
     // Calcular novo estoque
     switch (adjustmentData.type) {
       case 'in':
-        newStock = product.current_stock + adjustmentData.quantity;
+        newStock = product.stock_quantity + adjustmentData.quantity;
         break;
       case 'out':
-        newStock = product.current_stock - adjustmentData.quantity;
+        newStock = product.stock_quantity - adjustmentData.quantity;
         if (newStock < 0) {
           throw new ApiError(400, 'Estoque insuficiente');
         }
@@ -658,55 +621,53 @@ class ProductController {
     try {
       // Atualizar estoque do produto
       await client.query(
-        'UPDATE products SET current_stock = $1, updated_at = NOW() WHERE id = $2',
+        'UPDATE polox.products SET stock_quantity = $1, updated_at = NOW() WHERE id = $2',
         [newStock, productId]
       );
 
       // Registrar movimento de estoque
       await client.query(`
-        INSERT INTO stock_movements (
-          id, company_id, product_id, type, quantity, reason, notes,
+        INSERT INTO polox.stock_movements (
+          company_id, product_id, type, quantity, reason, notes,
           stock_before, stock_after, cost_price, user_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `, [
-        uuidv4(),
         req.user.companyId,
         productId,
         adjustmentData.type,
         adjustmentData.quantity,
         adjustmentData.reason,
         adjustmentData.notes || null,
-        product.current_stock,
+        product.stock_quantity,
         newStock,
         adjustmentData.cost_price || product.cost_price,
         req.user.id
       ]);
 
-      await commit(client);
+      await commitTransaction(client);
 
       // Verificar alerta de estoque baixo
       let alert = null;
-      if (newStock <= product.min_stock && product.min_stock > 0) {
+      if (newStock <= product.min_stock_level && product.min_stock_level > 0) {
         alert = {
           type: 'low_stock',
-          message: `Produto "${product.name}" está com estoque baixo (${newStock} restantes)`
+          message: `Produto "${product.product_name}" está com estoque baixo (${newStock} restantes)`
         };
 
         // Criar notificação de estoque baixo
         await query(`
-          INSERT INTO notifications (
-            id, company_id, user_id, type, title, message, data
-          ) VALUES ($1, $2, $3, 'low_stock', 'Alerta de Estoque Baixo', $4, $5)
+          INSERT INTO polox.notifications (
+            company_id, user_id, type, title, message, data
+          ) VALUES ($1, $2, 'low_stock', 'Alerta de Estoque Baixo', $3, $4)
         `, [
-          uuidv4(),
           req.user.companyId,
           req.user.id,
           alert.message,
           JSON.stringify({ 
             product_id: productId, 
-            product_name: product.name,
+            product_name: product.product_name,
             current_stock: newStock, 
-            min_stock: product.min_stock 
+            min_stock: product.min_stock_level 
           })
         ]);
       }
@@ -715,8 +676,8 @@ class ProductController {
         success: true,
         data: {
           product_id: productId,
-          product_name: product.name,
-          stock_before: product.current_stock,
+          product_name: product.product_name,
+          stock_before: product.stock_quantity,
           stock_after: newStock,
           adjustment: adjustmentData,
           alert
@@ -725,7 +686,7 @@ class ProductController {
       });
 
     } catch (error) {
-      await rollback(client);
+      await rollbackTransaction(client);
       throw error;
     }
   });
@@ -735,28 +696,27 @@ class ProductController {
     const lowStockQuery = `
       SELECT 
         p.*,
-        pc.name as category_name,
-        (p.min_stock - p.current_stock) as units_needed,
+        pc.category_name as category_name,
+        (p.min_stock_level - p.stock_quantity) as units_needed,
         CASE 
-          WHEN p.current_stock = 0 THEN 'out_of_stock'
-          WHEN p.current_stock <= p.min_stock * 0.5 THEN 'critical'
+          WHEN p.stock_quantity = 0 THEN 'out_of_stock'
+          WHEN p.stock_quantity <= p.min_stock_level * 0.5 THEN 'critical'
           ELSE 'low'
         END as urgency_level
-      FROM products p
-      LEFT JOIN product_categories pc ON p.category_id = pc.id AND pc.company_id = p.company_id
+      FROM polox.products p
+      LEFT JOIN polox.product_categories pc ON p.category_id = pc.id AND pc.company_id = p.company_id
       WHERE p.company_id = $1 
       AND p.deleted_at IS NULL 
-      AND p.is_active = true
-      AND p.track_stock = true 
-      AND p.current_stock <= p.min_stock
-      AND p.min_stock > 0
+      AND p.status = 'active'
+      AND p.stock_quantity <= p.min_stock_level
+      AND p.min_stock_level > 0
       ORDER BY 
         CASE 
-          WHEN p.current_stock = 0 THEN 1
-          WHEN p.current_stock <= p.min_stock * 0.5 THEN 2
+          WHEN p.stock_quantity = 0 THEN 1
+          WHEN p.stock_quantity <= p.min_stock_level * 0.5 THEN 2
           ELSE 3
         END ASC,
-        (p.current_stock / NULLIF(p.min_stock, 0)) ASC
+        (p.stock_quantity / NULLIF(p.min_stock_level, 0)) ASC
     `;
 
     const lowStockResult = await query(lowStockQuery, [req.user.companyId]);
@@ -766,7 +726,7 @@ class ProductController {
       data: lowStockResult.rows,
       stats: {
         total_low_stock: lowStockResult.rows.length,
-        out_of_stock: lowStockResult.rows.filter(p => p.current_stock === 0).length,
+        out_of_stock: lowStockResult.rows.filter(p => p.stock_quantity === 0).length,
         critical_stock: lowStockResult.rows.filter(p => p.urgency_level === 'critical').length
       }
     });
@@ -779,12 +739,12 @@ class ProductController {
         pc.*,
         COUNT(p.id) as products_count,
         u.full_name as created_by_name
-      FROM product_categories pc
-      LEFT JOIN products p ON pc.id = p.category_id AND p.company_id = pc.company_id AND p.deleted_at IS NULL
-      LEFT JOIN users u ON pc.created_by = u.id
+      FROM polox.product_categories pc
+      LEFT JOIN polox.products p ON pc.id = p.category_id AND p.company_id = pc.company_id AND p.deleted_at IS NULL
+      LEFT JOIN polox.users u ON pc.created_by = u.id
       WHERE pc.company_id = $1 AND pc.deleted_at IS NULL
       GROUP BY pc.id, u.full_name
-      ORDER BY pc.name ASC
+      ORDER BY pc.category_name ASC
     `;
 
     const categoriesResult = await query(categoriesQuery, [req.user.companyId]);
@@ -804,7 +764,7 @@ class ProductController {
 
     // Verificar se categoria já existe
     const existingCategory = await query(
-      'SELECT id FROM product_categories WHERE name = $1 AND company_id = $2 AND deleted_at IS NULL',
+      'SELECT id FROM polox.product_categories WHERE category_name = $1 AND company_id = $2 AND deleted_at IS NULL',
       [categoryData.name, req.user.companyId]
     );
 
@@ -813,20 +773,17 @@ class ProductController {
     }
 
     const createCategoryQuery = `
-      INSERT INTO product_categories (
-        id, company_id, name, description, parent_id, is_active, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO polox.product_categories (
+        company_id, category_name, description, parent_id, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, NOW(), NOW())
       RETURNING *
     `;
 
     const newCategoryResult = await query(createCategoryQuery, [
-      uuidv4(),
       req.user.companyId,
       categoryData.name,
       categoryData.description,
-      categoryData.parent_id,
-      categoryData.is_active,
-      req.user.id
+      categoryData.parent_id
     ]);
 
     const newCategory = newCategoryResult.rows[0];
@@ -867,9 +824,9 @@ class ProductController {
       reportQuery = `
         SELECT 
           p.id,
-          p.name,
+          p.product_name,
           p.sku,
-          pc.name as category_name,
+          pc.category_name as category_name,
           COUNT(DISTINCT s.id) as sales_count,
           SUM(si.quantity) as total_quantity_sold,
           SUM(si.total_price) as total_revenue,
@@ -881,13 +838,13 @@ class ProductController {
             THEN ROUND(((SUM(si.total_price) - SUM(si.quantity * p.cost_price)) / SUM(si.quantity * p.cost_price)) * 100, 2)
             ELSE 0
           END as profit_margin_percent
-        FROM products p
-        LEFT JOIN product_categories pc ON p.category_id = pc.id
-        LEFT JOIN sale_items si ON p.id = si.product_id
-        LEFT JOIN sales s ON si.sale_id = s.id
+        FROM polox.products p
+        LEFT JOIN polox.product_categories pc ON p.category_id = pc.id
+        LEFT JOIN polox.sale_items si ON p.id = si.product_id
+        LEFT JOIN polox.sales s ON si.sale_id = s.id
         WHERE p.company_id = $1 AND p.deleted_at IS NULL
         AND s.company_id = $1 AND s.deleted_at IS NULL AND s.status != 'cancelled' ${dateFilter}
-        GROUP BY p.id, p.name, p.sku, pc.name, p.cost_price
+        GROUP BY p.id, p.product_name, p.sku, pc.category_name, p.cost_price
         HAVING SUM(si.quantity) > 0
         ORDER BY total_revenue DESC
         LIMIT 50
@@ -897,9 +854,9 @@ class ProductController {
       reportQuery = `
         SELECT 
           p.id,
-          p.name,
+          p.product_name,
           p.sku,
-          pc.name as category_name,
+          pc.category_name as category_name,
           p.current_stock,
           p.min_stock,
           p.cost_price,
@@ -912,14 +869,14 @@ class ProductController {
           END as stock_status,
           last_movement.last_movement_date,
           last_movement.last_movement_type
-        FROM products p
-        LEFT JOIN product_categories pc ON p.category_id = pc.id
+        FROM polox.products p
+        LEFT JOIN polox.product_categories pc ON p.category_id = pc.id
         LEFT JOIN (
           SELECT 
             product_id,
             MAX(created_at) as last_movement_date,
-            (SELECT type FROM stock_movements sm2 WHERE sm2.product_id = sm1.product_id ORDER BY created_at DESC LIMIT 1) as last_movement_type
-          FROM stock_movements sm1
+            (SELECT type FROM polox.stock_movements sm2 WHERE sm2.product_id = sm1.product_id ORDER BY created_at DESC LIMIT 1) as last_movement_type
+          FROM polox.stock_movements sm1
           WHERE company_id = $1
           GROUP BY product_id
         ) last_movement ON p.id = last_movement.product_id
@@ -938,9 +895,9 @@ class ProductController {
         SUM(si.total_price) as total_revenue,
         SUM(si.quantity) as total_quantity_sold,
         SUM(p.current_stock * p.cost_price) as total_inventory_value
-      FROM products p
-      LEFT JOIN sale_items si ON p.id = si.product_id
-      LEFT JOIN sales s ON si.sale_id = s.id AND s.company_id = $1 AND s.deleted_at IS NULL AND s.status != 'cancelled' ${dateFilter}
+      FROM polox.products p
+      LEFT JOIN polox.sale_items si ON p.id = si.product_id
+      LEFT JOIN polox.sales s ON si.sale_id = s.id AND s.company_id = $1 AND s.deleted_at IS NULL AND s.status != 'cancelled' ${dateFilter}
       WHERE p.company_id = $1 AND p.deleted_at IS NULL
     `;
 

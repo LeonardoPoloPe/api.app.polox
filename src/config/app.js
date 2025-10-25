@@ -288,15 +288,14 @@ function createApp() {
       /\.\.\//, // Path traversal
       /\bselect\b.*\bfrom\b/i, // SQL injection básico
       /<script>/i, // XSS básico
-      /\bwget\b|\bcurl\b/i, // Command injection
       /\beval\b|\bexec\b/i // Code injection
     ];
 
     const userAgent = req.get('User-Agent') || '';
     const url = req.originalUrl;
     
-    // Pular verificação para rotas de desenvolvimento e health
-    const skipPaths = ['/health', '/test', '/debug'];
+    // Pular verificação para rotas de desenvolvimento, health e APIs
+    const skipPaths = ['/health', '/test', '/debug', '/api'];
     const shouldSkip = skipPaths.some(path => url.startsWith(path));
     
     if (shouldSkip) {

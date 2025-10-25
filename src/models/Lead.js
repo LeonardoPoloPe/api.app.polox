@@ -552,24 +552,26 @@ class LeadModel {
         // Criar cliente
         const createClientQuery = `
         INSERT INTO polox.clients (
-          company_id, converted_from_lead_id, name, email, phone, 
-          company_name, type, acquisition_date, created_at, updated_at
+          company_id, converted_from_lead_id, client_name, email, phone, 
+          company_name, client_type, acquisition_date, created_at, updated_at
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE, NOW(), NOW())
-        RETURNING id, name, email, phone, company_name, created_at
+        RETURNING id, client_name, email, phone, company_name, created_at
       `;
 
         const clientResult = await client.query(createClientQuery, [
           companyId,
           leadId,
-          clientData.name || lead.lead_name,
+          clientData.name || clientData.client_name || lead.lead_name,
           clientData.email || lead.email,
           clientData.phone || lead.phone,
           clientData.company_name || lead.company_name,
-          clientData.type || "person",
+          clientData.type || clientData.client_type || "person",
         ]);
 
         const newClient = clientResult.rows[0];
+        // Map client_name back to name for response
+        newClient.name = newClient.client_name;
 
         // Atualizar lead
         const updateLeadQuery = `

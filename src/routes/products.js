@@ -82,7 +82,7 @@ router.use(authMiddleware);
 
 /**
  * @swagger
- * /api/products:
+ * /products:
  *   get:
  *     summary: Listar produtos
  *     tags: [Products]
@@ -158,7 +158,7 @@ router.get('/', ProductController.index);
 
 /**
  * @swagger
- * /api/products:
+ * /products:
  *   post:
  *     summary: Criar produto
  *     tags: [Products]
@@ -178,7 +178,7 @@ router.post('/', ProductController.create);
 
 /**
  * @swagger
- * /api/products/categories:
+ * /products/categories:
  *   get:
  *     summary: Listar categorias de produtos
  *     tags: [Products]
@@ -190,7 +190,7 @@ router.get('/categories', ProductController.getCategories);
 
 /**
  * @swagger
- * /api/products/categories:
+ * /products/categories:
  *   post:
  *     summary: Criar categoria de produto
  *     tags: [Products]
@@ -208,7 +208,7 @@ router.post('/categories', ProductController.createCategory);
 
 /**
  * @swagger
- * /api/products/reports:
+ * /products/reports:
  *   get:
  *     summary: Relatórios de produtos
  *     tags: [Products]
@@ -233,7 +233,7 @@ router.get('/reports', ProductController.getReports);
 
 /**
  * @swagger
- * /api/products/low-stock:
+ * /products/low-stock:
  *   get:
  *     summary: Produtos com estoque baixo
  *     tags: [Products]
@@ -245,7 +245,7 @@ router.get('/low-stock', ProductController.getLowStock);
 
 /**
  * @swagger
- * /api/products/{id}:
+ * /products/{id}:
  *   get:
  *     summary: Obter produto por ID
  *     tags: [Products]
@@ -266,7 +266,7 @@ router.get('/:id', ProductController.show);
 
 /**
  * @swagger
- * /api/products/{id}:
+ * /products/{id}:
  *   put:
  *     summary: Atualizar produto
  *     tags: [Products]
@@ -293,7 +293,7 @@ router.put('/:id', ProductController.update);
 
 /**
  * @swagger
- * /api/products/{id}:
+ * /products/{id}:
  *   delete:
  *     summary: Deletar produto
  *     tags: [Products]
@@ -314,7 +314,7 @@ router.delete('/:id', ProductController.destroy);
 
 /**
  * @swagger
- * /api/products/{id}/stock:
+ * /products/{id}/stock:
  *   post:
  *     summary: Ajustar estoque do produto
  *     tags: [Products]
