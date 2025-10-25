@@ -1,3 +1,5 @@
+// Sentry será carregado automaticamente via Layer e NODE_OPTIONS
+
 const serverless = require("serverless-http");
 const express = require("express");
 const cors = require("cors");
@@ -7,6 +9,16 @@ const { initializePool, closePool, logger, healthCheck } = require("./models");
 
 // Configuração do Express
 const app = express();
+
+// Importar configuração customizada do Sentry
+const {
+  initSentry,
+  captureError,
+  captureMessage,
+  wrapLambdaHandler,
+  flushSentry,
+  Sentry,
+} = require("./config/sentry");
 
 // Middlewares de segurança
 app.use(
@@ -33,7 +45,10 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Middleware de logging de requisições
+// Inicializar Sentry
+initSentry();
+
+// Middleware de logging de requisições (integrado com Sentry)
 app.use((req, res, next) => {
   const start = Date.now();
 
@@ -160,11 +175,79 @@ app.get("/", (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /test-sentry:
+ *   get:
+ *     summary: Teste do Sentry - Gera erro intencional
+ *     description: Endpoint para testar se o Sentry está capturando erros corretamente
+ *     tags: [Health]
+ *     security: []
+ *     responses:
+ *       500:
+ *         description: Erro intencional para teste do Sentry
+ */
+// Rota de teste do Sentry
+app.get("/test-sentry", (req, res) => {
+  captureMessage("Teste de mensagem do Sentry", "info", {
+    test_type: "manual",
+    user_agent: req.get("User-Agent"),
+    ip: req.ip,
+  });
+
+  // Erro intencional para testar Sentry
+  throw new Error("This should show up in Sentry!");
+});
+
+/**
+ * @swagger
+ * /test-sentry-message:
+ *   get:
+ *     summary: Teste do Sentry - Mensagem personalizada
+ *     description: Endpoint para testar mensagens personalizadas no Sentry
+ *     tags: [Health]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Mensagem enviada ao Sentry com sucesso
+ */
+// Rota de teste de mensagem do Sentry
+app.get("/test-sentry-message", (req, res) => {
+  captureMessage("Teste de mensagem personalizada do Sentry", "warning", {
+    test_type: "message",
+    timestamp: new Date().toISOString(),
+    user_agent: req.get("User-Agent"),
+    path: req.path,
+  });
+
+  res.json({
+    message: "Mensagem de teste enviada para o Sentry",
+    timestamp: new Date().toISOString(),
+    sentry_enabled: process.env.SENTRY_DSN ? true : false,
+  });
+});
+
 // Registra todas as rotas da API
 app.use("/api", routes);
 
+// Error handling middleware personalizado será aplicado automaticamente
+
 // Middleware para rotas não encontradas
 app.use("*", (req, res) => {
+  // Capturar 404 no Sentry com contexto
+  captureMessage(
+    `Rota não encontrada: ${req.method} ${req.originalUrl}`,
+    "warning",
+    {
+      request: {
+        method: req.method,
+        url: req.originalUrl,
+        headers: req.headers,
+        user_agent: req.get("User-Agent"),
+      },
+    }
+  );
+
   res.status(404).json({
     error: "Rota não encontrada",
     method: req.method,
@@ -173,8 +256,24 @@ app.use("*", (req, res) => {
   });
 });
 
-// Middleware global de tratamento de erros
+// Middleware global de tratamento de erros (integrado com Sentry)
 app.use((error, req, res, next) => {
+  // Capturar erro no Sentry com contexto completo
+  captureError(error, {
+    request: {
+      method: req.method,
+      url: req.url,
+      body: req.body,
+      headers: req.headers,
+      user: req.user,
+    },
+    lambda: {
+      function_name: process.env.AWS_LAMBDA_FUNCTION_NAME,
+      function_version: process.env.AWS_LAMBDA_FUNCTION_VERSION,
+      memory_size: process.env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE,
+    },
+  });
+
   logger.error("Erro não tratado:", {
     error: error.message,
     stack: error.stack,
@@ -205,7 +304,7 @@ const initializeDatabase = async () => {
       await initializePool();
 
       // Executar migrations automaticamente (apenas se não estiver skipando)
-      if (process.env.SKIP_MIGRATIONS !== 'true') {
+      if (process.env.SKIP_MIGRATIONS !== "true") {
         logger.info("Executando migrations...");
         const MigrationRunner = require("../migrations/migration-runner");
         const migrationRunner = new MigrationRunner();
@@ -224,12 +323,15 @@ const initializeDatabase = async () => {
   }
 };
 
-// Handler principal para AWS Lambda
-const handler = async (event, context) => {
+// Handler principal para AWS Lambda (com Sentry wrapper)
+const lambdaHandler = async (event, context) => {
   // Configurações do Lambda
   context.callbackWaitsForEmptyEventLoop = false;
 
   try {
+    // Adicionar contexto Lambda ao Sentry (placeholder para compatibilidade)
+    // setTags será implementado automaticamente
+
     // Inicializa banco de dados se necessário
     await initializeDatabase();
 
@@ -240,9 +342,33 @@ const handler = async (event, context) => {
       },
     });
 
-    return await serverlessHandler(event, context);
+    const result = await serverlessHandler(event, context);
+
+    // Flush Sentry antes de retornar
+    await flushSentry(1000);
+
+    return result;
   } catch (error) {
+    // Capturar erro crítico no Sentry
+    captureError(error, {
+      lambda: {
+        function_name: process.env.AWS_LAMBDA_FUNCTION_NAME,
+        request_id: context.awsRequestId,
+        remaining_time: context.getRemainingTimeInMillis(),
+        memory_limit: context.memoryLimitInMB,
+      },
+      event: {
+        httpMethod: event.httpMethod,
+        path: event.path,
+        queryStringParameters: event.queryStringParameters,
+        headers: event.headers,
+      },
+    });
+
     logger.error("Erro no handler principal:", error);
+
+    // Flush Sentry antes de retornar erro
+    await flushSentry(1000);
 
     return {
       statusCode: 500,
@@ -260,14 +386,19 @@ const handler = async (event, context) => {
   }
 };
 
+// Wrapper do Sentry para o handler
+const handler = wrapLambdaHandler(lambdaHandler);
+
 // Processo de cleanup quando Lambda é reciclado
 process.on("SIGTERM", async () => {
   logger.info("Recebido SIGTERM, fechando conexões...");
   try {
+    await flushSentry(2000); // Garantir que logs do Sentry sejam enviados
     await closePool();
     logger.info("Conexões fechadas com sucesso");
   } catch (error) {
     logger.error("Erro ao fechar conexões:", error);
+    captureError(error, { process: "cleanup" });
   }
 });
 
