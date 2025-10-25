@@ -1,12 +1,13 @@
 # 📚 Índice de Documentação - API Polox
 
-**Última Atualização:** 24 de outubro de 2025
+**Última Atualização:** 25 de outubro de 2025
 
 ---
 
 ## 🆕 Sistema de Campos Customizados (EAV)
 
 ### Documentação Principal
+
 - **[CUSTOM_FIELDS.md](./CUSTOM_FIELDS.md)** ⭐ **NOVO**
   - Guia completo de 43 páginas
   - Arquitetura EAV detalhada
@@ -14,6 +15,7 @@
   - Troubleshooting e boas práticas
 
 ### Status e Acompanhamento
+
 - **[STATUS_EAV_CUSTOM_FIELDS.md](./STATUS_EAV_CUSTOM_FIELDS.md)** ⭐ **NOVO**
   - Status do projeto (Fase 1 completa)
   - Estatísticas consolidadas
@@ -21,6 +23,7 @@
   - Checklist de implementação
 
 ### Resumo Executivo
+
 - **[RESUMO_EXECUTIVO_EAV.md](./RESUMO_EXECUTIVO_EAV.md)** ⭐ **NOVO**
   - Visão geral do projeto
   - Entregáveis e estatísticas
@@ -36,12 +39,17 @@
 - [📖 README.md](./README.md) - Visão geral e quick start
 - [⚡ COMANDOS_DEPLOY.md](./COMANDOS_DEPLOY.md) - Comandos de deploy atualizados (Serverless Framework)
 - [🔧 AWS_SETUP_INSTRUCTIONS.md](./AWS_SETUP_INSTRUCTIONS.md) - Configuração AWS
-- [� ATUALIZACAO_24_10_2025.md](./ATUALIZACAO_24_10_2025.md) - **CORREÇÃO CRÍTICA - LEITURA OBRIGATÓRIA**
-- [📊 ATUALIZACAO_21_10_2025.md](./ATUALIZACAO_21_10_2025.md) - Log de mudanças Serverless Framework
 
 ### 🔐 **Segurança** ✅ **IMPLEMENTADO COM SUCESSO**
 
-- [🔐 POLITICAS_SEGURANCA_CREDENCIAIS.md](./POLITICAS_SEGURANCA_CREDENCIAIS.md) - **✅ Políticas implementadas - ZERO credenciais expostas (LEITURA OBRIGATÓRIA)**
+- [🔐 POLITICAS_SEGURANCA_CREDENCIAIS.md](./naocompartilhar/POLITICAS_SEGURANCA_CREDENCIAIS.md) - **✅ Políticas implementadas - ZERO credenciais expostas (LEITURA OBRIGATÓRIA)**
+- [�️ AUDITORIA_SEGURANCA_23-10-2025.md](./AUDITORIA_SEGURANCA_23-10-2025.md) - Auditoria de segurança
+
+### � **Migrations e Banco de Dados**
+
+- [🚀 GUIA_MIGRATIONS_COMPLETO.md](./GUIA_MIGRATIONS_COMPLETO.md) - Guia completo de migrations
+- [🔧 tutorial-migrations.md](./tutorial-migrations.md) - Tutorial básico de migrations
+- [🔗 FUNCAO_CLEANUP_CUSTOM_FIELD_VALUES.md](./FUNCAO_CLEANUP_CUSTOM_FIELD_VALUES.md) - Função de limpeza
 
 ### 🏗️ **Arquitetura**
 
@@ -61,6 +69,31 @@
 - [🔍 CONSULTA_PARAMETROS_AWS.md](./CONSULTA_PARAMETROS_AWS.md) - Parâmetros AWS
 - [🗑️ CLEANUP_PLAN.md](./CLEANUP_PLAN.md) - Plano de limpeza
 - [❌ ISSUES_SOLUCOES.md](./ISSUES_SOLUCOES.md) - Problemas e soluções
+
+---
+
+## 📅 **Atualizações e Relatórios**
+
+> 📁 **Localização**: `docs/atualizacoes/` - Histórico de mudanças e implementações
+
+### 🆕 **Mais Recentes**
+
+- [📊 ATUALIZACAO_MIGRATIONS_25_10_2025.md](./atualizacoes/ATUALIZACAO_MIGRATIONS_25_10_2025.md) - **🆕 Migration 033 - Multi-Tenancy Security**
+- [🔒 MIGRATION_033_MULTI_TENANCY_REPORT.md](./atualizacoes/MIGRATION_033_MULTI_TENANCY_REPORT.md) - **🆕 Relatório detalhado da Migration 033**
+- [📋 ATUALIZACAO_MIGRATIONS_24_10_2025.md](./atualizacoes/ATUALIZACAO_MIGRATIONS_24_10_2025.md) - Status das migrations
+
+### 📂 **Todas as Atualizações**
+
+```bash
+# Ver todos os relatórios e atualizações
+ls docs/atualizacoes/
+
+# Arquivos principais:
+- ATUALIZACAO_*.md          # Atualizações por data
+- MIGRATION_*_REPORT.md     # Relatórios de migrations
+- *_IMPLEMENTADO.md         # Sucessos de implementação
+- CORRECAO_*.md            # Correções específicas
+```
 
 ---
 
@@ -115,7 +148,7 @@ curl https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/health
 ✅ **Configurado VPC para acesso ao RDS**  
 ✅ **Otimizado timeout do Secrets Manager (fallback rápido)**  
 ✅ **Corrigido configurações do Pool PostgreSQL**  
-✅ **Todos os 3 ambientes (dev/sandbox/prod) funcionando ✅**  
+✅ **Todos os 3 ambientes (dev/sandbox/prod) funcionando ✅**
 
 📋 **[Ver detalhes completos da correção](./ATUALIZACAO_24_10_2025.md)**
 

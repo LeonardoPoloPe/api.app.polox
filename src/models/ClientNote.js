@@ -1,5 +1,5 @@
-const { query } = require('../config/database');
-const { ApiError, ValidationError, NotFoundError } = require('../utils/errors');
+const { query } = require("../config/database");
+const { ApiError, ValidationError, NotFoundError } = require("../utils/errors");
 
 /**
  * Model para gerenciamento de anotações de clientes
@@ -13,48 +13,42 @@ class ClientNoteModel {
    * @returns {Promise<Object>} Anotação criada
    */
   static async create(noteData, companyId) {
-    const {
-      client_id,
-      created_by_id,
-      content,
-      type = 'general'
-    } = noteData;
+    const { client_id, created_by_id, content, type = "general" } = noteData;
 
     // Validar dados obrigatórios
     if (!client_id) {
-      throw new ValidationError('ID do cliente é obrigatório');
+      throw new ValidationError("ID do cliente é obrigatório");
     }
 
     if (!content || content.trim().length === 0) {
-      throw new ValidationError('Conteúdo da anotação é obrigatório');
+      throw new ValidationError("Conteúdo da anotação é obrigatório");
     }
 
     if (!created_by_id) {
-      throw new ValidationError('ID do usuário criador é obrigatório');
+      throw new ValidationError("ID do usuário criador é obrigatório");
     }
 
     const insertQuery = `
       INSERT INTO polox.client_notes (
-        client_id, created_by_id, content, type, created_at, updated_at
+        client_id, created_by_id, content, type, company_id, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
       RETURNING 
-        id, client_id, created_by_id, content, type, 
+        id, client_id, created_by_id, content, type, company_id,
         created_at, updated_at, deleted_at
     `;
 
     try {
-      const result = await query(insertQuery, [
-        client_id,
-        created_by_id,
-        content,
-        type
-      ], { companyId });
+      const result = await query(
+        insertQuery,
+        [client_id, created_by_id, content, type, companyId],
+        { companyId }
+      );
 
       return result.rows[0];
     } catch (error) {
-      if (error.code === '23503') {
-        throw new ValidationError('Cliente ou usuário não encontrado');
+      if (error.code === "23503") {
+        throw new ValidationError("Cliente ou usuário não encontrado");
       }
       throw new ApiError(500, `Erro ao criar anotação: ${error.message}`);
     }
@@ -78,7 +72,7 @@ class ClientNoteModel {
       INNER JOIN polox.clients c ON cn.client_id = c.id
       INNER JOIN polox.users u ON cn.created_by_id = u.id
       WHERE cn.id = $1 
-        AND c.company_id = $2 
+        AND cn.company_id = $2 
         AND cn.deleted_at IS NULL
         AND c.deleted_at IS NULL
     `;
@@ -103,16 +97,16 @@ class ClientNoteModel {
       page = 1,
       limit = 10,
       type = null,
-      sortBy = 'created_at',
-      sortOrder = 'DESC'
+      sortBy = "created_at",
+      sortOrder = "DESC",
     } = options;
 
     const offset = (page - 1) * limit;
     const conditions = [
-      'cn.client_id = $1',
-      'c.company_id = $2',
-      'cn.deleted_at IS NULL',
-      'c.deleted_at IS NULL'
+      "cn.client_id = $1",
+      "cn.company_id = $2",
+      "cn.deleted_at IS NULL",
+      "c.deleted_at IS NULL",
     ];
     const values = [clientId, companyId];
     let paramCount = 3;
@@ -124,7 +118,7 @@ class ClientNoteModel {
       paramCount++;
     }
 
-    const whereClause = conditions.join(' AND ');
+    const whereClause = conditions.join(" AND ");
 
     // Query para contar total
     const countQuery = `
@@ -152,7 +146,7 @@ class ClientNoteModel {
     try {
       const [countResult, dataResult] = await Promise.all([
         query(countQuery, values, { companyId }),
-        query(selectQuery, [...values, limit, offset], { companyId })
+        query(selectQuery, [...values, limit, offset], { companyId }),
       ]);
 
       const total = parseInt(countResult.rows[0].count);
@@ -166,8 +160,8 @@ class ClientNoteModel {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
       throw new ApiError(500, `Erro ao listar anotações: ${error.message}`);
@@ -188,15 +182,15 @@ class ClientNoteModel {
       client_id = null,
       created_by_id = null,
       search = null,
-      sortBy = 'created_at',
-      sortOrder = 'DESC'
+      sortBy = "created_at",
+      sortOrder = "DESC",
     } = options;
 
     const offset = (page - 1) * limit;
     const conditions = [
-      'c.company_id = $1',
-      'cn.deleted_at IS NULL',
-      'c.deleted_at IS NULL'
+      "c.company_id = $1",
+      "cn.deleted_at IS NULL",
+      "c.deleted_at IS NULL",
     ];
     const values = [companyId];
     let paramCount = 2;
@@ -221,12 +215,14 @@ class ClientNoteModel {
     }
 
     if (search) {
-      conditions.push(`(cn.content ILIKE $${paramCount} OR c.name ILIKE $${paramCount})`);
+      conditions.push(
+        `(cn.content ILIKE $${paramCount} OR c.name ILIKE $${paramCount})`
+      );
       values.push(`%${search}%`);
       paramCount++;
     }
 
-    const whereClause = conditions.join(' AND ');
+    const whereClause = conditions.join(" AND ");
 
     // Query para contar total
     const countQuery = `
@@ -256,7 +252,7 @@ class ClientNoteModel {
     try {
       const [countResult, dataResult] = await Promise.all([
         query(countQuery, values, { companyId }),
-        query(selectQuery, [...values, limit, offset], { companyId })
+        query(selectQuery, [...values, limit, offset], { companyId }),
       ]);
 
       const total = parseInt(countResult.rows[0].count);
@@ -270,8 +266,8 @@ class ClientNoteModel {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
       throw new ApiError(500, `Erro ao listar anotações: ${error.message}`);
@@ -286,7 +282,7 @@ class ClientNoteModel {
    * @returns {Promise<Object|null>} Anotação atualizada ou null
    */
   static async update(id, updateData, companyId) {
-    const allowedFields = ['content', 'type'];
+    const allowedFields = ["content", "type"];
 
     const updates = [];
     const values = [];
@@ -302,24 +298,21 @@ class ClientNoteModel {
     }
 
     if (updates.length === 0) {
-      throw new ValidationError('Nenhum campo válido para atualizar');
+      throw new ValidationError("Nenhum campo válido para atualizar");
     }
 
-    updates.push('updated_at = NOW()');
+    updates.push("updated_at = NOW()");
     values.push(id, companyId);
 
     const updateQuery = `
-      UPDATE polox.client_notes cn
-      SET ${updates.join(', ')}
-      FROM polox.clients c
-      WHERE cn.id = $${paramCount} 
-        AND cn.client_id = c.id
-        AND c.company_id = $${paramCount + 1} 
-        AND cn.deleted_at IS NULL
-        AND c.deleted_at IS NULL
+      UPDATE polox.client_notes 
+      SET ${updates.join(", ")}
+      WHERE id = $${paramCount} 
+        AND company_id = $${paramCount + 1} 
+        AND deleted_at IS NULL
       RETURNING 
-        cn.id, cn.client_id, cn.created_by_id, cn.content, cn.type,
-        cn.created_at, cn.updated_at
+        id, client_id, created_by_id, content, type, company_id,
+        created_at, updated_at
     `;
 
     try {
@@ -342,11 +335,9 @@ class ClientNoteModel {
       SET 
         deleted_at = NOW(),
         updated_at = NOW()
-      FROM polox.clients c
-      WHERE cn.id = $1 
-        AND cn.client_id = c.id
-        AND c.company_id = $2 
-        AND cn.deleted_at IS NULL
+      WHERE id = $1 
+        AND company_id = $2 
+        AND deleted_at IS NULL
     `;
 
     try {
@@ -375,15 +366,15 @@ class ClientNoteModel {
         MAX(cn.created_at) as last_note_date,
         MIN(cn.created_at) as first_note_date
       FROM polox.client_notes cn
-      INNER JOIN polox.clients c ON cn.client_id = c.id
       WHERE cn.client_id = $1 
-        AND c.company_id = $2 
+        AND cn.company_id = $2 
         AND cn.deleted_at IS NULL
-        AND c.deleted_at IS NULL
     `;
 
     try {
-      const result = await query(statsQuery, [clientId, companyId], { companyId });
+      const result = await query(statsQuery, [clientId, companyId], {
+        companyId,
+      });
       return result.rows[0];
     } catch (error) {
       throw new ApiError(500, `Erro ao obter estatísticas: ${error.message}`);
@@ -448,10 +439,15 @@ class ClientNoteModel {
     `;
 
     try {
-      const result = await query(selectQuery, [clientId, companyId, limit], { companyId });
+      const result = await query(selectQuery, [clientId, companyId, limit], {
+        companyId,
+      });
       return result.rows;
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar anotações recentes: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar anotações recentes: ${error.message}`
+      );
     }
   }
 }

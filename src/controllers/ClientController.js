@@ -593,8 +593,8 @@ class ClientController {
     // 📝 Criar anotação
     const createNoteQuery = `
       INSERT INTO polox.client_notes (
-        client_id, created_by_id, note_content, note_type
-      ) VALUES ($1, $2, $3, $4)
+        client_id, created_by_id, note_content, note_type, company_id
+      ) VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
 
@@ -603,6 +603,7 @@ class ClientController {
       req.user.id,
       note,
       type,
+      req.user.company_id,
     ]);
 
     // 🎮 GAMIFICAÇÃO: Pequeno XP por anotação (incentiva documentação)

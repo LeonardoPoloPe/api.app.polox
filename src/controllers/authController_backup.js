@@ -236,7 +236,7 @@ class AuthController {
       // 5. Invalidar todas as sessões do usuário
       await query(
         `
-        DELETE FROM user_sessions WHERE user_id = $1
+        DELETE FROM polox.user_sessions WHERE user_id = $1
       `,
         [reset.user_id]
       );
@@ -321,11 +321,11 @@ class AuthController {
         `
         SELECT 
           id, ip_address, user_agent, created_at, last_activity, expires_at
-        FROM user_sessions
-        WHERE user_id = $1
+        FROM polox.user_sessions
+        WHERE user_id = $1 AND company_id = $2
         ORDER BY last_activity DESC
       `,
-        [req.user.id]
+        [req.user.id, req.user.company_id]
       );
 
       const sessions = sessionsResult.rows.map((session) => ({
@@ -356,11 +356,11 @@ class AuthController {
     try {
       const result = await query(
         `
-        DELETE FROM user_sessions 
-        WHERE id = $1 AND user_id = $2
+        DELETE FROM polox.user_sessions 
+        WHERE id = $1 AND user_id = $2 AND company_id = $3
         RETURNING id
       `,
-        [sessionId, req.user.id]
+        [sessionId, req.user.id, req.user.company_id]
       );
 
       if (result.rows.length === 0) {

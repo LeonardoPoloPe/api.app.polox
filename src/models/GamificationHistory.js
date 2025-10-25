@@ -1,5 +1,5 @@
-const { query, transaction } = require('../config/database');
-const { ApiError, ValidationError, NotFoundError } = require('../utils/errors');
+const { query, transaction } = require("../config/database");
+const { ApiError, ValidationError, NotFoundError } = require("../utils/errors");
 
 /**
  * Model para histórico de gamificação
@@ -9,9 +9,10 @@ class GamificationHistoryModel {
   /**
    * Registra um evento de gamificação
    * @param {Object} eventData - Dados do evento
+   * @param {number} companyId - ID da empresa
    * @returns {Promise<Object>} Evento registrado
    */
-  static async logEvent(eventData) {
+  static async logEvent(eventData, companyId) {
     const {
       user_id,
       event_type,
@@ -21,59 +22,70 @@ class GamificationHistoryModel {
       metadata = {},
       related_entity_type = null,
       related_entity_id = null,
-      triggered_by_user_id = null
+      triggered_by_user_id = null,
     } = eventData;
 
     // Validar dados obrigatórios
     if (!user_id || !event_type) {
-      throw new ValidationError('User ID e tipo de evento são obrigatórios');
+      throw new ValidationError("User ID e tipo de evento são obrigatórios");
     }
 
     if (points_awarded < 0 || points_deducted < 0) {
-      throw new ValidationError('Pontos não podem ser negativos');
+      throw new ValidationError("Pontos não podem ser negativos");
     }
 
     if (points_awarded > 0 && points_deducted > 0) {
-      throw new ValidationError('Não é possível conceder e deduzir pontos no mesmo evento');
+      throw new ValidationError(
+        "Não é possível conceder e deduzir pontos no mesmo evento"
+      );
     }
 
     const insertQuery = `
       INSERT INTO polox.gamification_history (
         user_id, event_type, points_awarded, points_deducted, description,
         metadata, related_entity_type, related_entity_id, triggered_by_user_id,
-        created_at
+        company_id, created_at
       )
       VALUES (
         $1, $2, $3, $4, $5,
-        $6, $7, $8, $9, NOW()
+        $6, $7, $8, $9, $10, NOW()
       )
       RETURNING 
         id, user_id, event_type, points_awarded, points_deducted, description,
         metadata, related_entity_type, related_entity_id, triggered_by_user_id,
-        created_at
+        company_id, created_at
     `;
 
     try {
       const result = await query(insertQuery, [
-        user_id, event_type, points_awarded, points_deducted, description,
-        JSON.stringify(metadata), related_entity_type, related_entity_id, triggered_by_user_id
+        user_id,
+        event_type,
+        points_awarded,
+        points_deducted,
+        description,
+        JSON.stringify(metadata),
+        related_entity_type,
+        related_entity_id,
+        triggered_by_user_id,
+        companyId,
       ]);
 
       const historyEvent = result.rows[0];
-      
+
       // Parse metadata
-      historyEvent.metadata = typeof historyEvent.metadata === 'string' 
-        ? JSON.parse(historyEvent.metadata) 
-        : historyEvent.metadata;
+      historyEvent.metadata =
+        typeof historyEvent.metadata === "string"
+          ? JSON.parse(historyEvent.metadata)
+          : historyEvent.metadata;
 
       return historyEvent;
     } catch (error) {
-      if (error.code === '23503') {
-        if (error.constraint?.includes('user')) {
-          throw new ValidationError('Usuário informado não existe');
+      if (error.code === "23503") {
+        if (error.constraint?.includes("user")) {
+          throw new ValidationError("Usuário informado não existe");
         }
-        if (error.constraint?.includes('triggered_by')) {
-          throw new ValidationError('Usuário que acionou o evento não existe');
+        if (error.constraint?.includes("triggered_by")) {
+          throw new ValidationError("Usuário que acionou o evento não existe");
         }
       }
       throw new ApiError(500, `Erro ao registrar evento: ${error.message}`);
@@ -98,18 +110,19 @@ class GamificationHistoryModel {
       FROM polox.gamification_history gh
       INNER JOIN polox.users u ON gh.user_id = u.id
       LEFT JOIN polox.users tb ON gh.triggered_by_user_id = tb.id
-      WHERE gh.id = $1 AND u.company_id = $2
+      WHERE gh.id = $1 AND gh.company_id = $2
     `;
 
     try {
       const result = await query(selectQuery, [id, companyId], { companyId });
       const event = result.rows[0];
-      
+
       if (event) {
         // Parse JSON fields
-        event.metadata = typeof event.metadata === 'string' 
-          ? JSON.parse(event.metadata) 
-          : event.metadata;
+        event.metadata =
+          typeof event.metadata === "string"
+            ? JSON.parse(event.metadata)
+            : event.metadata;
       }
 
       return event || null;
@@ -126,23 +139,23 @@ class GamificationHistoryModel {
    * @returns {Promise<Array>} Lista de eventos
    */
   static async findByUser(userId, companyId, options = {}) {
-    const { 
+    const {
       event_type = null,
       related_entity_type = null,
       points_only = false,
       start_date = null,
       end_date = null,
-      page = 1, 
-      limit = 50
+      page = 1,
+      limit = 50,
     } = options;
-    
+
     const offset = (page - 1) * limit;
-    
+
     let whereClause = `
       WHERE gh.user_id = $1 AND u.company_id = $2
     `;
     const params = [userId, companyId];
-    
+
     if (event_type) {
       whereClause += ` AND gh.event_type = $${params.length + 1}`;
       params.push(event_type);
@@ -186,18 +199,22 @@ class GamificationHistoryModel {
 
     try {
       const result = await query(selectQuery, params, { companyId });
-      
-      return result.rows.map(event => {
+
+      return result.rows.map((event) => {
         // Parse JSON fields
-        event.metadata = typeof event.metadata === 'string' 
-          ? JSON.parse(event.metadata) 
-          : event.metadata;
+        event.metadata =
+          typeof event.metadata === "string"
+            ? JSON.parse(event.metadata)
+            : event.metadata;
         event.net_points = parseInt(event.net_points) || 0;
-        
+
         return event;
       });
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar histórico do usuário: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar histórico do usuário: ${error.message}`
+      );
     }
   }
 
@@ -209,21 +226,21 @@ class GamificationHistoryModel {
    * @returns {Promise<Array>} Lista de eventos
    */
   static async findByEventType(eventType, companyId, options = {}) {
-    const { 
+    const {
       user_id = null,
       start_date = null,
       end_date = null,
-      page = 1, 
-      limit = 50
+      page = 1,
+      limit = 50,
     } = options;
-    
+
     const offset = (page - 1) * limit;
-    
+
     let whereClause = `
       WHERE gh.event_type = $1 AND u.company_id = $2
     `;
     const params = [eventType, companyId];
-    
+
     if (user_id) {
       whereClause += ` AND gh.user_id = $${params.length + 1}`;
       params.push(user_id);
@@ -259,17 +276,21 @@ class GamificationHistoryModel {
 
     try {
       const result = await query(selectQuery, params, { companyId });
-      
-      return result.rows.map(event => {
+
+      return result.rows.map((event) => {
         // Parse JSON fields
-        event.metadata = typeof event.metadata === 'string' 
-          ? JSON.parse(event.metadata) 
-          : event.metadata;
-        
+        event.metadata =
+          typeof event.metadata === "string"
+            ? JSON.parse(event.metadata)
+            : event.metadata;
+
         return event;
       });
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar eventos por tipo: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar eventos por tipo: ${error.message}`
+      );
     }
   }
 
@@ -282,20 +303,15 @@ class GamificationHistoryModel {
    * @returns {Promise<Array>} Lista de eventos
    */
   static async findByEntity(entityType, entityId, companyId, options = {}) {
-    const { 
-      event_type = null,
-      user_id = null,
-      page = 1, 
-      limit = 50
-    } = options;
-    
+    const { event_type = null, user_id = null, page = 1, limit = 50 } = options;
+
     const offset = (page - 1) * limit;
-    
+
     let whereClause = `
       WHERE gh.related_entity_type = $1 AND gh.related_entity_id = $2 AND u.company_id = $3
     `;
     const params = [entityType, entityId, companyId];
-    
+
     if (event_type) {
       whereClause += ` AND gh.event_type = $${params.length + 1}`;
       params.push(event_type);
@@ -326,17 +342,21 @@ class GamificationHistoryModel {
 
     try {
       const result = await query(selectQuery, params, { companyId });
-      
-      return result.rows.map(event => {
+
+      return result.rows.map((event) => {
         // Parse JSON fields
-        event.metadata = typeof event.metadata === 'string' 
-          ? JSON.parse(event.metadata) 
-          : event.metadata;
-        
+        event.metadata =
+          typeof event.metadata === "string"
+            ? JSON.parse(event.metadata)
+            : event.metadata;
+
         return event;
       });
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar eventos da entidade: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar eventos da entidade: ${error.message}`
+      );
     }
   }
 
@@ -348,16 +368,13 @@ class GamificationHistoryModel {
    * @returns {Promise<Object>} Estatísticas
    */
   static async getStatsByUser(userId, companyId, options = {}) {
-    const { 
-      start_date = null,
-      end_date = null
-    } = options;
-    
+    const { start_date = null, end_date = null } = options;
+
     let whereClause = `
       WHERE gh.user_id = $1 AND u.company_id = $2
     `;
     const params = [userId, companyId];
-    
+
     if (start_date) {
       whereClause += ` AND gh.created_at >= $${params.length + 1}`;
       params.push(start_date);
@@ -402,8 +419,8 @@ class GamificationHistoryModel {
           achievements_unlocked: parseInt(stats.achievements_unlocked) || 0,
           missions_completed: parseInt(stats.missions_completed) || 0,
           level_ups: parseInt(stats.level_ups) || 0,
-          rewards_claimed: parseInt(stats.rewards_claimed) || 0
-        }
+          rewards_claimed: parseInt(stats.rewards_claimed) || 0,
+        },
       };
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar estatísticas: ${error.message}`);
@@ -417,17 +434,13 @@ class GamificationHistoryModel {
    * @returns {Promise<Array>} Ranking de usuários
    */
   static async getPointsRanking(companyId, options = {}) {
-    const { 
-      start_date = null,
-      end_date = null,
-      limit = 20
-    } = options;
-    
+    const { start_date = null, end_date = null, limit = 20 } = options;
+
     let whereClause = `
       WHERE u.company_id = $1
     `;
     const params = [companyId];
-    
+
     if (start_date) {
       whereClause += ` AND gh.created_at >= $${params.length + 1}`;
       params.push(start_date);
@@ -464,7 +477,7 @@ class GamificationHistoryModel {
 
     try {
       const result = await query(rankingQuery, params, { companyId });
-      
+
       return result.rows.map((user, index) => ({
         ...user,
         rank: index + 1,
@@ -472,7 +485,7 @@ class GamificationHistoryModel {
         total_points_deducted: parseInt(user.total_points_deducted) || 0,
         net_points: parseInt(user.net_points) || 0,
         total_events: parseInt(user.total_events) || 0,
-        total_lifetime_points: parseInt(user.total_lifetime_points) || 0
+        total_lifetime_points: parseInt(user.total_lifetime_points) || 0,
       }));
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar ranking: ${error.message}`);
@@ -486,16 +499,13 @@ class GamificationHistoryModel {
    * @returns {Promise<Object>} Estatísticas globais
    */
   static async getGlobalStats(companyId, options = {}) {
-    const { 
-      start_date = null,
-      end_date = null
-    } = options;
-    
+    const { start_date = null, end_date = null } = options;
+
     let whereClause = `
       WHERE u.company_id = $1
     `;
     const params = [companyId];
-    
+
     if (start_date) {
       whereClause += ` AND gh.created_at >= $${params.length + 1}`;
       params.push(start_date);
@@ -531,19 +541,27 @@ class GamificationHistoryModel {
         total_events: parseInt(stats.total_events) || 0,
         total_points_awarded: parseInt(stats.total_points_awarded) || 0,
         total_points_deducted: parseInt(stats.total_points_deducted) || 0,
-        net_points: (parseInt(stats.total_points_awarded) || 0) - (parseInt(stats.total_points_deducted) || 0),
+        net_points:
+          (parseInt(stats.total_points_awarded) || 0) -
+          (parseInt(stats.total_points_deducted) || 0),
         avg_points_per_event: parseFloat(stats.avg_points_per_event) || 0,
-        participation_rate: stats.active_users > 0 
-          ? ((stats.users_earning_points / stats.active_users) * 100).toFixed(2)
-          : 0,
+        participation_rate:
+          stats.active_users > 0
+            ? ((stats.users_earning_points / stats.active_users) * 100).toFixed(
+                2
+              )
+            : 0,
         event_breakdown: {
           achievements: parseInt(stats.total_achievements) || 0,
           missions_completed: parseInt(stats.total_missions_completed) || 0,
-          level_ups: parseInt(stats.total_level_ups) || 0
-        }
+          level_ups: parseInt(stats.total_level_ups) || 0,
+        },
       };
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar estatísticas globais: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar estatísticas globais: ${error.message}`
+      );
     }
   }
 
@@ -569,18 +587,24 @@ class GamificationHistoryModel {
     `;
 
     try {
-      const result = await query(selectQuery, [companyId, limit], { companyId });
-      
-      return result.rows.map(event => {
+      const result = await query(selectQuery, [companyId, limit], {
+        companyId,
+      });
+
+      return result.rows.map((event) => {
         // Parse JSON fields
-        event.metadata = typeof event.metadata === 'string' 
-          ? JSON.parse(event.metadata) 
-          : event.metadata;
-        
+        event.metadata =
+          typeof event.metadata === "string"
+            ? JSON.parse(event.metadata)
+            : event.metadata;
+
         return event;
       });
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar eventos recentes: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar eventos recentes: ${error.message}`
+      );
     }
   }
 

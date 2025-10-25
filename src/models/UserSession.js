@@ -1,5 +1,5 @@
-const { query, transaction } = require('../config/database');
-const { ApiError, ValidationError, NotFoundError } = require('../utils/errors');
+const { query, transaction } = require("../config/database");
+const { ApiError, ValidationError, NotFoundError } = require("../utils/errors");
 
 /**
  * Model para sessões de usuário (JWT tracking)
@@ -9,9 +9,10 @@ class UserSessionModel {
   /**
    * Cria uma nova sessão
    * @param {Object} sessionData - Dados da sessão
+   * @param {number} companyId - ID da empresa
    * @returns {Promise<Object>} Sessão criada
    */
-  static async create(sessionData) {
+  static async create(sessionData, companyId) {
     const {
       user_id,
       token_id, // jti do JWT
@@ -19,43 +20,51 @@ class UserSessionModel {
       ip_address,
       user_agent,
       device_info = {},
-      expires_at
+      expires_at,
     } = sessionData;
 
     // Validar dados obrigatórios
     if (!user_id || !token_id || !expires_at) {
-      throw new ValidationError('User ID, Token ID e data de expiração são obrigatórios');
+      throw new ValidationError(
+        "User ID, Token ID e data de expiração são obrigatórios"
+      );
     }
 
     const insertQuery = `
       INSERT INTO polox.user_sessions (
         user_id, token_id, refresh_token, ip_address, user_agent, 
-        device_info, expires_at, created_at
+        device_info, company_id, expires_at, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
       RETURNING 
         id, user_id, token_id, refresh_token, ip_address, user_agent,
-        device_info, expires_at, revoked_at, created_at
+        device_info, company_id, expires_at, revoked_at, created_at
     `;
 
     try {
       const result = await query(insertQuery, [
-        user_id, token_id, refresh_token, ip_address, user_agent,
-        JSON.stringify(device_info), expires_at
+        user_id,
+        token_id,
+        refresh_token,
+        ip_address,
+        user_agent,
+        JSON.stringify(device_info),
+        companyId,
+        expires_at,
       ]);
 
       return result.rows[0];
     } catch (error) {
-      if (error.code === '23505') {
-        if (error.constraint?.includes('token_id')) {
-          throw new ValidationError('Token ID já existe');
+      if (error.code === "23505") {
+        if (error.constraint?.includes("token_id")) {
+          throw new ValidationError("Token ID já existe");
         }
-        if (error.constraint?.includes('refresh_token')) {
-          throw new ValidationError('Refresh token já existe');
+        if (error.constraint?.includes("refresh_token")) {
+          throw new ValidationError("Refresh token já existe");
         }
       }
-      if (error.code === '23503') {
-        throw new ValidationError('Usuário informado não existe');
+      if (error.code === "23503") {
+        throw new ValidationError("Usuário informado não existe");
       }
       throw new ApiError(500, `Erro ao criar sessão: ${error.message}`);
     }
@@ -70,14 +79,13 @@ class UserSessionModel {
     const selectQuery = `
       SELECT 
         s.id, s.user_id, s.token_id, s.refresh_token, s.ip_address,
-        s.user_agent, s.device_info, s.expires_at, s.revoked_at, s.created_at,
+        s.user_agent, s.device_info, s.company_id, s.expires_at, s.revoked_at, s.created_at,
         u.full_name as user_name,
         u.email as user_email,
-        u.company_id,
         c.name as company_name
       FROM polox.user_sessions s
       INNER JOIN polox.users u ON s.user_id = u.id
-      INNER JOIN polox.companies c ON u.company_id = c.id
+      INNER JOIN polox.companies c ON s.company_id = c.id
       WHERE s.token_id = $1
     `;
 
@@ -124,19 +132,15 @@ class UserSessionModel {
    * @returns {Promise<Array>} Lista de sessões
    */
   static async findByUser(userId, options = {}) {
-    const { 
-      include_expired = false,
-      page = 1, 
-      limit = 10
-    } = options;
-    
+    const { include_expired = false, page = 1, limit = 10 } = options;
+
     const offset = (page - 1) * limit;
-    
-    let whereClause = 'WHERE s.user_id = $1 AND s.revoked_at IS NULL';
+
+    let whereClause = "WHERE s.user_id = $1 AND s.revoked_at IS NULL";
     const params = [userId];
-    
+
     if (!include_expired) {
-      whereClause += ' AND s.expires_at > NOW()';
+      whereClause += " AND s.expires_at > NOW()";
     }
 
     const selectQuery = `
@@ -246,17 +250,20 @@ class UserSessionModel {
 
     try {
       const result = await query(updateQuery, [newRefreshToken, tokenId]);
-      
+
       if (result.rows.length === 0) {
-        throw new NotFoundError('Sessão não encontrada ou já revogada');
+        throw new NotFoundError("Sessão não encontrada ou já revogada");
       }
 
       return result.rows[0];
     } catch (error) {
-      if (error.code === '23505') {
-        throw new ValidationError('Refresh token já existe');
+      if (error.code === "23505") {
+        throw new ValidationError("Refresh token já existe");
       }
-      throw new ApiError(500, `Erro ao atualizar refresh token: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao atualizar refresh token: ${error.message}`
+      );
     }
   }
 
@@ -313,9 +320,10 @@ class UserSessionModel {
       return {
         total_active_sessions: parseInt(stats.total_active_sessions) || 0,
         unique_active_users: parseInt(stats.unique_active_users) || 0,
-        avg_session_duration_hours: parseFloat(stats.avg_session_duration_hours) || 0,
+        avg_session_duration_hours:
+          parseFloat(stats.avg_session_duration_hours) || 0,
         sessions_last_24h: parseInt(stats.sessions_last_24h) || 0,
-        sessions_last_hour: parseInt(stats.sessions_last_hour) || 0
+        sessions_last_hour: parseInt(stats.sessions_last_hour) || 0,
       };
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar estatísticas: ${error.message}`);
@@ -350,11 +358,12 @@ class UserSessionModel {
 
     try {
       const result = await query(selectQuery, [userId]);
-      return result.rows.map(session => ({
+      return result.rows.map((session) => ({
         ...session,
-        device_info: typeof session.device_info === 'string' 
-          ? JSON.parse(session.device_info) 
-          : session.device_info
+        device_info:
+          typeof session.device_info === "string"
+            ? JSON.parse(session.device_info)
+            : session.device_info,
       }));
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar dispositivos: ${error.message}`);
@@ -422,7 +431,10 @@ class UserSessionModel {
       const result = await query(suspiciousQuery, params);
       return result.rows;
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar sessões suspeitas: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar sessões suspeitas: ${error.message}`
+      );
     }
   }
 }
