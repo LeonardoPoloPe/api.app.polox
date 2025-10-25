@@ -40,7 +40,7 @@ app.use(
     origin:
       process.env.NODE_ENV === "prod"
         ? ["https://app.polox.com", "https://polox.com"]
-        : ["http://localhost:3000", "http://localhost:3001"],
+        : ["http://localhost:3000", "http://localhost:3000"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],

@@ -140,7 +140,7 @@ function createApp() {
 
       const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
         "http://localhost:3000",
-        "http://localhost:3001",
+        "http://localhost:3000",
         "https://app.polox.com",
         "https://polox.com",
         "https://dev.polox.com",
@@ -163,6 +163,7 @@ function createApp() {
       "X-Requested-With",
       "Content-Type",
       "Accept",
+      "Accept-Language",
       "Authorization",
       "X-Bypass-Tenant",
       "X-Target-Company-Id",
@@ -218,7 +219,7 @@ function createApp() {
 
   // Rate limits diferentes para diferentes rotas
   app.use(
-    "/api/auth/login",
+    "/api/v1/auth/login",
     createRateLimit(
       15 * 60 * 1000, // 15 minutos
       5, // 5 tentativas
@@ -228,7 +229,7 @@ function createApp() {
   );
 
   app.use(
-    "/api/auth/register",
+    "/api/v1/auth/register",
     createRateLimit(
       60 * 60 * 1000, // 1 hora
       3, // 3 registros
@@ -238,7 +239,7 @@ function createApp() {
   );
 
   app.use(
-    "/api/auth/forgot-password",
+    "/api/v1/auth/forgot-password",
     createRateLimit(
       60 * 60 * 1000, // 1 hora
       3, // 3 tentativas
@@ -249,7 +250,7 @@ function createApp() {
 
   // Rate limit geral para API
   app.use(
-    "/api/",
+    "/api/v1/",
     createRateLimit(
       15 * 60 * 1000, // 15 minutos
       security.rateLimiting.maxAttempts || 100,
@@ -259,7 +260,7 @@ function createApp() {
 
   // Slow Down - Delay progressivo
   app.use(
-    "/api/",
+    "/api/v1/",
     slowDown({
       windowMs: 15 * 60 * 1000, // 15 minutos
       delayAfter: 50, // Permitir 50 requests na velocidade total
@@ -477,7 +478,7 @@ function createApp() {
   // ==========================================
 
   // Middleware para verificar se empresa está ativa (para rotas da API)
-  app.use("/api", (req, res, next) => {
+  app.use("/api/v1", (req, res, next) => {
     // Pular verificação para rotas de auth e health
     if (req.path.startsWith("/auth") || req.path === "/health") {
       return next();

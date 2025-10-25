@@ -9,6 +9,7 @@
 
 require("dotenv").config();
 
+const express = require("express");
 const {
   createApp,
   configureProduction,
@@ -60,16 +61,24 @@ async function startServer() {
             supported: ["pt", "en", "es"],
           },
           documentation:
-            process.env.ENABLE_SWAGGER === "true" ? "/api/docs" : null,
+            process.env.ENABLE_SWAGGER === "true" ? "/api/v1/docs" : null,
           endpoints: {
             health: "/health",
             languages: "/languages",
-            auth: "/api/auth",
-            users: "/api/users",
-            companies: "/api/companies",
-            leads: "/api/leads",
-            clients: "/api/clients",
-            sales: "/api/sales",
+            auth: "/api/v1/auth",
+            users: "/api/v1/users",
+            companies: "/api/v1/companies",
+            leads: "/api/v1/leads",
+            clients: "/api/v1/clients",
+            sales: "/api/v1/sales",
+            products: "/api/v1/products",
+            finance: "/api/v1/finance",
+            tickets: "/api/v1/tickets",
+            suppliers: "/api/v1/suppliers",
+            schedule: "/api/v1/schedule",
+            notifications: "/api/v1/notifications",
+            gamification: "/api/v1/gamification",
+            analytics: "/api/v1/analytics",
           },
           features: {
             multiTenant: true,
@@ -104,9 +113,21 @@ async function startServer() {
       );
     });
 
-    // TODO: Importar e usar as rotas da API enterprise
+    // ==========================================
+    // CONFIGURAÇÃO DE ROTAS COM PREFIXO /api/v1/
+    // ==========================================
+
+    // Importar todas as rotas da API
     const apiRoutes = require("./routes");
-    app.use("/api", apiRoutes);
+
+    // Criar um router principal para a v1
+    const v1Router = express.Router();
+
+    // Montar todas as rotas de serviço DENTRO do v1Router
+    v1Router.use(apiRoutes);
+
+    // Montar o v1Router principal no 'app' com o prefixo
+    app.use("/api/v1", v1Router);
 
     // ==========================================
     // CONFIGURAÇÃO DO SWAGGER
@@ -116,10 +137,10 @@ async function startServer() {
         const swaggerUi = require("swagger-ui-express");
         const { swaggerSpec, swaggerUiOptions } = require("./config/swagger");
 
-        app.use("/api/docs", swaggerUi.serve);
-        app.get("/api/docs", swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+        app.use("/api/v1/docs", swaggerUi.serve);
+        app.get("/api/v1/docs", swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 
-        console.log("📚 Swagger UI configurado em /api/docs");
+        console.log("📚 Swagger UI configurado em /api/v1/docs");
       } catch (error) {
         console.warn("Swagger não pôde ser carregado:", error.message);
       }
@@ -193,7 +214,7 @@ async function startServer() {
     // INICIAR SERVIDOR
     // ==========================================
 
-    const PORT = process.env.PORT || 3001;
+    const PORT = process.env.PORT || 3000;
     const server = app.listen(PORT, () => {
       logger.info("🚀 Polox CRM API iniciada com sucesso!");
       logger.info(`📍 Servidor rodando na porta: ${PORT}`);
@@ -203,7 +224,7 @@ async function startServer() {
       logger.info(`📚 API info: http://localhost:${PORT}/`);
 
       if (process.env.ENABLE_SWAGGER === "true") {
-        logger.info(`📖 Swagger docs: http://localhost:${PORT}/api/docs`);
+        logger.info(`📖 Swagger docs: http://localhost:${PORT}/api/v1/docs`);
       }
 
       logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
