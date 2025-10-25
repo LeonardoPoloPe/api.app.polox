@@ -8,6 +8,7 @@ class ProductController {
 
   // Schemas de validação
   static createProductSchema = Joi.object({
+    id: Joi.any().strip(), // Ignora o campo id se enviado (será gerado pelo banco)
     name: Joi.string().min(2).max(255).required()
       .messages({
         'any.required': 'Nome do produto é obrigatório',
