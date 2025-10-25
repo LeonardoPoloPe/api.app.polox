@@ -135,11 +135,11 @@ async function getEnvironmentStatus(envName, config) {
 
     // Últimas migrations
     const lastMigrationsResult = await pool.query(`
-      SELECT name FROM migrations 
+      SELECT migration_name FROM migrations 
       ORDER BY executed_at DESC 
       LIMIT 3
     `);
-    const lastMigrations = lastMigrationsResult.rows.map((r) => r.name);
+    const lastMigrations = lastMigrationsResult.rows.map((r) => r.migration_name);
 
     return {
       success: true,

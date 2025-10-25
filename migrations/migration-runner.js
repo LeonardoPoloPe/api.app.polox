@@ -49,11 +49,11 @@ class MigrationRunner {
     const query = `
       CREATE TABLE IF NOT EXISTS migrations (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
+        migration_name VARCHAR(255) UNIQUE NOT NULL,
         executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
       
-      CREATE INDEX IF NOT EXISTS idx_migrations_name ON migrations(name);
+      CREATE INDEX IF NOT EXISTS idx_migrations_name ON migrations(migration_name);
     `;
 
     try {
@@ -71,9 +71,9 @@ class MigrationRunner {
   async getExecutedMigrations() {
     try {
       const result = await this.pool.query(
-        "SELECT name FROM migrations ORDER BY executed_at ASC"
+        "SELECT migration_name FROM migrations ORDER BY executed_at ASC"
       );
-      return result.rows.map((row) => row.name);
+      return result.rows.map((row) => row.migration_name);
     } catch (error) {
       logger.error("Erro ao buscar migrations executadas:", error);
       throw error;
@@ -123,7 +123,7 @@ class MigrationRunner {
         await migration.up(client);
 
         // Registra a migration como executada
-        await client.query("INSERT INTO migrations (name) VALUES ($1)", [
+        await client.query("INSERT INTO migrations (migration_name) VALUES ($1)", [
           migrationName,
         ]);
 
@@ -171,7 +171,7 @@ class MigrationRunner {
         await migration.down(client);
 
         // Remove o registro da migration
-        await client.query("DELETE FROM migrations WHERE name = $1", [
+        await client.query("DELETE FROM migrations WHERE migration_name = $1", [
           migrationName,
         ]);
 

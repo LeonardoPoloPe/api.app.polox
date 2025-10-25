@@ -140,10 +140,10 @@ class EnvironmentMigrationRunner {
     const query = `
       CREATE TABLE IF NOT EXISTS migrations (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
+        migration_name VARCHAR(255) UNIQUE NOT NULL,
         executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE INDEX IF NOT EXISTS idx_migrations_name ON migrations(name);
+      CREATE INDEX IF NOT EXISTS idx_migrations_name ON migrations(migration_name);
     `;
     await this.pool.query(query);
     console.log("✅ Tabela de migrations criada/verificada");
@@ -151,9 +151,9 @@ class EnvironmentMigrationRunner {
 
   async getExecutedMigrations() {
     const result = await this.pool.query(
-      "SELECT name FROM migrations ORDER BY executed_at ASC"
+      "SELECT migration_name FROM migrations ORDER BY executed_at ASC"
     );
-    return result.rows.map((row) => row.name);
+    return result.rows.map((row) => row.migration_name);
   }
 
   getMigrationFiles() {
@@ -176,7 +176,7 @@ class EnvironmentMigrationRunner {
     try {
       await client.query("BEGIN");
       await migration.up(client);
-      await client.query("INSERT INTO migrations (name) VALUES ($1)", [
+      await client.query("INSERT INTO migrations (migration_name) VALUES ($1)", [
         migrationName,
       ]);
       await client.query("COMMIT");
@@ -206,7 +206,7 @@ class EnvironmentMigrationRunner {
     try {
       await client.query("BEGIN");
       await migration.down(client);
-      await client.query("DELETE FROM migrations WHERE name = $1", [
+      await client.query("DELETE FROM migrations WHERE migration_name = $1", [
         migrationName,
       ]);
       await client.query("COMMIT");

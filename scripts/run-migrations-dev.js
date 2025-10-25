@@ -61,7 +61,7 @@ const dbConfig = {
     const query = `
       CREATE TABLE IF NOT EXISTS migrations (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
+        migration_name VARCHAR(255) UNIQUE NOT NULL,
         executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -75,9 +75,9 @@ const dbConfig = {
    */
   async getExecutedMigrations() {
     const result = await this.pool.query(
-      "SELECT name FROM migrations ORDER BY executed_at"
+      "SELECT migration_name FROM migrations ORDER BY executed_at"
     );
-    return result.rows.map(row => row.name);
+    return result.rows.map(row => row.migration_name);
   }
 
   /**
@@ -114,7 +114,7 @@ const dbConfig = {
       // Registrar migration como executada (sem a extensão .js)
       const migrationName = filename.replace('.js', '');
       await client.query(
-        "INSERT INTO migrations (name) VALUES ($1)",
+        "INSERT INTO migrations (migration_name) VALUES ($1)",
         [migrationName]
       );
       
