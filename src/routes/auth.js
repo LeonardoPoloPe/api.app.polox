@@ -33,6 +33,8 @@ const registerValidation = Joi.object({
  *     summary: Login do usuário
  *     description: Autentica um usuário e retorna token JWT
  *     tags: [Auth]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -73,6 +75,8 @@ router.post(
  *     summary: Registro de novo usuário
  *     description: Cria uma nova conta de usuário
  *     tags: [Auth]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:

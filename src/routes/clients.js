@@ -55,6 +55,7 @@ const updateClientValidation = Joi.object({
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: page
  *         schema:
@@ -144,6 +145,8 @@ router.get('/', rateLimiter.general, ClientController.index);
  *     tags: [Clients]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
