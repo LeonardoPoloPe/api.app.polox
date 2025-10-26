@@ -48,6 +48,13 @@ async function initializeDatabase() {
 async function createPool() {
   if (pool) return pool;
 
+  // 🧪 Em ambiente de teste, retornar global.testPool (já criado pelo setup.js)
+  if (process.env.NODE_ENV === 'test' && global.testPool) {
+    pool = global.testPool;
+    console.log('🧪 [DATABASE] createPool() usando global.testPool');
+    return pool;
+  }
+
   const config = await initializeDatabase();
 
   // Determinar host correto baseado no ambiente
@@ -136,10 +143,12 @@ async function createPool() {
  * @returns {Promise} Resultado da query
  */
 const query = async (text, params = [], options = {}) => {
-  // Garantir que o pool foi inicializado
-  await createPool();
+  // 🧪 Em ambiente de teste, usar global.testPool se disponível
+  const activePool = (process.env.NODE_ENV === 'test' && global.testPool) 
+    ? global.testPool 
+    : await createPool();
 
-  const client = await pool.connect();
+  const client = await activePool.connect();
 
   try {
     const start = Date.now();
@@ -186,14 +195,23 @@ const query = async (text, params = [], options = {}) => {
 };
 
 /**
- * Executa transação com isolamento multi-tenant
+ * Transação com isolamento multi-tenant e rollback automático
  * @param {Function} callback - Função que executa as queries da transação
  * @param {Object} options - Opções da transação
  * @param {number} options.companyId - ID da empresa para isolamento
  * @returns {Promise} Resultado da transação
  */
 const transaction = async (callback, options = {}) => {
-  const client = await pool.connect();
+  // 🧪 Em ambiente de teste, usar global.testPool se disponível
+  const activePool = (process.env.NODE_ENV === 'test' && global.testPool) 
+    ? global.testPool 
+    : pool;
+
+  if (!activePool) {
+    throw new Error('Pool de conexões não está disponível');
+  }
+
+  const client = await activePool.connect();
 
   try {
     await client.query("BEGIN");
