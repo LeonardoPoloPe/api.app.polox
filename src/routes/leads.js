@@ -63,6 +63,7 @@ const updateLeadValidation = Joi.object({
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: page
  *         schema:
@@ -167,6 +168,8 @@ router.get('/', rateLimiter.general, LeadController.index);
  *     tags: [Leads]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -231,6 +234,7 @@ router.post('/', rateLimiter.general, validateRequest(createLeadValidation), Lea
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -264,6 +268,7 @@ router.get('/:id', rateLimiter.general, LeadController.show);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -329,6 +334,7 @@ router.put('/:id', rateLimiter.general, validateRequest(updateLeadValidation), L
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -371,6 +377,7 @@ router.post('/:id/convert', rateLimiter.general, LeadController.convertToClient)
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -737,6 +744,7 @@ router.get('/stats', rateLimiter.general, LeadController.stats);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true

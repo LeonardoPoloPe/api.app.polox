@@ -2,6 +2,7 @@ const { query } = require('../config/database');
 const CustomField = require('../models/CustomField');
 const CustomFieldValue = require('../models/CustomFieldValue');
 const { NotFoundError, ValidationError, ApiError } = require('../utils/errors');
+const { tc } = require('../config/i18n');
 
 // Campos realmente existentes na tabela polox.clients (baseado na estrutura real do DB)
 // Removido: user_id, notes (não existem na tabela atual)
@@ -109,11 +110,14 @@ class ClientService {
   /**
    * Cria cliente com suporte a EAV em transação
    */
-  static async createClient(companyId, userId, data) {
+  static async createClient(companyId, userId, data, req = null) {
     const { standard, eavFromExtras, customFields } = splitClientPayload(data);
 
     if (!standard.client_name || String(standard.client_name).trim().length < 1) {
-      throw new ValidationError('Nome é obrigatório');
+      const errorMsg = req 
+        ? tc(req, 'clientController', 'validation.name_required')
+        : 'Nome é obrigatório';
+      throw new ValidationError(errorMsg);
     }
 
     // Verificar email único se fornecido (fora da transação para performance)
@@ -123,7 +127,10 @@ class ClientService {
         [standard.email, companyId]
       );
       if (emailCheck.rows.length > 0) {
-        throw new ValidationError('Email já está em uso por outro cliente');
+        const errorMsg = req 
+          ? tc(req, 'clientController', 'validation.email_in_use')
+          : 'Email já está em uso por outro cliente';
+        throw new ValidationError(errorMsg);
       }
     }
 
@@ -167,7 +174,7 @@ class ClientService {
   /**
    * Atualiza cliente com suporte a EAV em transação
    */
-  static async updateClient(id, companyId, data) {
+  static async updateClient(id, companyId, data, req = null) {
     const { standard, eavFromExtras, customFields } = splitClientPayload(data);
 
     // Garantir que existe
@@ -176,7 +183,10 @@ class ClientService {
       [id, companyId]
     );
     if (existingRes.rows.length === 0) {
-      throw new NotFoundError('Cliente não encontrado');
+      const errorMsg = req 
+        ? tc(req, 'clientController', 'error.not_found')
+        : 'Cliente não encontrado';
+      throw new NotFoundError(errorMsg);
     }
 
     // Verificar email único se alterado
@@ -186,7 +196,10 @@ class ClientService {
         [standard.email, companyId, id]
       );
       if (emailCheck.rows.length > 0) {
-        throw new ValidationError('Email já está em uso por outro cliente');
+        const errorMsg = req 
+          ? tc(req, 'clientController', 'validation.email_in_use')
+          : 'Email já está em uso por outro cliente';
+        throw new ValidationError(errorMsg);
       }
     }
 

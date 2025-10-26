@@ -27,6 +27,7 @@ router.use(CompanyController.requireSuperAdmin);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: page
  *         schema:
@@ -79,6 +80,8 @@ router.get("/", rateLimiter.admin, CompanyController.index);
  *     tags: [Companies]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -143,6 +146,8 @@ router.post("/", rateLimiter.admin, CompanyController.create);
  *     tags: [Companies]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Estatísticas globais
@@ -159,6 +164,7 @@ router.get("/stats", rateLimiter.admin, CompanyController.getGlobalStats);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -184,6 +190,7 @@ router.get("/:id", rateLimiter.admin, CompanyController.show);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -237,6 +244,7 @@ router.put("/:id", rateLimiter.admin, CompanyController.update);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -262,6 +270,7 @@ router.delete("/:id", rateLimiter.admin, CompanyController.destroy);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -302,6 +311,7 @@ router.put("/:id/modules", rateLimiter.admin, CompanyController.updateModules);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -340,6 +350,7 @@ router.put("/:id/status", rateLimiter.admin, CompanyController.updateStatus);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true

@@ -97,6 +97,7 @@ router.use(authMiddleware);
  *     summary: Listar eventos da agenda
  *     tags: [Schedule]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: page
  *         schema:
@@ -185,6 +186,7 @@ router.get('/events', ScheduleController.getEvents);
  *     summary: Criar evento na agenda
  *     tags: [Schedule]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: check_conflicts
  *         schema:
@@ -218,6 +220,7 @@ router.post('/events', ScheduleController.createEvent);
  *     summary: Visualização de calendário
  *     tags: [Schedule]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: start_date
  *         required: true
@@ -273,6 +276,7 @@ router.get('/calendar', ScheduleController.getCalendarView);
  *     summary: Obter evento por ID
  *     tags: [Schedule]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -296,6 +300,7 @@ router.get('/events/:id', ScheduleController.show);
  *     summary: Atualizar evento
  *     tags: [Schedule]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true

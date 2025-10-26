@@ -42,6 +42,8 @@ const missionProgressValidation = Joi.object({
  *     tags: [Gamification]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Perfil de gamificação
@@ -93,6 +95,8 @@ router.get('/profile', rateLimiter.general, GamificationController.getProfile);
  *     tags: [Gamification]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -144,6 +148,8 @@ router.post('/award', rateLimiter.general, validateRequest(awardPointsValidation
  *     tags: [Gamification]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Missões disponíveis
@@ -193,6 +199,7 @@ router.get('/missions', rateLimiter.general, GamificationController.getMissions)
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -232,6 +239,7 @@ router.post('/missions/:id/complete', rateLimiter.general, validateRequest(missi
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: category
  *         schema:
@@ -252,6 +260,8 @@ router.get('/achievements', rateLimiter.general, GamificationController.getAchie
  *     tags: [Gamification]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Conquistas desbloqueadas
@@ -268,6 +278,7 @@ router.get('/achievements/unlocked', rateLimiter.general, GamificationController
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: category
  *         schema:

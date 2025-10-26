@@ -1,0 +1,9 @@
+{
+  "success": {
+    "default": "Operation completed successfully",
+    "data_retrieved": "Data retrieved successfully",
+    "created": "Created successfully",
+    "updated": "Updated successfully",
+    "deleted": "Deleted successfully"
+  }
+}

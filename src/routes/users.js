@@ -32,6 +32,7 @@ const updateProfileValidation = Joi.object({
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: page
  *         schema:
@@ -81,6 +82,8 @@ router.get('/', rateLimiter.general, UserController.getUsers);
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Perfil do usuário
@@ -108,6 +111,8 @@ router.get('/profile', rateLimiter.general, UserController.getProfile);
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -144,6 +149,7 @@ router.put('/profile', rateLimiter.general, validateRequest(updateProfileValidat
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true

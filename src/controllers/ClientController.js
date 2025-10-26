@@ -297,7 +297,8 @@ class ClientController {
     const created = await ClientService.createClient(
       req.user.companyId,
       req.user.id,
-      value
+      value,
+      req // Passando req para tradução
     );
 
     // 🎮 GAMIFICAÇÃO: Conceder XP/Coins por criar cliente
@@ -442,7 +443,8 @@ class ClientController {
     const updated = await ClientService.updateClient(
       clientId,
       req.user.companyId,
-      value
+      value,
+      req // Passando req para tradução
     );
 
     // 📋 Log de auditoria

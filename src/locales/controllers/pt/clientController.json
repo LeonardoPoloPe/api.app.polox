@@ -3,6 +3,7 @@
     "name_min_length": "Nome deve ter pelo menos 2 caracteres",
     "name_required": "Nome é obrigatório",
     "email_invalid": "Email deve ter formato válido",
+    "email_in_use": "Email já está em uso por outro cliente",
     "tags_must_be_array": "Tags devem ser um array"
   },
   "create": {

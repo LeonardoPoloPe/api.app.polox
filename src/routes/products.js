@@ -87,6 +87,7 @@ router.use(authMiddleware);
  *     summary: Listar produtos
  *     tags: [Products]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: page
  *         schema:
@@ -162,6 +163,8 @@ router.get('/', ProductController.index);
  *   post:
  *     summary: Criar produto
  *     tags: [Products]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -182,6 +185,8 @@ router.post('/', ProductController.create);
  *   get:
  *     summary: Listar categorias de produtos
  *     tags: [Products]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Lista de categorias
@@ -194,6 +199,8 @@ router.get('/categories', ProductController.getCategories);
  *   post:
  *     summary: Criar categoria de produto
  *     tags: [Products]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -213,6 +220,7 @@ router.post('/categories', ProductController.createCategory);
  *     summary: Relatórios de produtos
  *     tags: [Products]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: period
  *         schema:
@@ -237,6 +245,8 @@ router.get('/reports', ProductController.getReports);
  *   get:
  *     summary: Produtos com estoque baixo
  *     tags: [Products]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Lista de produtos com estoque baixo
@@ -250,6 +260,7 @@ router.get('/low-stock', ProductController.getLowStock);
  *     summary: Obter produto por ID
  *     tags: [Products]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -271,6 +282,7 @@ router.get('/:id', ProductController.show);
  *     summary: Atualizar produto
  *     tags: [Products]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -298,6 +310,7 @@ router.put('/:id', ProductController.update);
  *     summary: Deletar produto
  *     tags: [Products]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -319,6 +332,7 @@ router.delete('/:id', ProductController.destroy);
  *     summary: Ajustar estoque do produto
  *     tags: [Products]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true

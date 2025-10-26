@@ -181,6 +181,7 @@ const { authenticateToken, authorize } = require('../utils/auth');
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - name: page
  *         in: query
  *         schema:

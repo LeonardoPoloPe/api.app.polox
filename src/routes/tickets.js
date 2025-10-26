@@ -205,6 +205,7 @@ const { authenticateToken, authorize } = require('../utils/auth');
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - $ref: '#/components/parameters/TicketFilters'
  *     responses:
  *       200:
@@ -263,6 +264,8 @@ router.get('/', authenticateToken, TicketController.index);
  *     tags: [Tickets]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -344,6 +347,7 @@ router.post('/', authenticateToken, authorize(['admin', 'manager', 'user']), Tic
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - name: id
  *         in: path
  *         required: true
@@ -409,6 +413,7 @@ router.get('/:id', authenticateToken, TicketController.show);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - name: id
  *         in: path
  *         required: true
@@ -483,6 +488,7 @@ router.put('/:id', authenticateToken, authorize(['admin', 'manager', 'user']), T
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - name: id
  *         in: path
  *         required: true

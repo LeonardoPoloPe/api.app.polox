@@ -87,6 +87,7 @@ router.use(authMiddleware);
  *     summary: Dashboard financeiro
  *     tags: [Finance]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: period
  *         schema:
@@ -137,6 +138,7 @@ router.get('/dashboard', FinanceController.getDashboard);
  *     summary: Listar transações financeiras
  *     tags: [Finance]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: page
  *         schema:
@@ -193,6 +195,8 @@ router.get('/transactions', FinanceController.getTransactions);
  *   post:
  *     summary: Criar transação financeira
  *     tags: [Finance]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -214,6 +218,7 @@ router.post('/transactions', FinanceController.createTransaction);
  *     summary: Atualizar transação financeira
  *     tags: [Finance]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -241,6 +246,7 @@ router.put('/transactions/:id', FinanceController.updateTransaction);
  *     summary: Deletar transação financeira
  *     tags: [Finance]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -262,6 +268,7 @@ router.delete('/transactions/:id', FinanceController.deleteTransaction);
  *     summary: Listar categorias financeiras
  *     tags: [Finance]
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: type
  *         schema:
@@ -280,6 +287,8 @@ router.get('/categories', FinanceController.getCategories);
  *   post:
  *     summary: Criar categoria financeira
  *     tags: [Finance]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:

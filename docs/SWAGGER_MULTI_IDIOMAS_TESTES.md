@@ -1,7 +1,8 @@
 # 🌐 Testando Multi-Idiomas no Swagger UI
 
-**Data:** 25 de outubro de 2025  
-**Status:** ✅ Swagger atualizado com suporte multi-idiomas
+**Data:** 26 de outubro de 2025  
+**Status:** ✅ Clients + Companies com suporte multi-idiomas no Swagger  
+**Última Atualização:** CompanyController (9 endpoints)
 
 ## 🎯 **Como Testar Multi-Idiomas no Swagger**
 

@@ -9,7 +9,7 @@
     "general_requests": "Demasiadas solicitudes. Por favor, inténtalo de nuevo más tarde."
   },
   "validation": {
-    "invalid_json": "JSON inválido"
+    "invalid_json": "JSON no válido"
   },
   "security": {
     "invalid_request": "Solicitud inválida"

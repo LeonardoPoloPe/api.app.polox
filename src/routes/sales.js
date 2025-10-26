@@ -62,6 +62,7 @@ const updateSaleValidation = Joi.object({
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: query
  *         name: page
  *         schema:
@@ -185,6 +186,8 @@ router.get('/', rateLimiter.general, SaleController.index);
  *     tags: [Sales]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -291,6 +294,7 @@ router.post('/', rateLimiter.general, validateRequest(createSaleValidation), Sal
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -343,6 +347,7 @@ router.get('/:id', rateLimiter.general, SaleController.show);
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
@@ -391,6 +396,7 @@ router.put('/:id', rateLimiter.general, validateRequest(updateSaleValidation), S
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true

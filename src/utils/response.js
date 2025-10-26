@@ -3,6 +3,70 @@
  * Garante consistência em todas as respostas do sistema
  */
 
+const path = require('path');
+const fs = require('fs');
+
+// Cache de traduções
+let translationsCache = {};
+
+/**
+ * Carrega traduções para respostas
+ */
+function loadResponseTranslations() {
+  if (Object.keys(translationsCache).length > 0) {
+    return translationsCache;
+  }
+
+  try {
+    const languages = ['pt', 'en', 'es'];
+
+    languages.forEach((lang) => {
+      const filePath = path.join(__dirname, `../locales/utils/${lang}/response.json`);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        translationsCache[lang] = JSON.parse(content);
+      }
+    });
+
+    return translationsCache;
+  } catch (error) {
+    console.error('[RESPONSE.JS] Erro ao carregar traduções:', error);
+    return {};
+  }
+}
+
+/**
+ * Traduz mensagem de resposta
+ * @param {Object} req - Request object (para pegar idioma)
+ * @param {string} key - Chave da tradução
+ * @param {string} fallback - Mensagem fallback
+ */
+function tr(req, key, fallback) {
+  try {
+    const translations = loadResponseTranslations();
+    
+    // Pegar idioma do header ou usar português como padrão
+    const acceptLanguage = req?.headers?.['accept-language'] || 'pt';
+    const primaryLang = acceptLanguage.split(',')[0].split('-')[0];
+    const lang = ['pt', 'en', 'es'].includes(primaryLang) ? primaryLang : 'pt';
+
+    const keys = key.split('.');
+    let value = translations[lang];
+
+    for (const k of keys) {
+      if (value && typeof value === 'object' && k in value) {
+        value = value[k];
+      } else {
+        return fallback;
+      }
+    }
+
+    return typeof value === 'string' ? value : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
 /**
  * Resposta de sucesso padrão
  * @param {Response} res - Response object do Express
@@ -12,10 +76,13 @@
  * @param {Object} meta - Metadados adicionais
  * @returns {Response} Response com formato padronizado
  */
-const successResponse = (res, data = null, message = 'Operação realizada com sucesso', statusCode = 200, meta = {}) => {
+const successResponse = (res, data = null, message = null, statusCode = 200, meta = {}) => {
+  // Se message não foi fornecida, usar tradução padrão
+  const finalMessage = message || tr(res.req, 'success.default', 'Operação realizada com sucesso');
+  
   const response = {
     success: true,
-    message,
+    message: finalMessage,
     data,
     timestamp: new Date().toISOString(),
     ...meta
@@ -33,10 +100,13 @@ const successResponse = (res, data = null, message = 'Operação realizada com s
  * @param {Object} meta - Metadados adicionais
  * @returns {Response} Response paginada
  */
-const paginatedResponse = (res, data, pagination, message = 'Dados obtidos com sucesso', meta = {}) => {
+const paginatedResponse = (res, data, pagination, message = null, meta = {}) => {
+  // Se message não foi fornecida, usar tradução
+  const finalMessage = message || tr(res.req, 'success.data_retrieved', 'Dados obtidos com sucesso');
+  
   const response = {
     success: true,
-    message,
+    message: finalMessage,
     data,
     pagination: {
       currentPage: parseInt(pagination.page) || 1,

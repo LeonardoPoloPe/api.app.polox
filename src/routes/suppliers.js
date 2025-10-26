@@ -229,6 +229,7 @@ const { authenticateToken, authorize } = require('../utils/auth');
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - $ref: '#/components/parameters/SupplierFilters'
  *     responses:
  *       200:
@@ -271,6 +272,8 @@ router.get('/', authenticateToken, SupplierController.index);
  *     tags: [Suppliers]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -386,6 +389,7 @@ router.post('/', authenticateToken, authorize(['admin', 'manager', 'user']), Sup
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - name: id
  *         in: path
  *         required: true
