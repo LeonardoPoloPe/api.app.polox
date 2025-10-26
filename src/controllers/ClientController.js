@@ -575,8 +575,11 @@ class ClientController {
    */
   static addNote = asyncHandler(async (req, res) => {
     const clientId = req.params.id;
-    const { error, value } = ClientController.addNoteSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = ClientController.validateWithTranslation(
+      req,
+      ClientController.addNoteSchema,
+      req.body
+    );
 
     const { note, type } = value;
 

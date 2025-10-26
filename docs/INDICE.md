@@ -4,7 +4,50 @@
 
 ---
 
-## 🆕 Sistema de Campos Customizados (EAV)
+## � Sistema de Traduções Multi-idioma (i18n)
+
+### Documentação Principal
+
+- **[SISTEMA_TRADUCOES_CONTROLLERS.md](./sistema-traducao-leia/SISTEMA_TRADUCOES_CONTROLLERS.md)** ⭐ **IMPLEMENTADO**
+  - Sistema de traduções por controller
+  - Guia completo de uso
+  - Padrões e boas práticas
+  - Como criar novos controllers traduzidos
+
+### Status e Implementações
+
+- **[STATUS_TRADUCOES_CONTROLLERS.md](./sistema-traducao-leia/STATUS_TRADUCOES_CONTROLLERS.md)** ⭐ **ATUALIZADO**
+  - Controllers traduzidos (AuthController ✅, ClientController ✅)
+  - Estatísticas e progresso
+  - Próximos passos
+  - Template para novos controllers
+
+- **[EXEMPLOS_CLIENTCONTROLLER.md](./sistema-traducao-leia/EXEMPLOS_CLIENTCONTROLLER.md)** ⭐ **NOVO**
+  - Exemplos práticos em PT, EN, ES
+  - Testes com curl/Postman
+  - Cenários de uso reais
+  - Comparação de mensagens
+
+### Relatórios de Implementação
+
+- **[IMPLEMENTACAO_TRADUCOES_CONTROLLERS_SUCESSO.md](./sistema-traducao-leia/IMPLEMENTACAO_TRADUCOES_CONTROLLERS_SUCESSO.md)**
+  - AuthController implementado com sucesso
+  - Sistema testado e funcional
+
+- **[CLIENTCONTROLLER_TRADUCOES_COMPLETO_25_10_2025.md](./atualizacoes/CLIENTCONTROLLER_TRADUCOES_COMPLETO_25_10_2025.md)** ⭐ **NOVO**
+  - ClientController 100% traduzido
+  - 18 chaves de tradução × 3 idiomas
+  - 9 endpoints traduzidos
+  - Testes e validações
+
+- **[RESUMO_CLIENTCONTROLLER_TRADUCOES.md](./RESUMO_CLIENTCONTROLLER_TRADUCOES.md)** ⭐ **NOVO**
+  - Resumo executivo da implementação
+  - Validações realizadas
+  - Próximos passos
+
+---
+
+## �🆕 Sistema de Campos Customizados (EAV)
 
 ### Documentação Principal
 
