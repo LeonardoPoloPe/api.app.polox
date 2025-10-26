@@ -1,0 +1,272 @@
+/**
+ * ==========================================
+ * 🧪 TESTES DE INTEGRAÇÃO - COMPANY CONTROLLER
+ * ==========================================
+ * 
+ * Testa a criação de empresas com:
+ * - Validações de dados
+ * - Criação automática de admin
+ * - Multi-idioma (pt-BR, en, es)
+ * - Permissões (Super Admin)
+ */
+
+const request = require('supertest');
+const app = require('../../src/server-test');
+const { DatabaseHelper } = require('../helpers/database');
+
+describe('🏢 Company Controller - Criação de Empresa', () => {
+  let helper;
+  let superAdminToken;
+  let superAdminUser;
+  let testCompany;
+
+  beforeAll(async () => {
+    helper = new DatabaseHelper(global.testPool);
+    
+    // Criar empresa e super admin para os testes
+    testCompany = await helper.createTestCompany({
+      company_name: 'Admin Company Test'
+    });
+    
+    superAdminUser = await helper.createTestUser(testCompany.id, {
+      email: 'superadmin@test.com',
+      password: '123456',
+      full_name: 'Super Admin',
+      user_role: 'super_admin'
+    });
+    
+    superAdminToken = helper.generateTestToken(superAdminUser);
+  });
+
+  describe('✅ Criação de Empresa - Português (pt-BR)', () => {
+    it('deve criar empresa com admin (pt-BR)', async () => {
+      const companyData = {
+        name: 'Empresa Teste LTDA',
+        domain: 'empresa-teste-pt',
+        plan: 'professional',
+        industry: 'Tecnologia',
+        company_size: '10-50',
+        admin_name: 'Admin Português',
+        admin_email: 'admin.pt@empresateste.com',
+        admin_phone: '+55 11 99999-9999',
+        enabled_modules: ['dashboard', 'users', 'leads', 'clients'],
+        settings: {
+          maxUploadSize: '10MB',
+          supportEmail: 'suporte@empresateste.com'
+        }
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .set('Accept-Language', 'pt-BR')
+        .send(companyData);
+
+      // Validações
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toContain('sucesso'); // Mensagem em português
+      
+      expect(res.body.data).toBeDefined();
+      expect(res.body.data.company).toBeDefined();
+      expect(res.body.data.company.company_name).toBe('Empresa Teste LTDA');
+      expect(res.body.data.company.company_domain).toBe('empresa-teste-pt');
+      expect(res.body.data.company.subscription_plan).toBe('professional');
+      
+      expect(res.body.data.admin).toBeDefined();
+      expect(res.body.data.admin.full_name).toBe('Admin Português');
+      expect(res.body.data.admin.email).toBe('admin.pt@empresateste.com');
+      expect(res.body.data.admin.user_role).toBe('admin');
+      
+      expect(res.body.data.initialPassword).toBeDefined();
+      expect(res.body.data.initialPassword.length).toBeGreaterThan(8);
+    });
+
+    it('deve rejeitar domínio duplicado (pt-BR)', async () => {
+      const companyData = {
+        name: 'Empresa Duplicada',
+        domain: 'empresa-teste-pt', // Domínio já usado
+        admin_name: 'Admin Duplicado',
+        admin_email: 'outro.email@test.com'
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .set('Accept-Language', 'pt-BR')
+        .send(companyData);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('domínio'); // Mensagem em português
+    });
+
+    it('deve rejeitar dados inválidos (pt-BR)', async () => {
+      const companyData = {
+        name: 'E', // Nome muito curto
+        domain: 'empresa-invalida',
+        admin_name: 'Admin',
+        admin_email: 'email-invalido' // Email inválido
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .set('Accept-Language', 'pt-BR')
+        .send(companyData);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('✅ Criação de Empresa - English (en)', () => {
+    it('deve criar empresa com admin (en)', async () => {
+      const companyData = {
+        name: 'Test Company Inc',
+        domain: 'test-company-en',
+        plan: 'enterprise',
+        industry: 'Technology',
+        company_size: '50-200',
+        admin_name: 'Admin English',
+        admin_email: 'admin.en@testcompany.com',
+        admin_phone: '+1 555-1234',
+        enabled_modules: ['dashboard', 'users', 'sales', 'reports'],
+        settings: {
+          maxUploadSize: '20MB'
+        }
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .set('Accept-Language', 'en')
+        .send(companyData);
+
+      // Validações
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toContain('success'); // Mensagem em inglês
+      
+      expect(res.body.data.company.company_name).toBe('Test Company Inc');
+      expect(res.body.data.company.company_domain).toBe('test-company-en');
+      expect(res.body.data.admin.full_name).toBe('Admin English');
+    });
+
+    it('deve rejeitar domínio duplicado (en)', async () => {
+      const companyData = {
+        name: 'Duplicate Company',
+        domain: 'test-company-en', // Domínio já usado
+        admin_name: 'Admin Duplicate',
+        admin_email: 'another.email@test.com'
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .set('Accept-Language', 'en')
+        .send(companyData);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('domain'); // Mensagem em inglês
+    });
+  });
+
+  describe('✅ Criação de Empresa - Español (es)', () => {
+    it('deve criar empresa com admin (es)', async () => {
+      const companyData = {
+        name: 'Empresa Prueba SA',
+        domain: 'empresa-prueba-es',
+        plan: 'starter',
+        industry: 'Servicios',
+        company_size: '1-10',
+        admin_name: 'Admin Español',
+        admin_email: 'admin.es@empresaprueba.com',
+        admin_phone: '+34 600 123 456',
+        enabled_modules: ['dashboard', 'users'],
+        settings: {}
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .set('Accept-Language', 'es')
+        .send(companyData);
+
+      // Validações
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toContain('éxito'); // Mensagem em espanhol
+      
+      expect(res.body.data.company.company_name).toBe('Empresa Prueba SA');
+      expect(res.body.data.company.company_domain).toBe('empresa-prueba-es');
+      expect(res.body.data.admin.full_name).toBe('Admin Español');
+    });
+
+    it('deve rejeitar domínio duplicado (es)', async () => {
+      const companyData = {
+        name: 'Empresa Duplicada',
+        domain: 'empresa-prueba-es', // Domínio já usado
+        admin_name: 'Admin Duplicado',
+        admin_email: 'otro.correo@test.com'
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .set('Accept-Language', 'es')
+        .send(companyData);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('dominio'); // Mensagem em espanhol
+    });
+  });
+
+  describe('🔒 Permissões', () => {
+    it('deve rejeitar usuário não super admin (pt-BR)', async () => {
+      // Criar usuário normal
+      const normalUser = await helper.createTestUser(testCompany.id, {
+        email: 'normal@test.com',
+        password: '123456',
+        full_name: 'Usuário Normal',
+        user_role: 'user'
+      });
+      
+      const normalToken = helper.generateTestToken(normalUser);
+
+      const companyData = {
+        name: 'Empresa Não Autorizada',
+        domain: 'nao-autorizada',
+        admin_name: 'Admin',
+        admin_email: 'admin@test.com'
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .set('Authorization', `Bearer ${normalToken}`)
+        .set('Accept-Language', 'pt-BR')
+        .send(companyData);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('Super Admin'); // Requer super admin
+    });
+
+    it('deve rejeitar requisição sem autenticação', async () => {
+      const companyData = {
+        name: 'Empresa Sem Auth',
+        domain: 'sem-auth',
+        admin_name: 'Admin',
+        admin_email: 'admin@test.com'
+      };
+
+      const res = await request(app)
+        .post('/api/companies')
+        .send(companyData);
+
+      expect(res.status).toBe(401);
+    });
+  });
+});

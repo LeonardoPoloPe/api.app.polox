@@ -1,5 +1,6 @@
 {
   "testEnvironment": "node",
+  "maxWorkers": 1,
   "testMatch": [
     "**/tests/**/*.test.js",
     "**/__tests__/**/*.test.js",

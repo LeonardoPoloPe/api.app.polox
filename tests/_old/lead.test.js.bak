@@ -1,0 +1,449 @@
+/**
+ * ==========================================
+ * 🧪 TESTES DE INTEGRAÇÃO - LEAD MODEL
+ * ==========================================
+ * 
+ * Testa a conversão de Lead → Cliente com:
+ * - Criação de lead
+ * - Conversão para cliente
+ * - Validações de dados
+ * - Multi-idioma (pt-BR, en, es)
+ */
+
+const LeadModel = require('../../src/models/Lead');
+const { DatabaseHelper } = require('../helpers/database');
+
+describe('🎯 Lead Model - Conversão Lead → Cliente', () => {
+  let helper;
+
+  beforeEach(async () => {
+    helper = new DatabaseHelper(global.testPool);
+  });
+
+  // Helper para criar empresa, usuário e lead de teste
+  async function createTestContext(suffix = '') {
+    const testCompany = await helper.createTestCompany({
+      company_name: `Lead Test Company ${suffix}`
+    });
+    
+    const testUser = await helper.createTestUser(testCompany.id, {
+      email: `user${suffix}@leadtest.com`,
+      password: '123456',
+      full_name: `Lead Manager ${suffix}`,
+      user_role: 'user'
+    });
+
+    return { testCompany, testUser };
+  }
+
+  describe('✅ Conversão Lead → Cliente - Português (pt-BR)', () => {
+    let leadId;
+
+    it('deve criar um lead completo', async () => {
+      const { testCompany, testUser } = await createTestContext('PT1');
+
+      const leadData = {
+        name: 'João Silva',
+        email: 'joao.silva@empresa.com.br',
+        phone: '+55 11 98765-4321',
+        company_name: 'Silva Tech LTDA',
+        position: 'Diretor de TI',
+        source: 'website',
+        status: 'new',
+        temperature: 'hot',
+        conversion_value: 50000, // R$ 50.000,00
+        city: 'São Paulo',
+        state: 'SP',
+        country: 'Brasil',
+        created_by_id: testUser.id
+      };
+
+      const lead = await LeadModel.create(leadData, testCompany.id);
+      
+      expect(lead).toBeDefined();
+      expect(lead.id).toBeDefined();
+      expect(lead.name).toBe('João Silva');
+      expect(lead.email).toBe('joao.silva@empresa.com.br');
+      expect(lead.company_name).toBe('Silva Tech LTDA');
+      expect(lead.status).toBe('new');
+      expect(lead.temperature).toBe('hot');
+      expect(lead.conversion_value).toBe(50000);
+      expect(lead.city).toBe('São Paulo');
+      expect(lead.state).toBe('SP');
+      expect(lead.company_id).toBe(testCompany.id);
+
+      leadId = lead.id;
+    });
+
+    it('deve adicionar nota ao lead', async () => {
+      const { testCompany, testUser } = await createTestContext('PT2');
+
+      const leadData = {
+        name: 'João Silva 2',
+        email: 'joao2@empresa.com.br',
+        created_by_id: testUser.id
+      };
+
+      const lead = await LeadModel.create(leadData, testCompany.id);
+      leadId = lead.id;
+
+      const note = await LeadModel.addNote(
+        leadId,
+        testUser.id,
+        'Lead muito interessado em nossos produtos',
+        'general',
+        testCompany.id
+      );
+
+      expect(note).toBeDefined();
+      expect(note.id).toBeDefined();
+      expect(note.note_content).toBe('Lead muito interessado em nossos produtos');
+      expect(note.note_type).toBe('general');
+      expect(note.lead_id).toBe(leadId);
+    });
+
+    it('deve adicionar tags ao lead', async () => {
+      const { testCompany, testUser } = await createTestContext('PT3');
+
+      const leadData = {
+        name: 'João Silva 3',
+        email: 'joao3@empresa.com.br',
+        created_by_id: testUser.id
+      };
+
+      const lead = await LeadModel.create(leadData, testCompany.id);
+      leadId = lead.id;
+
+      const tags = await LeadModel.updateTags(
+        leadId,
+        ['premium', 'tecnologia', 'b2b'],
+        testCompany.id
+      );
+
+      expect(tags).toBeDefined();
+      expect(Array.isArray(tags)).toBe(true);
+      expect(tags.length).toBeGreaterThan(0);
+    });
+
+    it('deve adicionar interests ao lead', async () => {
+      const { testCompany, testUser } = await createTestContext('PT4');
+
+      const leadData = {
+        name: 'João Silva 4',
+        email: 'joao4@empresa.com.br',
+        created_by_id: testUser.id
+      };
+
+      const lead = await LeadModel.create(leadData, testCompany.id);
+      leadId = lead.id;
+
+      const interest1 = await LeadModel.addInterest(
+        leadId,
+        'CRM',
+        'product',
+        testCompany.id
+      );
+
+      const interest2 = await LeadModel.addInterest(
+        leadId,
+        'Automação',
+        'service',
+        testCompany.id
+      );
+
+      expect(interest1).toBeDefined();
+      expect(interest1.name).toBe('CRM');
+      expect(interest1.category).toBe('product');
+      
+      expect(interest2).toBeDefined();
+      expect(interest2.name).toBe('Automação');
+      expect(interest2.category).toBe('service');
+    });
+
+    it('deve converter lead em cliente', async () => {
+      const { testCompany, testUser } = await createTestContext('PT5');
+
+      const leadData = {
+        name: 'João Silva 5',
+        email: 'joao5@empresa.com.br',
+        phone: '+55 11 98765-4321',
+        company_name: 'Silva Tech LTDA',
+        position: 'Diretor de TI',
+        source: 'website',
+        status: 'new',
+        temperature: 'hot',
+        conversion_value: 50000,
+        city: 'São Paulo',
+        state: 'SP',
+        country: 'Brasil',
+        created_by_id: testUser.id
+      };
+
+      const lead = await LeadModel.create(leadData, testCompany.id);
+      leadId = lead.id;
+
+      const clientData = {
+        document_number: helper.generateCNPJ(),
+        client_type: 'business',
+        address_street: 'Av. Paulista, 1000',
+        address_city: 'São Paulo',
+        address_state: 'SP',
+        address_zip: '01310-100',
+        address_country: 'Brasil'
+      };
+
+      const result = await LeadModel.convertToClient(
+        leadId,
+        clientData,
+        testCompany.id
+      );
+
+      expect(result).toBeDefined();
+      expect(result.lead).toBeDefined();
+      expect(result.client).toBeDefined();
+      
+      // Validar lead atualizado
+      expect(result.lead.id).toBe(leadId);
+      expect(result.lead.converted_to_client_id).toBeDefined();
+      expect(result.lead.status).toBe('won'); // Status mudou para won
+      
+      // Validar cliente criado
+      expect(result.client.name).toBe('João Silva');
+      expect(result.client.email).toBe('joao.silva@empresa.com.br');
+      expect(result.client.company_name).toBe('Silva Tech LTDA');
+      expect(result.client.client_type).toBe('business');
+      expect(result.client.address_city).toBe('São Paulo');
+      expect(result.client.address_state).toBe('SP');
+      expect(result.client.company_id).toBe(testCompany.id);
+    });
+
+    it('deve rejeitar conversão de lead já convertido', async () => {
+      const { testCompany, testUser } = await createTestContext('PT6');
+
+      const leadData = {
+        name: 'João Silva 6',
+        email: 'joao6@empresa.com.br',
+        created_by_id: testUser.id
+      };
+
+      const lead = await LeadModel.create(leadData, testCompany.id);
+      leadId = lead.id;
+
+      // Converter pela primeira vez
+      const clientData1 = {
+        document_number: helper.generateCNPJ(),
+        client_type: 'business'
+      };
+      await LeadModel.convertToClient(leadId, clientData1, testCompany.id);
+
+      // Tentar converter novamente
+      const clientData2 = {
+        document_number: helper.generateCNPJ(),
+        client_type: 'business'
+      };
+
+      // Tentar converter novamente
+      const clientData2 = {
+        document_number: helper.generateCNPJ(),
+        client_type: 'business'
+      };
+
+      await expect(
+        LeadModel.convertToClient(leadId, clientData2, testCompany.id)
+      ).rejects.toThrow('já foi convertido');
+    });
+  });
+
+  describe('✅ Conversão Lead → Cliente - English (en)', () => {
+    let leadId;
+
+    it('deve criar um lead', async () => {
+      const { testCompany, testUser } = await createTestContext('EN1');
+
+      const leadData = {
+        name: 'John Smith',
+        email: 'john.smith@techcorp.com',
+        phone: '+1 555-9876',
+        company_name: 'Tech Corp Inc',
+        position: 'CTO',
+        source: 'referral',
+        status: 'qualified',
+        temperature: 'warm',
+        conversion_value: 100000,
+        city: 'New York',
+        state: 'NY',
+        country: 'USA',
+        created_by_id: testUser.id
+      };
+
+      const lead = await LeadModel.create(leadData, testCompany.id);
+      
+      expect(lead).toBeDefined();
+      expect(lead.name).toBe('John Smith');
+      expect(lead.company_name).toBe('Tech Corp Inc');
+      expect(lead.status).toBe('qualified');
+      expect(lead.city).toBe('New York');
+
+      leadId = lead.id;
+    });
+
+    it('deve converter lead em cliente', async () => {
+      const clientData = {
+        document_number: '12-3456789',
+        client_type: 'business',
+        address_street: '123 Main St',
+        address_city: 'New York',
+        address_state: 'NY',
+        address_zip: '10001',
+        address_country: 'USA'
+      };
+
+      const result = await LeadModel.convertToClient(
+        leadId,
+        clientData,
+        testCompany.id
+      );
+
+      expect(result.lead.converted_to_client_id).toBeDefined();
+      expect(result.client.name).toBe('John Smith');
+      expect(result.client.address_city).toBe('New York');
+    });
+  });
+
+  describe('✅ Conversão Lead → Cliente - Español (es)', () => {
+    let leadId;
+
+    it('deve criar um lead', async () => {
+      const leadData = {
+        name: 'María García',
+        email: 'maria.garcia@empresasa.es',
+        phone: '+34 600 555 777',
+        company_name: 'Empresa SA',
+        position: 'Directora General',
+        source: 'linkedin',
+        status: 'proposal',
+        temperature: 'hot',
+        conversion_value: 75000,
+        city: 'Madrid',
+        state: 'MD',
+        country: 'España',
+        created_by_id: testUser.id
+      };
+
+      const lead = await LeadModel.create(leadData, testCompany.id);
+      
+      expect(lead).toBeDefined();
+      expect(lead.name).toBe('María García');
+      expect(lead.company_name).toBe('Empresa SA');
+      expect(lead.status).toBe('proposal');
+
+      leadId = lead.id;
+    });
+
+    it('deve converter lead em cliente', async () => {
+      const clientData = {
+        document_number: 'B12345678',
+        client_type: 'business',
+        address_street: 'Calle Mayor 50',
+        address_city: 'Madrid',
+        address_state: 'MD',
+        address_zip: '28013',
+        address_country: 'España'
+      };
+
+      const result = await LeadModel.convertToClient(
+        leadId,
+        clientData,
+        testCompany.id
+      );
+
+      expect(result.lead.converted_to_client_id).toBeDefined();
+      expect(result.client.name).toBe('María García');
+      expect(result.client.address_city).toBe('Madrid');
+    });
+  });
+
+  describe('📊 Testes Adicionais de Lead', () => {
+    it('deve listar leads criados', async () => {
+      const result = await LeadModel.list({ page: 1, limit: 10 }, testCompany.id);
+
+      expect(result).toBeDefined();
+      expect(result.leads).toBeDefined();
+      expect(Array.isArray(result.leads)).toBe(true);
+      expect(result.leads.length).toBeGreaterThan(0);
+      expect(result.pagination).toBeDefined();
+    });
+
+    it('deve buscar lead por ID', async () => {
+      // Criar um lead
+      const createData = {
+        name: 'Lead para Busca',
+        email: 'busca@test.com',
+        created_by_id: testUser.id
+      };
+
+      const created = await LeadModel.create(createData, testCompany.id);
+      const leadId = created.id;
+
+      // Buscar por ID
+      const lead = await LeadModel.findById(leadId, testCompany.id);
+
+      expect(lead).toBeDefined();
+      expect(lead.id).toBe(leadId);
+      expect(lead.name).toBe('Lead para Busca');
+    });
+
+    it('deve atualizar lead', async () => {
+      // Criar um lead
+      const createData = {
+        name: 'Lead para Atualizar',
+        email: 'atualizar@test.com',
+        status: 'new',
+        created_by_id: testUser.id
+      };
+
+      const created = await LeadModel.create(createData, testCompany.id);
+      const leadId = created.id;
+
+      // Atualizar status
+      const updated = await LeadModel.update(
+        leadId,
+        { status: 'qualified', temperature: 'hot' },
+        testCompany.id
+      );
+
+      expect(updated).toBeDefined();
+      expect(updated.status).toBe('qualified');
+      expect(updated.temperature).toBe('hot');
+    });
+
+    it('deve obter estatísticas de leads', async () => {
+      const stats = await LeadModel.getStats(testCompany.id);
+
+      expect(stats).toBeDefined();
+      expect(stats.total).toBeDefined();
+      expect(typeof stats.total).toBe('number');
+    });
+
+    it('deve deletar lead (soft delete)', async () => {
+      // Criar um lead
+      const createData = {
+        name: 'Lead para Deletar',
+        email: 'deletar@test.com',
+        created_by_id: testUser.id
+      };
+
+      const created = await LeadModel.create(createData, testCompany.id);
+      const leadId = created.id;
+
+      // Deletar
+      const deleted = await LeadModel.softDelete(leadId, testCompany.id);
+
+      expect(deleted).toBe(true);
+
+      // Tentar buscar - deve retornar null
+      const lead = await LeadModel.findById(leadId, testCompany.id);
+      expect(lead).toBeNull();
+    });
+  });
+});
