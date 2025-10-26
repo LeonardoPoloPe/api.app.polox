@@ -1,0 +1,55 @@
+{
+  "validation": {
+    "name_min_length": "Company name must be at least 2 characters",
+    "name_required": "Company name is required",
+    "domain_pattern": "Domain must contain only letters, numbers and hyphens",
+    "domain_required": "Domain is required",
+    "admin_name_required": "Administrator name is required",
+    "admin_email_valid": "Administrator email must be valid",
+    "admin_email_required": "Administrator email is required",
+    "modules_must_be_array": "enabled_modules must be an array",
+    "invalid_modules": "Invalid modules: {{modules}}",
+    "invalid_status": "Status must be: active, inactive or trial",
+    "no_fields_to_update": "No fields to update"
+  },
+  "create": {
+    "success": "Company created successfully",
+    "domain_in_use": "Domain '{{domain}}' is already in use by company: {{companyName}}",
+    "email_in_use": "Email '{{email}}' is already in use by another user"
+  },
+  "update": {
+    "success": "Company updated successfully",
+    "not_found": "Company not found"
+  },
+  "delete": {
+    "success": "Company deleted successfully",
+    "not_found": "Company not found"
+  },
+  "show": {
+    "not_found": "Company not found"
+  },
+  "modules": {
+    "update_success": "Modules updated successfully"
+  },
+  "status": {
+    "update_success": "Status updated successfully"
+  },
+  "security": {
+    "super_admin_required": "Super Admin access required",
+    "unauthorized_access_attempt": "Unauthorized access attempt to CompanyController"
+  },
+  "audit": {
+    "company_created": "Company created",
+    "company_updated": "Company updated",
+    "company_deleted": "Company deleted",
+    "modules_updated": "Company modules updated",
+    "status_updated": "Company status updated",
+    "company_deleted_by_super_admin": "Company deleted by Super Admin"
+  },
+  "info": {
+    "companies_listed": "Companies listed by Super Admin",
+    "company_details_viewed": "Company details viewed",
+    "global_stats_consulted": "Global statistics consulted",
+    "company_created_success": "New company created successfully"
+  }
+}

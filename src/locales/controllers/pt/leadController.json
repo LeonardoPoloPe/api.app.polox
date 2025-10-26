@@ -1,0 +1,68 @@
+{
+  "validation": {
+    "name_min_length": "Nome deve ter pelo menos 2 caracteres",
+    "name_required": "Nome é obrigatório",
+    "email_valid": "Email deve ser válido",
+    "content_required": "Conteúdo é obrigatório",
+    "tags_required": "Tags são obrigatórias",
+    "interests_required": "Interests são obrigatórios",
+    "owner_id_required": "ID do responsável é obrigatório"
+  },
+  "create": {
+    "success": "Lead criado com sucesso"
+  },
+  "update": {
+    "success": "Lead atualizado com sucesso",
+    "not_found": "Lead não encontrado"
+  },
+  "delete": {
+    "success": "Lead deletado com sucesso",
+    "not_found": "Lead não encontrado"
+  },
+  "show": {
+    "not_found": "Lead não encontrado"
+  },
+  "list": {
+    "success": "Leads listados com sucesso"
+  },
+  "assign": {
+    "success": "Lead atribuído com sucesso",
+    "not_found": "Lead não encontrado"
+  },
+  "convert": {
+    "success": "Lead convertido em cliente com sucesso",
+    "not_found": "Lead não encontrado",
+    "already_converted": "Lead já foi convertido em cliente"
+  },
+  "notes": {
+    "add_success": "Nota adicionada com sucesso",
+    "update_success": "Nota atualizada com sucesso",
+    "delete_success": "Nota deletada com sucesso",
+    "not_found": "Nota não encontrada"
+  },
+  "tags": {
+    "add_success": "Tags adicionadas com sucesso",
+    "remove_success": "Tag removida com sucesso",
+    "not_found": "Tag não encontrada ou não associada ao lead"
+  },
+  "interests": {
+    "add_success": "Interests adicionados com sucesso",
+    "remove_success": "Interest removido com sucesso",
+    "not_found": "Interest não encontrado ou não associado ao lead"
+  },
+  "audit": {
+    "leads_listed": "Leads listados",
+    "lead_created": "Lead criado",
+    "lead_updated": "Lead atualizado",
+    "lead_deleted": "Lead deletado",
+    "lead_assigned": "Lead atribuído",
+    "lead_converted": "Lead convertido para cliente",
+    "note_added": "Nota adicionada ao lead",
+    "note_updated": "Nota atualizada",
+    "note_deleted": "Nota deletada",
+    "tags_added": "Tags adicionadas ao lead",
+    "tag_removed": "Tag removida do lead",
+    "interests_added": "Interests adicionados ao lead",
+    "interest_removed": "Interest removido do lead"
+  }
+}

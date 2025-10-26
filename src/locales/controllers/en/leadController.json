@@ -1,0 +1,68 @@
+{
+  "validation": {
+    "name_min_length": "Name must be at least 2 characters",
+    "name_required": "Name is required",
+    "email_valid": "Email must be valid",
+    "content_required": "Content is required",
+    "tags_required": "Tags are required",
+    "interests_required": "Interests are required",
+    "owner_id_required": "Owner ID is required"
+  },
+  "create": {
+    "success": "Lead created successfully"
+  },
+  "update": {
+    "success": "Lead updated successfully",
+    "not_found": "Lead not found"
+  },
+  "delete": {
+    "success": "Lead deleted successfully",
+    "not_found": "Lead not found"
+  },
+  "show": {
+    "not_found": "Lead not found"
+  },
+  "list": {
+    "success": "Leads listed successfully"
+  },
+  "assign": {
+    "success": "Lead assigned successfully",
+    "not_found": "Lead not found"
+  },
+  "convert": {
+    "success": "Lead converted to client successfully",
+    "not_found": "Lead not found",
+    "already_converted": "Lead has already been converted to client"
+  },
+  "notes": {
+    "add_success": "Note added successfully",
+    "update_success": "Note updated successfully",
+    "delete_success": "Note deleted successfully",
+    "not_found": "Note not found"
+  },
+  "tags": {
+    "add_success": "Tags added successfully",
+    "remove_success": "Tag removed successfully",
+    "not_found": "Tag not found or not associated with lead"
+  },
+  "interests": {
+    "add_success": "Interests added successfully",
+    "remove_success": "Interest removed successfully",
+    "not_found": "Interest not found or not associated with lead"
+  },
+  "audit": {
+    "leads_listed": "Leads listed",
+    "lead_created": "Lead created",
+    "lead_updated": "Lead updated",
+    "lead_deleted": "Lead deleted",
+    "lead_assigned": "Lead assigned",
+    "lead_converted": "Lead converted to client",
+    "note_added": "Note added to lead",
+    "note_updated": "Note updated",
+    "note_deleted": "Note deleted",
+    "tags_added": "Tags added to lead",
+    "tag_removed": "Tag removed from lead",
+    "interests_added": "Interests added to lead",
+    "interest_removed": "Interest removed from lead"
+  }
+}

@@ -19,6 +19,7 @@ const {
 const { logger, auditLogger, securityLogger } = require("../utils/logger");
 const { ApiError, asyncHandler } = require("../utils/errors");
 const { successResponse, paginatedResponse } = require("../utils/response");
+const { tc } = require("../config/i18n");
 const bcrypt = require("bcryptjs");
 const Joi = require("joi");
 
@@ -29,7 +30,7 @@ class CompanyController {
   static requireSuperAdmin = asyncHandler(async (req, res, next) => {
     if (req.user.role !== "super_admin") {
       securityLogger(
-        "Tentativa de acesso não autorizado ao CompanyController",
+        tc(req, "companyController", "security.unauthorized_access_attempt"),
         {
           userId: req.user.id,
           userRole: req.user.role,
@@ -38,7 +39,7 @@ class CompanyController {
         }
       );
 
-      throw new ApiError(403, "Super Admin access required");
+      throw new ApiError(403, tc(req, "companyController", "security.super_admin_required"));
     }
     next();
   });
@@ -47,32 +48,19 @@ class CompanyController {
    * 📝 VALIDAÇÕES JOI
    */
   static createCompanySchema = Joi.object({
-    name: Joi.string().min(2).max(255).required().messages({
-      "string.min": "Nome da empresa deve ter pelo menos 2 caracteres",
-      "any.required": "Nome da empresa é obrigatório",
-    }),
+    name: Joi.string().min(2).max(255).required(),
     domain: Joi.string()
       .min(2)
       .max(100)
       .pattern(/^[a-zA-Z0-9-]+$/)
-      .required()
-      .messages({
-        "string.pattern.base":
-          "Domínio deve conter apenas letras, números e hífens",
-        "any.required": "Domínio é obrigatório",
-      }),
+      .required(),
     plan: Joi.string()
       .valid("starter", "professional", "enterprise")
       .default("starter"),
     industry: Joi.string().max(100).allow("").default(""),
     company_size: Joi.string().max(50).allow("").default(""),
-    admin_name: Joi.string().min(2).max(255).required().messages({
-      "any.required": "Nome do administrador é obrigatório",
-    }),
-    admin_email: Joi.string().email().required().messages({
-      "string.email": "Email do administrador deve ser válido",
-      "any.required": "Email do administrador é obrigatório",
-    }),
+    admin_name: Joi.string().min(2).max(255).required(),
+    admin_email: Joi.string().email().required(),
     admin_phone: Joi.string().max(20).allow("").default(""),
     enabled_modules: Joi.array()
       .items(Joi.string())
@@ -95,6 +83,33 @@ class CompanyController {
     enabled_modules: Joi.array().items(Joi.string()),
     settings: Joi.object(),
   });
+
+  /**
+   * 🌐 Valida dados com mensagens traduzidas
+   */
+  static validateWithTranslation(req, schema, data) {
+    const { error, value } = schema.validate(data);
+    if (error) {
+      const field = error.details[0].path[0];
+      const type = error.details[0].type;
+      
+      // Mapear erros Joi para chaves de tradução
+      const errorKeyMap = {
+        'string.min': 'validation.name_min_length',
+        'any.required': field === 'name' ? 'validation.name_required' : 
+                       field === 'domain' ? 'validation.domain_required' :
+                       field === 'admin_name' ? 'validation.admin_name_required' :
+                       field === 'admin_email' ? 'validation.admin_email_required' :
+                       'validation.field_required',
+        'string.pattern.base': 'validation.domain_pattern',
+        'string.email': 'validation.admin_email_valid',
+      };
+
+      const messageKey = errorKeyMap[type] || 'validation.invalid_field';
+      throw new ApiError(400, tc(req, "companyController", messageKey));
+    }
+    return value;
+  }
 
   /**
    * 📋 LISTAR EMPRESAS
@@ -177,7 +192,7 @@ class CompanyController {
       query(countQuery, queryParams.slice(0, -3)),
     ]);
 
-    logger.info("Empresas listadas pelo Super Admin", {
+    logger.info(tc(req, "companyController", "info.companies_listed"), {
       superAdminId: req.user.id,
       companiesFound: companiesResult.rows.length,
       filters: {
@@ -199,12 +214,11 @@ class CompanyController {
    * POST /api/companies
    */
   static create = asyncHandler(async (req, res) => {
-    const { error, value } = CompanyController.createCompanySchema.validate(
+    const companyData = CompanyController.validateWithTranslation(
+      req,
+      CompanyController.createCompanySchema,
       req.body
     );
-    if (error) throw new ApiError(400, error.details[0].message);
-
-    const companyData = value;
 
     // 🔍 VERIFICAR SE DOMÍNIO JÁ EXISTE
     const domainCheck = await query(
@@ -215,7 +229,10 @@ class CompanyController {
     if (domainCheck.rows.length > 0) {
       throw new ApiError(
         400,
-        `Domínio '${companyData.domain}' já está em uso pela empresa: ${domainCheck.rows[0].company_name}`
+        tc(req, "companyController", "create.domain_in_use", {
+          domain: companyData.domain,
+          companyName: domainCheck.rows[0].company_name
+        })
       );
     }
 
@@ -228,7 +245,9 @@ class CompanyController {
     if (emailCheck.rows.length > 0) {
       throw new ApiError(
         400,
-        `Email '${companyData.admin_email}' já está em uso por outro usuário`
+        tc(req, "companyController", "create.email_in_use", {
+          email: companyData.admin_email
+        })
       );
     }
 
@@ -352,7 +371,7 @@ class CompanyController {
       committed = true;
 
       // 📝 LOG DE AUDITORIA
-      auditLogger("Company created", {
+      auditLogger(tc(req, "companyController", "audit.company_created"), {
         superAdminId: req.user.id,
         companyId: newCompany.id,
         companyName: newCompany.name,
@@ -362,7 +381,7 @@ class CompanyController {
         ip: req.ip,
       });
 
-      logger.info("Nova empresa criada com sucesso", {
+      logger.info(tc(req, "companyController", "info.company_created_success"), {
         superAdminId: req.user.id,
         companyId: newCompany.id,
         companyName: newCompany.name,
@@ -392,7 +411,7 @@ class CompanyController {
               "123!",
           login_url: `https://${newCompany.domain}.crm.ze9.com.br`,
         },
-        "Empresa criada com sucesso",
+        tc(req, "companyController", "create.success"),
         201
       );
     } catch (error) {
@@ -456,7 +475,7 @@ class CompanyController {
     const result = await query(companyQuery, [companyId]);
 
     if (result.rows.length === 0) {
-      throw new ApiError(404, "Empresa não encontrada");
+      throw new ApiError(404, tc(req, "companyController", "show.not_found"));
     }
 
     const company = result.rows[0];
@@ -471,7 +490,7 @@ class CompanyController {
         ? JSON.parse(company.settings || "{}")
         : company.settings || {};
 
-    logger.info("Detalhes da empresa visualizados", {
+    logger.info(tc(req, "companyController", "info.company_details_viewed"), {
       superAdminId: req.user.id,
       companyId: company.id,
       companyName: company.name,
@@ -539,7 +558,7 @@ class CompanyController {
 
     const growthResult = await query(growthQuery);
 
-    logger.info("Estatísticas globais consultadas", {
+    logger.info(tc(req, "companyController", "info.global_stats_consulted"), {
       superAdminId: req.user.id,
       totalCompanies: stats.total_companies,
     });
@@ -557,12 +576,11 @@ class CompanyController {
   static update = asyncHandler(async (req, res) => {
     const companyId = req.params.id;
 
-    const { error, value } = CompanyController.updateCompanySchema.validate(
+    const updateData = CompanyController.validateWithTranslation(
+      req,
+      CompanyController.updateCompanySchema,
       req.body
     );
-    if (error) throw new ApiError(400, error.details[0].message);
-
-    const updateData = value;
 
     // Verificar se empresa existe
     const existingCompany = await query(
@@ -571,7 +589,7 @@ class CompanyController {
     );
 
     if (existingCompany.rows.length === 0) {
-      throw new ApiError(404, "Empresa não encontrada");
+      throw new ApiError(404, tc(req, "companyController", "update.not_found"));
     }
 
     // Construir query de atualização dinamicamente
@@ -600,7 +618,7 @@ class CompanyController {
     });
 
     if (setClause.length === 0) {
-      throw new ApiError(400, "Nenhum campo para atualizar");
+      throw new ApiError(400, tc(req, "companyController", "validation.no_fields_to_update"));
     }
 
     setClause.push(`updated_at = NOW()`);
@@ -627,7 +645,7 @@ class CompanyController {
         : updatedCompany.settings || {};
 
     // Log de auditoria
-    auditLogger("Company updated", {
+    auditLogger(tc(req, "companyController", "audit.company_updated"), {
       superAdminId: req.user.id,
       companyId: updatedCompany.id,
       companyName: updatedCompany.name,
@@ -638,7 +656,7 @@ class CompanyController {
     return successResponse(
       res,
       updatedCompany,
-      "Empresa atualizada com sucesso"
+      tc(req, "companyController", "update.success")
     );
   });
 
@@ -656,7 +674,7 @@ class CompanyController {
     );
 
     if (existingCompany.rows.length === 0) {
-      throw new ApiError(404, "Empresa não encontrada");
+      throw new ApiError(404, tc(req, "companyController", "delete.not_found"));
     }
 
     const company = existingCompany.rows[0];
@@ -680,21 +698,21 @@ class CompanyController {
       await commitTransaction(client);
 
       // Log de auditoria
-      auditLogger("Company deleted", {
+      auditLogger(tc(req, "companyController", "audit.company_deleted"), {
         superAdminId: req.user.id,
         companyId: company.id,
         companyName: company.name,
         ip: req.ip,
       });
 
-      securityLogger("Empresa deletada pelo Super Admin", {
+      securityLogger(tc(req, "companyController", "audit.company_deleted_by_super_admin"), {
         superAdminId: req.user.id,
         companyId: company.id,
         companyName: company.name,
         ip: req.ip,
       });
 
-      return successResponse(res, null, "Empresa deletada com sucesso");
+      return successResponse(res, null, tc(req, "companyController", "delete.success"));
     } catch (error) {
       await rollbackTransaction(client);
       throw error;
@@ -710,7 +728,7 @@ class CompanyController {
     const { enabled_modules } = req.body;
 
     if (!Array.isArray(enabled_modules)) {
-      throw new ApiError(400, "enabled_modules deve ser um array");
+      throw new ApiError(400, tc(req, "companyController", "validation.modules_must_be_array"));
     }
 
     const validModules = [
@@ -729,7 +747,9 @@ class CompanyController {
     if (invalidModules.length > 0) {
       throw new ApiError(
         400,
-        `Módulos inválidos: ${invalidModules.join(", ")}`
+        tc(req, "companyController", "validation.invalid_modules", {
+          modules: invalidModules.join(", ")
+        })
       );
     }
 
@@ -739,7 +759,7 @@ class CompanyController {
     );
 
     if (result.rows.length === 0) {
-      throw new ApiError(404, "Empresa não encontrada");
+      throw new ApiError(404, tc(req, "companyController", "update.not_found"));
     }
 
     const updatedCompany = result.rows[0];
@@ -748,7 +768,7 @@ class CompanyController {
         ? JSON.parse(updatedCompany.enabled_modules)
         : updatedCompany.enabled_modules;
 
-    auditLogger("Company modules updated", {
+    auditLogger(tc(req, "companyController", "audit.modules_updated"), {
       superAdminId: req.user.id,
       companyId: updatedCompany.id,
       companyName: updatedCompany.name,
@@ -759,7 +779,7 @@ class CompanyController {
     return successResponse(
       res,
       updatedCompany,
-      "Módulos atualizados com sucesso"
+      tc(req, "companyController", "modules.update_success")
     );
   });
 
@@ -772,7 +792,7 @@ class CompanyController {
     const { status } = req.body;
 
     if (!["active", "inactive", "trial"].includes(status)) {
-      throw new ApiError(400, "Status deve ser: active, inactive ou trial");
+      throw new ApiError(400, tc(req, "companyController", "validation.invalid_status"));
     }
 
     const result = await query(
@@ -781,12 +801,12 @@ class CompanyController {
     );
 
     if (result.rows.length === 0) {
-      throw new ApiError(404, "Empresa não encontrada");
+      throw new ApiError(404, tc(req, "companyController", "update.not_found"));
     }
 
     const updatedCompany = result.rows[0];
 
-    auditLogger("Company status updated", {
+    auditLogger(tc(req, "companyController", "audit.status_updated"), {
       superAdminId: req.user.id,
       companyId: updatedCompany.id,
       companyName: updatedCompany.name,
@@ -797,7 +817,7 @@ class CompanyController {
     return successResponse(
       res,
       updatedCompany,
-      "Status atualizado com sucesso"
+      tc(req, "companyController", "status.update_success")
     );
   });
 
@@ -815,7 +835,7 @@ class CompanyController {
     );
 
     if (companyCheck.rows.length === 0) {
-      throw new ApiError(404, "Empresa não encontrada");
+      throw new ApiError(404, tc(req, "companyController", "show.not_found"));
     }
 
     const analyticsQuery = `

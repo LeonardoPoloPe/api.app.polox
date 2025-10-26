@@ -1,0 +1,55 @@
+{
+  "validation": {
+    "name_min_length": "Nome da empresa deve ter pelo menos 2 caracteres",
+    "name_required": "Nome da empresa é obrigatório",
+    "domain_pattern": "Domínio deve conter apenas letras, números e hífens",
+    "domain_required": "Domínio é obrigatório",
+    "admin_name_required": "Nome do administrador é obrigatório",
+    "admin_email_valid": "Email do administrador deve ser válido",
+    "admin_email_required": "Email do administrador é obrigatório",
+    "modules_must_be_array": "enabled_modules deve ser um array",
+    "invalid_modules": "Módulos inválidos: {{modules}}",
+    "invalid_status": "Status deve ser: active, inactive ou trial",
+    "no_fields_to_update": "Nenhum campo para atualizar"
+  },
+  "create": {
+    "success": "Empresa criada com sucesso",
+    "domain_in_use": "Domínio '{{domain}}' já está em uso pela empresa: {{companyName}}",
+    "email_in_use": "Email '{{email}}' já está em uso por outro usuário"
+  },
+  "update": {
+    "success": "Empresa atualizada com sucesso",
+    "not_found": "Empresa não encontrada"
+  },
+  "delete": {
+    "success": "Empresa deletada com sucesso",
+    "not_found": "Empresa não encontrada"
+  },
+  "show": {
+    "not_found": "Empresa não encontrada"
+  },
+  "modules": {
+    "update_success": "Módulos atualizados com sucesso"
+  },
+  "status": {
+    "update_success": "Status atualizado com sucesso"
+  },
+  "security": {
+    "super_admin_required": "Acesso de Super Admin necessário",
+    "unauthorized_access_attempt": "Tentativa de acesso não autorizado ao CompanyController"
+  },
+  "audit": {
+    "company_created": "Empresa criada",
+    "company_updated": "Empresa atualizada",
+    "company_deleted": "Empresa deletada",
+    "modules_updated": "Módulos da empresa atualizados",
+    "status_updated": "Status da empresa atualizado",
+    "company_deleted_by_super_admin": "Empresa deletada pelo Super Admin"
+  },
+  "info": {
+    "companies_listed": "Empresas listadas pelo Super Admin",
+    "company_details_viewed": "Detalhes da empresa visualizados",
+    "global_stats_consulted": "Estatísticas globais consultadas",
+    "company_created_success": "Nova empresa criada com sucesso"
+  }
+}

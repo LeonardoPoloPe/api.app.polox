@@ -9,11 +9,12 @@
 
 ### ✅ **Controllers com Traduções Implementadas**
 
-| Controller | Status | Idiomas | Endpoints | Última Atualização |
-|---|---|---|---|---|
-| **AuthController** | ✅ 100% | PT, EN, ES | 3 | 25/10/2025 |
-| **ClientController** | ✅ 100% | PT, EN, ES | 9 | 25/10/2025 |
-| **UserController** | ⚠️ Parcial | PT, EN, ES | - | - |
+| Controller | Status | Idiomas | Endpoints | Chaves | Última Atualização |
+|---|---|---|---|---|---|
+| **AuthController** | ✅ 100% | PT, EN, ES | 3 | 12 | 25/10/2025 |
+| **ClientController** | ✅ 100% | PT, EN, ES | 9 | 18 | 25/10/2025 |
+| **CompanyController** | ✅ 100% | PT, EN, ES | 9 | 27 | 25/10/2025 |
+| **UserController** | ⚠️ Parcial | PT, EN, ES | - | - | - |
 
 ---
 
@@ -78,6 +79,27 @@ src/
   - ✅ Logs de auditoria
   - ✅ Mensagens de gamificação
   - ✅ Console warnings
+
+### **CompanyController**
+- **Chaves de Tradução:** 27
+- **Endpoints Traduzidos:** 9
+  - Listar empresas
+  - Criar empresa
+  - Detalhes da empresa
+  - Estatísticas globais
+  - Atualizar empresa
+  - Deletar empresa
+  - Gerenciar módulos
+  - Alterar status
+  - Analytics da empresa
+- **Funcionalidades:**
+  - ✅ Validações traduzidas
+  - ✅ Mensagens de sucesso
+  - ✅ Mensagens de erro
+  - ✅ Logs de auditoria
+  - ✅ Logs de segurança
+  - ✅ Middleware de autorização
+  - ✅ Interpolação de variáveis
 
 ---
 
@@ -282,11 +304,17 @@ Para cada novo controller, seguir este checklist:
 **Meta:** Traduzir 100% dos controllers da API
 
 **Progresso Atual:**
-- ✅ 2 controllers completos (AuthController, ClientController)
+- ✅ 3 controllers completos (AuthController, ClientController, CompanyController)
 - ⚠️ 1 controller parcial (UserController)
-- ⏳ ~15 controllers pendentes
+- ⏳ ~12 controllers pendentes
 
-**Estimativa:** ~1 hora por controller (análise + tradução + testes)
+**Total de Traduções:**
+- AuthController: 12 chaves × 3 idiomas = 36 traduções
+- ClientController: 18 chaves × 3 idiomas = 54 traduções
+- CompanyController: 27 chaves × 3 idiomas = 81 traduções
+- **Total Implementado: 171 traduções**
+
+**Estimativa:** ~1-2 horas por controller (análise + tradução + testes)
 
 ---
 

@@ -1,0 +1,55 @@
+{
+  "validation": {
+    "name_min_length": "El nombre de la empresa debe tener al menos 2 caracteres",
+    "name_required": "El nombre de la empresa es obligatorio",
+    "domain_pattern": "El dominio debe contener solo letras, números y guiones",
+    "domain_required": "El dominio es obligatorio",
+    "admin_name_required": "El nombre del administrador es obligatorio",
+    "admin_email_valid": "El email del administrador debe ser válido",
+    "admin_email_required": "El email del administrador es obligatorio",
+    "modules_must_be_array": "enabled_modules debe ser un array",
+    "invalid_modules": "Módulos inválidos: {{modules}}",
+    "invalid_status": "El estado debe ser: active, inactive o trial",
+    "no_fields_to_update": "No hay campos para actualizar"
+  },
+  "create": {
+    "success": "Empresa creada con éxito",
+    "domain_in_use": "El dominio '{{domain}}' ya está en uso por la empresa: {{companyName}}",
+    "email_in_use": "El email '{{email}}' ya está en uso por otro usuario"
+  },
+  "update": {
+    "success": "Empresa actualizada con éxito",
+    "not_found": "Empresa no encontrada"
+  },
+  "delete": {
+    "success": "Empresa eliminada con éxito",
+    "not_found": "Empresa no encontrada"
+  },
+  "show": {
+    "not_found": "Empresa no encontrada"
+  },
+  "modules": {
+    "update_success": "Módulos actualizados con éxito"
+  },
+  "status": {
+    "update_success": "Estado actualizado con éxito"
+  },
+  "security": {
+    "super_admin_required": "Se requiere acceso de Super Admin",
+    "unauthorized_access_attempt": "Intento de acceso no autorizado al CompanyController"
+  },
+  "audit": {
+    "company_created": "Empresa creada",
+    "company_updated": "Empresa actualizada",
+    "company_deleted": "Empresa eliminada",
+    "modules_updated": "Módulos de la empresa actualizados",
+    "status_updated": "Estado de la empresa actualizado",
+    "company_deleted_by_super_admin": "Empresa eliminada por Super Admin"
+  },
+  "info": {
+    "companies_listed": "Empresas listadas por Super Admin",
+    "company_details_viewed": "Detalles de la empresa visualizados",
+    "global_stats_consulted": "Estadísticas globales consultadas",
+    "company_created_success": "Nueva empresa creada con éxito"
+  }
+}

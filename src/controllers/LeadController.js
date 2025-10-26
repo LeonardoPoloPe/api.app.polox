@@ -15,9 +15,36 @@ const LeadModel = require("../models/Lead");
 const { logger, auditLogger } = require("../utils/logger");
 const { ApiError, asyncHandler } = require("../utils/errors");
 const { successResponse, paginatedResponse } = require("../utils/response");
+const { tc } = require("../config/i18n");
 const Joi = require("joi");
 
 class LeadController {
+  /**
+   * 🌐 Valida dados com mensagens traduzidas
+   */
+  static validateWithTranslation(req, schema, data) {
+    const { error, value } = schema.validate(data);
+    if (error) {
+      const field = error.details[0].path[0];
+      const type = error.details[0].type;
+      
+      const errorKeyMap = {
+        'string.min': 'validation.name_min_length',
+        'any.required': field === 'name' ? 'validation.name_required' :
+                       field === 'content' ? 'validation.content_required' :
+                       field === 'tags' ? 'validation.tags_required' :
+                       field === 'interests' ? 'validation.interests_required' :
+                       field === 'owner_id' ? 'validation.owner_id_required' :
+                       'validation.field_required',
+        'string.email': 'validation.email_valid',
+      };
+
+      const messageKey = errorKeyMap[type] || 'validation.invalid_field';
+      throw new ApiError(400, tc(req, "leadController", messageKey));
+    }
+    return value;
+  }
+
   /**
    * 📝 VALIDAÇÕES JOI
    */
@@ -148,7 +175,7 @@ class LeadController {
 
     const result = await LeadModel.list(options, req.user.companyId);
 
-    auditLogger("Leads listados", {
+    auditLogger(tc(req, "leadController", "audit.leads_listed"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       filters: options,
@@ -158,7 +185,7 @@ class LeadController {
       res,
       result.leads,
       result.pagination,
-      "Leads listados com sucesso",
+      tc(req, "leadController", "list.success"),
       {
         stats: result.stats,
       }
@@ -170,8 +197,11 @@ class LeadController {
    * POST /api/leads
    */
   static create = asyncHandler(async (req, res) => {
-    const { error, value } = LeadController.createLeadSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = LeadController.validateWithTranslation(
+      req,
+      LeadController.createLeadSchema,
+      req.body
+    );
 
     const { note, description, tags, interests, ...leadData } = value;
 
@@ -226,13 +256,13 @@ class LeadController {
     // Buscar lead completo com relacionamentos
     const fullLead = await LeadModel.findById(lead.id, req.user.companyId);
 
-    auditLogger("Lead criado", {
+    auditLogger(tc(req, "leadController", "audit.lead_created"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId: lead.id,
     });
 
-    return successResponse(res, fullLead, "Lead criado com sucesso", 201);
+    return successResponse(res, fullLead, tc(req, "leadController", "create.success"), 201);
   });
 
   /**
@@ -245,7 +275,7 @@ class LeadController {
     const lead = await LeadModel.findById(leadId, req.user.companyId);
 
     if (!lead) {
-      throw new ApiError(404, "Lead não encontrado");
+      throw new ApiError(404, tc(req, "leadController", "show.not_found"));
     }
 
     return successResponse(res, lead);
@@ -257,9 +287,11 @@ class LeadController {
    */
   static update = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    const { error, value } = LeadController.updateLeadSchema.validate(req.body);
-
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = LeadController.validateWithTranslation(
+      req,
+      LeadController.updateLeadSchema,
+      req.body
+    );
 
     const updatedLead = await LeadModel.update(
       leadId,
@@ -268,17 +300,17 @@ class LeadController {
     );
 
     if (!updatedLead) {
-      throw new ApiError(404, "Lead não encontrado");
+      throw new ApiError(404, tc(req, "leadController", "update.not_found"));
     }
 
-    auditLogger("Lead atualizado", {
+    auditLogger(tc(req, "leadController", "audit.lead_updated"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
       changes: value,
     });
 
-    return successResponse(res, updatedLead, "Lead atualizado com sucesso");
+    return successResponse(res, updatedLead, tc(req, "leadController", "update.success"));
   });
 
   /**
@@ -291,16 +323,16 @@ class LeadController {
     const deleted = await LeadModel.softDelete(leadId, req.user.companyId);
 
     if (!deleted) {
-      throw new ApiError(404, "Lead não encontrado");
+      throw new ApiError(404, tc(req, "leadController", "delete.not_found"));
     }
 
-    auditLogger("Lead deletado", {
+    auditLogger(tc(req, "leadController", "audit.lead_deleted"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
     });
 
-    return successResponse(res, null, "Lead deletado com sucesso");
+    return successResponse(res, null, tc(req, "leadController", "delete.success"));
   });
 
   /**
@@ -309,9 +341,11 @@ class LeadController {
    */
   static assignTo = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    const { error, value } = LeadController.assignLeadSchema.validate(req.body);
-
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = LeadController.validateWithTranslation(
+      req,
+      LeadController.assignLeadSchema,
+      req.body
+    );
 
     const updatedLead = await LeadModel.update(
       leadId,
@@ -320,17 +354,17 @@ class LeadController {
     );
 
     if (!updatedLead) {
-      throw new ApiError(404, "Lead não encontrado");
+      throw new ApiError(404, tc(req, "leadController", "assign.not_found"));
     }
 
-    auditLogger("Lead atribuído", {
+    auditLogger(tc(req, "leadController", "audit.lead_assigned"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
       assignedTo: value.owner_id,
     });
 
-    return successResponse(res, updatedLead, "Lead atribuído com sucesso");
+    return successResponse(res, updatedLead, tc(req, "leadController", "assign.success"));
   });
 
   /**
@@ -354,11 +388,11 @@ class LeadController {
     const lead = await LeadModel.findById(leadId, req.user.companyId);
 
     if (!lead) {
-      throw new ApiError(404, "Lead não encontrado");
+      throw new ApiError(404, tc(req, "leadController", "convert.not_found"));
     }
 
     if (lead.converted_to_client_id) {
-      throw new ApiError(400, "Lead já foi convertido em cliente");
+      throw new ApiError(400, tc(req, "leadController", "convert.already_converted"));
     }
 
     // Preparar dados do cliente
@@ -380,7 +414,7 @@ class LeadController {
       req.user.companyId
     );
 
-    auditLogger("Lead convertido para cliente", {
+    auditLogger(tc(req, "leadController", "audit.lead_converted"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
@@ -390,7 +424,7 @@ class LeadController {
     return successResponse(
       res,
       result,
-      "Lead convertido em cliente com sucesso"
+      tc(req, "leadController", "convert.success")
     );
   });
 
@@ -414,9 +448,11 @@ class LeadController {
    */
   static addNote = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    const { error, value } = LeadController.addNoteSchema.validate(req.body);
-
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = LeadController.validateWithTranslation(
+      req,
+      LeadController.addNoteSchema,
+      req.body
+    );
 
     const note = await LeadModel.addNote(
       leadId,
@@ -426,14 +462,14 @@ class LeadController {
       req.user.companyId
     );
 
-    auditLogger("Nota adicionada ao lead", {
+    auditLogger(tc(req, "leadController", "audit.note_added"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
       noteId: note.id,
     });
 
-    return successResponse(res, note, "Nota adicionada com sucesso", 201);
+    return successResponse(res, note, tc(req, "leadController", "notes.add_success"), 201);
   });
 
   /**
@@ -441,22 +477,24 @@ class LeadController {
    */
   static updateNote = asyncHandler(async (req, res) => {
     const noteId = parseInt(req.params.noteId);
-    const { error, value } = LeadController.updateNoteSchema.validate(req.body);
-
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = LeadController.validateWithTranslation(
+      req,
+      LeadController.updateNoteSchema,
+      req.body
+    );
 
     const note = await LeadModel.updateNote(noteId, { content: value.content });
 
     if (!note) {
-      throw new ApiError(404, "Nota não encontrada");
+      throw new ApiError(404, tc(req, "leadController", "notes.not_found"));
     }
 
-    auditLogger("Nota atualizada", {
+    auditLogger(tc(req, "leadController", "audit.note_updated"), {
       userId: req.user.id,
       noteId,
     });
 
-    return successResponse(res, note, "Nota atualizada com sucesso");
+    return successResponse(res, note, tc(req, "leadController", "notes.update_success"));
   });
 
   /**
@@ -468,15 +506,15 @@ class LeadController {
     const deleted = await LeadModel.deleteNote(noteId);
 
     if (!deleted) {
-      throw new ApiError(404, "Nota não encontrada");
+      throw new ApiError(404, tc(req, "leadController", "notes.not_found"));
     }
 
-    auditLogger("Nota deletada", {
+    auditLogger(tc(req, "leadController", "audit.note_deleted"), {
       userId: req.user.id,
       noteId,
     });
 
-    return successResponse(res, null, "Nota deletada com sucesso");
+    return successResponse(res, null, tc(req, "leadController", "notes.delete_success"));
   });
 
   // ==========================================
@@ -499,9 +537,11 @@ class LeadController {
    */
   static addTags = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    const { error, value } = LeadController.addTagsSchema.validate(req.body);
-
-    if (error) throw new ApiError(400, error.details[0].message);
+    const value = LeadController.validateWithTranslation(
+      req,
+      LeadController.addTagsSchema,
+      req.body
+    );
 
     // Buscar tags atuais
     const currentTags = await LeadModel.getTags(leadId, req.user.companyId);
@@ -517,14 +557,14 @@ class LeadController {
       req.user.companyId
     );
 
-    auditLogger("Tags adicionadas ao lead", {
+    auditLogger(tc(req, "leadController", "audit.tags_added"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
       tags: value.tags,
     });
 
-    return successResponse(res, tags, "Tags adicionadas com sucesso");
+    return successResponse(res, tags, tc(req, "leadController", "tags.add_success"));
   });
 
   /**
@@ -541,17 +581,17 @@ class LeadController {
     );
 
     if (!removed) {
-      throw new ApiError(404, "Tag não encontrada ou não associada ao lead");
+      throw new ApiError(404, tc(req, "leadController", "tags.not_found"));
     }
 
-    auditLogger("Tag removida do lead", {
+    auditLogger(tc(req, "leadController", "audit.tag_removed"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
       tagId,
     });
 
-    return successResponse(res, null, "Tag removida com sucesso");
+    return successResponse(res, null, tc(req, "leadController", "tags.remove_success"));
   });
 
   // ==========================================
@@ -574,11 +614,11 @@ class LeadController {
    */
   static addInterests = asyncHandler(async (req, res) => {
     const leadId = parseInt(req.params.id);
-    const { error, value } = LeadController.addInterestsSchema.validate(
+    const value = LeadController.validateWithTranslation(
+      req,
+      LeadController.addInterestsSchema,
       req.body
     );
-
-    if (error) throw new ApiError(400, error.details[0].message);
 
     const addedInterests = [];
     for (const interest of value.interests) {
@@ -591,7 +631,7 @@ class LeadController {
       addedInterests.push(added);
     }
 
-    auditLogger("Interests adicionados ao lead", {
+    auditLogger(tc(req, "leadController", "audit.interests_added"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
@@ -601,7 +641,7 @@ class LeadController {
     return successResponse(
       res,
       addedInterests,
-      "Interests adicionados com sucesso"
+      tc(req, "leadController", "interests.add_success")
     );
   });
 
@@ -619,20 +659,17 @@ class LeadController {
     );
 
     if (!removed) {
-      throw new ApiError(
-        404,
-        "Interest não encontrado ou não associado ao lead"
-      );
+      throw new ApiError(404, tc(req, "leadController", "interests.not_found"));
     }
 
-    auditLogger("Interest removido do lead", {
+    auditLogger(tc(req, "leadController", "audit.interest_removed"), {
       userId: req.user.id,
       companyId: req.user.companyId,
       leadId,
       interestId,
     });
 
-    return successResponse(res, null, "Interest removido com sucesso");
+    return successResponse(res, null, tc(req, "leadController", "interests.remove_success"));
   });
 }
 

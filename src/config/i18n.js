@@ -72,6 +72,8 @@ i18next
       "authController",
       "userController",
       "clientController",
+      "companyController",
+      "leadController",
       "leadsController",
       "salesController",
       "appConfig",
