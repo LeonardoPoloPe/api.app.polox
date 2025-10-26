@@ -1,0 +1,94 @@
+{
+  "validation": {
+    "invalid_data": "Datos de proveedor inválidos",
+    "name_required": "El nombre del proveedor es obligatorio",
+    "contact_required": "La información de contacto es obligatoria",
+    "supplier_not_found": "Proveedor no encontrado",
+    "invalid_rating": "Calificación inválida (1-5)",
+    "order_items_required": "Los artículos del pedido son obligatorios",
+    "invalid_order_data": "Datos del pedido inválidos",
+    "supplier_blocked": "El proveedor está bloqueado",
+    "email_exists": "Email ya registrado",
+    "cnpj_exists": "CNPJ ya registrado",
+    "not_found": "Proveedor no encontrado",
+    "email_in_use": "Email ya está en uso",
+    "cnpj_in_use": "CNPJ ya está en uso",
+    "no_fields_to_update": "No hay campos para actualizar",
+    "has_active_orders": "El proveedor tiene pedidos activos",
+    "items_required": "Los artículos son obligatorios",
+    "supplier_inactive": "Proveedor inactivo",
+    "item_fields_required": "Los campos del artículo son obligatorios",
+    "credit_limit_exceeded": "Límite de crédito excedido",
+    "invalid_report_type": "Tipo de informe inválido",
+    "suppliers_list_required": "La lista de proveedores es obligatoria"
+  },
+  "list": {
+    "success": "Proveedores listados con éxito"
+  },
+  "create": {
+    "success": "Proveedor creado con éxito",
+    "contact_created": "Contacto principal creado"
+  },
+  "show": {
+    "success": "Proveedor obtenido con éxito",
+    "not_found": "Proveedor no encontrado"
+  },
+  "update": {
+    "success": "Proveedor actualizado con éxito",
+    "not_found": "Proveedor no encontrado"
+  },
+  "delete": {
+    "success": "Proveedor eliminado con éxito",
+    "not_found": "Proveedor no encontrado",
+    "has_orders": "No se puede eliminar proveedor con pedidos activos"
+  },
+  "products": {
+    "list_success": "Productos del proveedor listados con éxito",
+    "supplier_not_found": "Proveedor no encontrado"
+  },
+  "orders": {
+    "create_success": "Orden de compra creada con éxito",
+    "list_success": "Pedidos listados con éxito",
+    "items_required": "El pedido debe contener al menos un artículo",
+    "supplier_not_found": "Proveedor no encontrado",
+    "order_number_generated": "Número de pedido: {{order_number}}"
+  },
+  "rating": {
+    "success": "Calificación registrada con éxito",
+    "updated": "Calificación promedio actualizada a {{rating}}",
+    "invalid_range": "La calificación debe estar entre 1 y 5"
+  },
+  "reports": {
+    "performance_success": "Informe de rendimiento generado con éxito",
+    "spending_success": "Informe de gastos generado con éxito"
+  },
+  "import": {
+    "success": "{{total}} proveedores importados con éxito",
+    "partial_success": "{{success}} de {{total}} proveedores importados",
+    "failed": "Fallo al importar proveedores"
+  },
+  "audit": {
+    "suppliers_listed": "Proveedores listados",
+    "supplier_created": "Proveedor '{{name}}' creado",
+    "supplier_viewed": "Proveedor '{{name}}' visualizado",
+    "supplier_updated": "Proveedor '{{name}}' actualizado",
+    "supplier_deleted": "Proveedor '{{name}}' eliminado",
+    "purchase_order_created": "Pedido de compra {{orderNumber}} creado para proveedor '{{supplier}}'",
+    "supplier_rated": "Proveedor '{{name}}' calificado con nota {{rating}}",
+    "order_created": "Pedido {{order_number}} creado para proveedor '{{supplier}}'",
+    "rating_added": "Calificación {{rating}} asignada al proveedor '{{supplier}}'",
+    "products_viewed": "Productos del proveedor '{{supplier}}' visualizados",
+    "orders_viewed": "Pedidos del proveedor '{{supplier}}' visualizados",
+    "report_generated": "Informe de proveedores generado",
+    "suppliers_imported": "{{success}} de {{total}} proveedores importados"
+  },
+  "createOrder": {
+    "success": "Pedido creado con éxito"
+  },
+  "rateSupplier": {
+    "success": "Calificación registrada con éxito"
+  },
+  "importSuppliers": {
+    "success": "Proveedores importados con éxito"
+  }
+}

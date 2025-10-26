@@ -1,0 +1,83 @@
+{
+  "validation": {
+    "invalid_data": "Datos de gamificación inválidos",
+    "user_not_found": "Usuario no encontrado",
+    "invalid_xp_amount": "Cantidad de XP inválida (0-10000)",
+    "invalid_coin_amount": "Cantidad de monedas inválida (0-10000)",
+    "reason_required": "El motivo es obligatorio",
+    "no_points_awarded": "No se otorgaron puntos (XP y Monedas = 0)",
+    "mission_not_found": "Misión no encontrada",
+    "invalid_progress": "Progreso inválido (1-100)",
+    "mission_already_completed": "Misión ya completada en este ciclo",
+    "achievement_not_found": "Logro no encontrado",
+    "reward_not_found": "Recompensa no encontrada",
+    "insufficient_coins": "Monedas insuficientes para comprar esta recompensa",
+    "reward_out_of_stock": "Recompensa agotada",
+    "permission_denied": "Solo los administradores pueden otorgar puntos a otros usuarios",
+    "profile_not_found": "Perfil de gamificación no encontrado",
+    "admin_only": "Solo los administradores pueden otorgar puntos a otros usuarios",
+    "min_points_required": "Debe otorgarse al menos 1 XP o 1 Moneda",
+    "purchase_limit_reached": "Límite de compras de esta recompensa alcanzado",
+    "insufficient_balance": "Saldo insuficiente. Requerido: {{required}} monedas, actual: {{current}} monedas"
+  },
+  "profile": {
+    "get_success": "Perfil de gamificación obtenido con éxito",
+    "not_found": "Perfil de gamificación no encontrado",
+    "level_updated": "Nivel actualizado automáticamente"
+  },
+  "award": {
+    "success": "Puntos otorgados con éxito",
+    "xp_awarded": "{{xp_amount}} XP otorgados",
+    "coins_awarded": "{{coin_amount}} monedas otorgadas",
+    "level_up": "¡Felicitaciones! ¡Subiste al nivel {{level}}!",
+    "level_up_reward": "Recompensa de nivel: {{xp}} XP y {{coins}} monedas"
+  },
+  "missions": {
+    "list_success": "Misiones listadas con éxito",
+    "complete_success": "Misión completada con éxito",
+    "progress_updated": "Progreso de misión actualizado: {{current}}/{{target}}",
+    "mission_completed": "¡Misión '{{name}}' completada!",
+    "reward_earned": "Recompensa recibida: {{xp}} XP y {{coins}} monedas",
+    "cycle_reset": "Progreso de misión {{type}} reiniciado para nuevo ciclo"
+  },
+  "completeMission": {
+    "completed": "¡Misión completada!",
+    "progress_updated": "Progreso actualizado"
+  },
+  "achievements": {
+    "list_success": "Logros listados con éxito",
+    "unlocked_success": "Logros desbloqueados obtenidos con éxito",
+    "unlocked": "¡Logro desbloqueado: {{name}}!",
+    "reward_earned": "Recompensa: {{xp}} XP y {{coins}} monedas"
+  },
+  "leaderboard": {
+    "get_success": "Clasificación obtenida con éxito",
+    "position": "Estás en el puesto {{rank}} de {{total}} jugadores"
+  },
+  "history": {
+    "get_success": "Historial de puntos obtenido con éxito"
+  },
+  "rewards": {
+    "list_success": "Recompensas listadas con éxito",
+    "buy_success": "Recompensa comprada con éxito",
+    "purchased": "Compraste: {{name}}",
+    "coins_deducted": "{{coins}} monedas deducidas"
+  },
+  "audit": {
+    "profile_viewed": "Perfil de gamificación visualizado",
+    "points_awarded": "Puntos otorgados: {{xp}} XP, {{coins}} monedas a {{user}}",
+    "level_up_achieved": "Nivel {{level}} alcanzado por {{user}}",
+    "mission_completed": "Misión '{{mission}}' completada por {{user}}",
+    "achievement_unlocked": "Logro '{{achievement}}' desbloqueado por {{user}}",
+    "reward_purchased": "Recompensa '{{reward}}' comprada por {{user}}",
+    "leaderboard_viewed": "Clasificación visualizada",
+    "history_viewed": "Historial de puntos visualizado",
+    "missions_viewed": "Misiones visualizadas",
+    "achievements_viewed": "Logros visualizados",
+    "rewards_viewed": "Recompensas visualizadas",
+    "points_awarded_log": "Puntos otorgados: {{xp}} XP, {{coins}} monedas a {{user}}",
+    "mission_progress_log": "Progreso de misión '{{mission}}' actualizado",
+    "reward_purchased_log": "Recompensa '{{reward}}' comprada",
+    "mission_progress": "Progreso de misión {{missionName}}: {{progress}}/{{target}}"
+  }
+}

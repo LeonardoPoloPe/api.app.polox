@@ -1,0 +1,72 @@
+{
+  "validation": {
+    "invalid_data": "Dados de evento inválidos",
+    "title_required": "Título do evento é obrigatório",
+    "title_min_length": "Título deve ter pelo menos 2 caracteres",
+    "start_date_required": "Data de início é obrigatória",
+    "end_date_required": "Data de fim é obrigatória",
+    "end_date_invalid": "Data de fim deve ser posterior à data de início",
+    "event_not_found": "Evento não encontrado",
+    "permission_denied": "Você não tem permissão para acessar este evento",
+    "conflict_detected": "Conflito de horário detectado com outros eventos",
+    "time_conflicts": "Conflito de horário detectado",
+    "no_permission_view": "Sem permissão para visualizar este evento",
+    "only_creator_edit": "Apenas o criador pode editar este evento",
+    "no_fields_to_update": "Nenhum campo para atualizar",
+    "only_creator_delete": "Apenas o criador pode excluir este evento",
+    "dates_required": "Datas inicial e final são obrigatórias",
+    "invalid_status": "Status inválido"
+  },
+  "list": {
+    "success": "Eventos listados com sucesso"
+  },
+  "create": {
+    "success": "Evento criado com sucesso",
+    "recurring_created": "{{count}} eventos recorrentes criados com sucesso"
+  },
+  "show": {
+    "success": "Evento obtido com sucesso",
+    "not_found": "Evento não encontrado"
+  },
+  "update": {
+    "success": "Evento atualizado com sucesso",
+    "not_found": "Evento não encontrado",
+    "permission_denied": "Apenas o criador do evento pode editá-lo",
+    "conflict_detected": "Conflito de horário com outros eventos"
+  },
+  "delete": {
+    "success": "Evento deletado com sucesso",
+    "not_found": "Evento não encontrado",
+    "permission_denied": "Apenas o criador do evento pode deletá-lo"
+  },
+  "calendar": {
+    "view_success": "Visualização de calendário obtida com sucesso"
+  },
+  "status": {
+    "update_success": "Status do evento atualizado para {{status}}",
+    "invalid_transition": "Transição de status inválida"
+  },
+  "attendees": {
+    "add_success": "Participante adicionado com sucesso",
+    "remove_success": "Participante removido com sucesso",
+    "already_added": "Participante já foi adicionado a este evento"
+  },
+  "conflicts": {
+    "found": "{{count}} conflito(s) de horário encontrado(s)",
+    "user_busy": "Usuário {{user}} já possui evento neste horário"
+  },
+  "audit": {
+    "events_listed": "Eventos listados",
+    "event_created": "Evento '{{title}}' criado",
+    "event_viewed": "Evento '{{title}}' visualizado",
+    "event_updated": "Evento '{{title}}' atualizado",
+    "event_deleted": "Evento '{{title}}' deletado",
+    "status_changed": "Status do evento '{{title}}' alterado para {{status}}",
+    "attendee_added": "Participante adicionado ao evento '{{title}}'",
+    "calendar_viewed": "Calendário visualizado",
+    "conflicts_checked": "Conflitos de horário verificados"
+  },
+  "updateStatus": {
+    "success": "Status do evento atualizado com sucesso"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "validation": {
+    "invalid_data": "Invalid notification data",
+    "title_required": "Notification title is required",
+    "message_required": "Message is required",
+    "recipients_required": "Recipients are required",
+    "notification_not_found": "Notification not found",
+    "invalid_type": "Invalid notification type",
+    "invalid_priority": "Invalid priority",
+    "no_recipients": "No recipients specified",
+    "not_found": "Notification not found",
+    "cannot_delete_protected": "Cannot delete protected notifications",
+    "admin_only": "Only administrators can perform this action",
+    "stats_error": "Error getting notification statistics"
+  },
+  "list": {
+    "success": "Notifications listed successfully"
+  },
+  "create": {
+    "success": "Notification created successfully",
+    "multiple_created": "{{count}} notifications created successfully",
+    "no_recipients": "No recipients found"
+  },
+  "read": {
+    "success": "Notification marked as read",
+    "already_read": "Notification already read",
+    "all_read": "All notifications marked as read",
+    "count_read": "{{count}} notifications marked as read"
+  },
+  "delete": {
+    "success": "Notification deleted successfully",
+    "not_found": "Notification not found"
+  },
+  "counters": {
+    "success": "Counters retrieved successfully"
+  },
+  "cleanup": {
+    "success": "Expired notifications cleaned successfully",
+    "count_deleted": "{{count}} expired notifications deleted",
+    "permission_denied": "Only administrators can perform cleanup"
+  },
+  "stats": {
+    "success": "Notification statistics retrieved successfully"
+  },
+  "audit": {
+    "notifications_listed": "Notifications listed",
+    "notification_created": "Notification '{{title}}' created",
+    "multiple_notifications_created": "{{count}} notifications created",
+    "notification_read": "Notification '{{title}}' marked as read",
+    "all_notifications_read": "All notifications marked as read",
+    "notification_deleted": "Notification '{{title}}' deleted",
+    "counters_viewed": "Notification counters viewed",
+    "expired_cleaned": "{{count}} expired notifications cleaned",
+    "stats_viewed": "Notification statistics viewed",
+    "notifications_created": "Notifications created: {{count}}",
+    "bulk_read": "Bulk notifications marked as read",
+    "cleanup_expired": "Expired notifications cleanup performed"
+  },
+  "markAsRead": {
+    "already_read": "Notification already read",
+    "success": "Notification marked as read"
+  },
+  "markAllAsRead": {
+    "none_found": "No unread notifications found",
+    "success": "{{count}} notifications marked as read"
+  },
+  "cleanupExpired": {
+    "none_found": "No expired notifications found",
+    "success": "{{count}} expired notifications removed"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "validation": {
+    "client_required": "Cliente é obrigatório",
+    "items_min": "Pelo menos um item é obrigatório",
+    "client_not_found": "Cliente não encontrado",
+    "invalid_amount": "Valor total não pode ser negativo",
+    "sale_not_found": "Venda não encontrada",
+    "cannot_update_cancelled": "Não é possível atualizar venda cancelada",
+    "sale_already_cancelled": "Venda já foi cancelada",
+    "invalid_data": "Dados inválidos fornecidos"
+  },
+  "list": {
+    "success": "Vendas retornadas com sucesso"
+  },
+  "create": {
+    "success": "Venda criada com sucesso"
+  },
+  "show": {
+    "not_found": "Venda não encontrada",
+    "success": "Venda retornada com sucesso"
+  },
+  "update": {
+    "not_found": "Venda não encontrada",
+    "success": "Venda atualizada com sucesso",
+    "cannot_update_completed": "Não é possível atualizar venda concluída"
+  },
+  "delete": {
+    "not_found": "Venda não encontrada",
+    "success": "Venda cancelada com sucesso",
+    "already_cancelled": "Venda já foi cancelada"
+  },
+  "achievement": {
+    "unlocked": "Conquista desbloqueada: {{achievement}}",
+    "first_sale": "Primeira Venda",
+    "sales_10": "10 Vendas Realizadas",
+    "sales_50": "50 Vendas Realizadas",
+    "sales_100": "100 Vendas Realizadas",
+    "high_value": "Venda de Alto Valor",
+    "xp_earned": "XP ganho da venda: {{clientName}} - R$ {{amount}}",
+    "coins_earned": "Moedas ganhas da venda: {{clientName}} - R$ {{amount}}",
+    "xp_reward": "Recompensa XP da conquista: {{achievementName}}",
+    "coins_reward": "Recompensa de moedas da conquista: {{achievementName}}"
+  },
+  "audit": {
+    "sales_listed": "Vendas listadas",
+    "sale_created": "Venda criada: {{clientName}} - R$ {{amount}}",
+    "sale_viewed": "Venda visualizada: ID {{saleId}}",
+    "sale_updated": "Venda atualizada: ID {{saleId}} - R$ {{amount}}",
+    "sale_cancelled": "Venda cancelada: {{clientName}} - R$ {{amount}}",
+    "stock_reduced": "Estoque reduzido",
+    "stock_restored": "Estoque restaurado",
+    "achievement_unlocked": "Conquista desbloqueada"
+  }
+}

@@ -9,6 +9,7 @@
 const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
 const { asyncHandler, ApiError } = require('../utils/errors');
 const { logger, auditLogger } = require('../utils/logger');
+const { tc } = require('../config/i18n');
 const { cache } = require('../config/cache');
 const { trackUser } = require('../config/monitoring');
 const { v4: uuidv4 } = require('uuid');
@@ -241,7 +242,7 @@ class AnalyticsController {
 
     } catch (error) {
       logger.error('Dashboard analytics error:', error);
-      throw new ApiError(500, 'Erro ao gerar dashboard');
+      throw new ApiError(500, tc(req, 'analyticsController', 'validation.dashboard_error'));
     }
   });
 
@@ -422,7 +423,7 @@ class AnalyticsController {
 
     } catch (error) {
       logger.error('Sales analytics error:', error);
-      throw new ApiError(500, 'Erro ao gerar analytics de vendas');
+      throw new ApiError(500, tc(req, 'analyticsController', 'validation.sales_error'));
     }
   });
 
@@ -615,7 +616,7 @@ class AnalyticsController {
 
     } catch (error) {
       logger.error('Customer analytics error:', error);
-      throw new ApiError(500, 'Erro ao gerar analytics de clientes');
+      throw new ApiError(500, tc(req, 'analyticsController', 'validation.customers_error'));
     }
   });
 
@@ -811,7 +812,7 @@ class AnalyticsController {
 
     } catch (error) {
       logger.error('Product analytics error:', error);
-      throw new ApiError(500, 'Erro ao gerar analytics de produtos');
+      throw new ApiError(500, tc(req, 'analyticsController', 'validation.products_error'));
     }
   });
 
@@ -936,11 +937,11 @@ class AnalyticsController {
 
       } catch (error) {
         logger.error('Financial analytics error:', error);
-        throw new ApiError(500, 'Erro ao gerar analytics financeiros');
+        throw new ApiError(500, tc(req, 'analyticsController', 'validation.financial_error'));
       }
 
     } else {
-      throw new ApiError(400, 'Tipo de análise financeira inválido');
+      throw new ApiError(400, tc(req, 'analyticsController', 'validation.invalid_analysis_type'));
     }
   });
 
@@ -1091,7 +1092,7 @@ class AnalyticsController {
 
     } catch (error) {
       logger.error('Performance analytics error:', error);
-      throw new ApiError(500, 'Erro ao gerar analytics de performance');
+      throw new ApiError(500, tc(req, 'analyticsController', 'validation.performance_error'));
     }
   });
 
@@ -1222,7 +1223,7 @@ class AnalyticsController {
 
     } catch (error) {
       logger.error('Comparisons analytics error:', error);
-      throw new ApiError(500, 'Erro ao gerar comparações');
+      throw new ApiError(500, tc(req, 'analyticsController', 'validation.comparisons_error'));
     }
   });
 
@@ -1238,13 +1239,13 @@ class AnalyticsController {
     } = req.body;
 
     if (!report_type) {
-      throw new ApiError(400, 'Tipo de relatório é obrigatório');
+      throw new ApiError(400, tc(req, 'analyticsController', 'validation.report_type_required'));
     }
 
     const validReportTypes = ['dashboard', 'sales', 'customers', 'products', 'financial', 'performance'];
     
     if (!validReportTypes.includes(report_type)) {
-      throw new ApiError(400, 'Tipo de relatório inválido');
+      throw new ApiError(400, tc(req, 'analyticsController', 'validation.invalid_report_type'));
     }
 
     try {
@@ -1288,7 +1289,10 @@ class AnalyticsController {
       ]);
 
       // Log de auditoria
-      auditLogger('Report exported', {
+      auditLogger(tc(req, 'analyticsController', 'audit.report_exported', {
+        type: report_type,
+        format: format
+      }), {
         userId: req.user.id,
         exportId: exportId,
         reportType: report_type,
@@ -1300,7 +1304,7 @@ class AnalyticsController {
 
       res.json({
         success: true,
-        message: 'Relatório exportado com sucesso',
+        message: tc(req, 'analyticsController', 'exportReport.success'),
         data: {
           export_id: exportId,
           report_type: report_type,
@@ -1313,7 +1317,7 @@ class AnalyticsController {
 
     } catch (error) {
       logger.error('Export report error:', error);
-      throw new ApiError(500, 'Erro ao exportar relatório');
+      throw new ApiError(500, tc(req, 'analyticsController', 'validation.export_error'));
     }
   });
 }

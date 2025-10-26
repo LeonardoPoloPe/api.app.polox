@@ -9,6 +9,7 @@
 const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
 const { asyncHandler, ApiError } = require('../utils/errors');
 const { logger, auditLogger } = require('../utils/logger');
+const { tc } = require('../config/i18n');
 const { cache } = require('../config/cache');
 const { trackUser } = require('../config/monitoring');
 const { 
@@ -158,7 +159,7 @@ class NotificationController {
     // Validar dados
     const validation = validateNotificationData(notificationData);
     if (!validation.isValid) {
-      throw new ApiError(400, 'Dados inválidos', validation.errors);
+      throw new ApiError(400, tc(req, 'notificationController', 'validation.invalid_data'), validation.errors);
     }
 
     const transaction = await beginTransaction();
@@ -190,7 +191,7 @@ class NotificationController {
       }
 
       if (recipients.length === 0) {
-        throw new ApiError(400, 'Nenhum destinatário válido encontrado');
+        throw new ApiError(400, tc(req, 'notificationController', 'validation.no_recipients'));
       }
 
       const createdNotifications = [];
@@ -252,7 +253,10 @@ class NotificationController {
       }
 
       // Log de auditoria
-      auditLogger('Notifications created', {
+      auditLogger(tc(req, 'notificationController', 'audit.notifications_created', {
+        count: recipients.length,
+        type: notificationData.type
+      }), {
         userId: req.user.id,
         notificationType: notificationData.type,
         title: notificationData.title,
@@ -267,7 +271,7 @@ class NotificationController {
 
       res.status(201).json({
         success: true,
-        message: `${createdNotifications.length} notificação(ões) criada(s) com sucesso`,
+        message: tc(req, 'notificationController', 'create.success', { count: createdNotifications.length }),
         data: {
           notifications_created: createdNotifications.length,
           recipients: recipients,
@@ -304,7 +308,7 @@ class NotificationController {
       );
 
       if (notificationResult.rows.length === 0) {
-        throw new ApiError(404, 'Notificação não encontrada');
+        throw new ApiError(404, tc(req, 'notificationController', 'validation.not_found'));
       }
 
       const notification = notificationResult.rows[0];
@@ -313,7 +317,7 @@ class NotificationController {
       if (notification.read_at) {
         return res.json({
           success: true,
-          message: 'Notificação já estava marcada como lida',
+          message: tc(req, 'notificationController', 'markAsRead.already_read'),
           data: { notification_id: notificationId, already_read: true }
         });
       }
@@ -343,7 +347,10 @@ class NotificationController {
       }
 
       // Log de auditoria
-      auditLogger('Notification marked as read', {
+      auditLogger(tc(req, 'notificationController', 'audit.notification_read', {
+        notificationId,
+        title: notification.title
+      }), {
         userId: req.user.id,
         notificationId: notificationId,
         notificationTitle: notification.title,
@@ -353,7 +360,7 @@ class NotificationController {
 
       res.json({
         success: true,
-        message: 'Notificação marcada como lida',
+        message: tc(req, 'notificationController', 'markAsRead.success'),
         data: { notification_id: notificationId, read_at: new Date().toISOString() }
       });
 
@@ -396,7 +403,7 @@ class NotificationController {
       if (totalToMark === 0) {
         return res.json({
           success: true,
-          message: 'Nenhuma notificação não lida encontrada com os critérios especificados',
+          message: tc(req, 'notificationController', 'markAllAsRead.none_found'),
           data: { notifications_marked: 0 }
         });
       }
@@ -437,7 +444,9 @@ class NotificationController {
       }
 
       // Log de auditoria
-      auditLogger('Bulk notifications marked as read', {
+      auditLogger(tc(req, 'notificationController', 'audit.bulk_read', {
+        count: totalToMark
+      }), {
         userId: req.user.id,
         notificationsMarked: totalToMark,
         filters: { type, priority },
@@ -447,7 +456,7 @@ class NotificationController {
 
       res.json({
         success: true,
-        message: `${totalToMark} notificação(ões) marcada(s) como lida(s)`,
+        message: tc(req, 'notificationController', 'markAllAsRead.success', { count: totalToMark }),
         data: { 
           notifications_marked: totalToMark,
           marked_notifications: updatedResult.rows
@@ -482,7 +491,7 @@ class NotificationController {
       );
 
       if (notificationResult.rows.length === 0) {
-        throw new ApiError(404, 'Notificação não encontrada');
+        throw new ApiError(404, tc(req, 'notificationController', 'validation.not_found'));
       }
 
       const notification = notificationResult.rows[0];
@@ -490,7 +499,7 @@ class NotificationController {
       // Verificar se é deletável (algumas notificações do sistema podem ser protegidas)
       const protectedTypes = ['system_critical', 'security_alert'];
       if (protectedTypes.includes(notification.notification_type) && req.user.role !== 'admin') {
-        throw new ApiError(403, 'Esta notificação não pode ser removida');
+        throw new ApiError(403, tc(req, 'notificationController', 'validation.cannot_delete_protected'));
       }
 
       // Soft delete da notificação
@@ -505,7 +514,10 @@ class NotificationController {
       await cache.del(`notifications:${req.user.id}`, `notification_stats:${req.user.id}`);
 
       // Log de auditoria
-      auditLogger('Notification deleted', {
+      auditLogger(tc(req, 'notificationController', 'audit.notification_deleted', {
+        notificationId,
+        title: notification.title
+      }), {
         userId: req.user.id,
         notificationId: notificationId,
         notificationTitle: notification.title,
@@ -516,7 +528,7 @@ class NotificationController {
 
       res.json({
         success: true,
-        message: 'Notificação removida com sucesso',
+        message: tc(req, 'notificationController', 'delete.success'),
         data: { notification_id: notificationId }
       });
 
@@ -591,7 +603,7 @@ class NotificationController {
   static cleanupExpired = asyncHandler(async (req, res) => {
     // Apenas admins podem fazer limpeza
     if (req.user.role !== 'admin') {
-      throw new ApiError(403, 'Apenas administradores podem limpar notificações expiradas');
+      throw new ApiError(403, tc(req, 'notificationController', 'validation.admin_only'));
     }
 
     const transaction = await beginTransaction();
@@ -610,7 +622,7 @@ class NotificationController {
       if (expiredCount === 0) {
         return res.json({
           success: true,
-          message: 'Nenhuma notificação expirada encontrada',
+          message: tc(req, 'notificationController', 'cleanupExpired.none_found'),
           data: { cleaned_notifications: 0 }
         });
       }
@@ -631,7 +643,9 @@ class NotificationController {
       }
 
       // Log de auditoria
-      auditLogger('Expired notifications cleanup', {
+      auditLogger(tc(req, 'notificationController', 'audit.cleanup_expired', {
+        count: expiredCount
+      }), {
         userId: req.user.id,
         cleanedCount: expiredCount,
         companyId: req.user.companyId,
@@ -640,7 +654,7 @@ class NotificationController {
 
       res.json({
         success: true,
-        message: `${expiredCount} notificação(ões) expirada(s) removida(s)`,
+        message: tc(req, 'notificationController', 'cleanupExpired.success', { count: expiredCount }),
         data: { cleaned_notifications: expiredCount }
       });
 
@@ -779,7 +793,7 @@ class NotificationController {
 
     } catch (error) {
       logger.error('Notification stats error:', error);
-      throw new ApiError(500, 'Erro ao gerar estatísticas de notificações');
+      throw new ApiError(500, tc(req, 'notificationController', 'validation.stats_error'));
     }
   });
 }

@@ -1,0 +1,27 @@
+{
+  "validation": {
+    "name_required": "El nombre es obligatorio",
+    "email_required": "El email es obligatorio",
+    "name_and_email_required": "El nombre y el email son obligatorios",
+    "email_in_use": "El email ya está en uso",
+    "user_not_found": "Usuario no encontrado"
+  },
+  "list": {
+    "success": "Usuarios devueltos con éxito"
+  },
+  "show": {
+    "not_found": "Usuario no encontrado",
+    "success": "Usuario devuelto con éxito"
+  },
+  "profile": {
+    "get_success": "Perfil cargado con éxito",
+    "update_success": "Perfil actualizado con éxito",
+    "not_found": "Usuario no encontrado"
+  },
+  "audit": {
+    "users_listed": "Usuarios listados",
+    "user_viewed": "Usuario visualizado",
+    "profile_viewed": "Perfil visualizado",
+    "profile_updated": "Perfil actualizado"
+  }
+}

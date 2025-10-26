@@ -1,0 +1,71 @@
+{
+  "validation": {
+    "invalid_data": "Dados de notificação inválidos",
+    "title_required": "Título da notificação é obrigatório",
+    "message_required": "Mensagem é obrigatória",
+    "recipients_required": "Destinatários são obrigatórios",
+    "notification_not_found": "Notificação não encontrada",
+    "invalid_type": "Tipo de notificação inválido",
+    "invalid_priority": "Prioridade inválida",
+    "no_recipients": "Nenhum destinatário especificado",
+    "not_found": "Notificação não encontrada",
+    "cannot_delete_protected": "Não é possível excluir notificações protegidas",
+    "admin_only": "Apenas administradores podem executar esta ação",
+    "stats_error": "Erro ao obter estatísticas de notificações"
+  },
+  "list": {
+    "success": "Notificações listadas com sucesso"
+  },
+  "create": {
+    "success": "Notificação criada com sucesso",
+    "multiple_created": "{{count}} notificações criadas com sucesso",
+    "no_recipients": "Nenhum destinatário encontrado"
+  },
+  "read": {
+    "success": "Notificação marcada como lida",
+    "already_read": "Notificação já foi lida",
+    "all_read": "Todas as notificações marcadas como lidas",
+    "count_read": "{{count}} notificações marcadas como lidas"
+  },
+  "delete": {
+    "success": "Notificação deletada com sucesso",
+    "not_found": "Notificação não encontrada"
+  },
+  "counters": {
+    "success": "Contadores obtidos com sucesso"
+  },
+  "cleanup": {
+    "success": "Notificações expiradas limpas com sucesso",
+    "count_deleted": "{{count}} notificações expiradas deletadas",
+    "permission_denied": "Apenas administradores podem realizar limpeza"
+  },
+  "stats": {
+    "success": "Estatísticas de notificações obtidas com sucesso"
+  },
+  "audit": {
+    "notifications_listed": "Notificações listadas",
+    "notification_created": "Notificação '{{title}}' criada",
+    "multiple_notifications_created": "{{count}} notificações criadas",
+    "notification_read": "Notificação '{{title}}' marcada como lida",
+    "all_notifications_read": "Todas as notificações marcadas como lidas",
+    "notification_deleted": "Notificação '{{title}}' deletada",
+    "counters_viewed": "Contadores de notificações visualizados",
+    "expired_cleaned": "{{count}} notificações expiradas limpas",
+    "stats_viewed": "Estatísticas de notificações visualizadas",
+    "notifications_created": "Notificações criadas: {{count}}",
+    "bulk_read": "Notificações marcadas como lidas em massa",
+    "cleanup_expired": "Limpeza de notificações expiradas realizada"
+  },
+  "markAsRead": {
+    "already_read": "Notificação já foi lida",
+    "success": "Notificação marcada como lida"
+  },
+  "markAllAsRead": {
+    "none_found": "Nenhuma notificação não lida encontrada",
+    "success": "{{count}} notificações marcadas como lidas"
+  },
+  "cleanupExpired": {
+    "none_found": "Nenhuma notificação expirada encontrada",
+    "success": "{{count}} notificações expiradas removidas"
+  }
+}

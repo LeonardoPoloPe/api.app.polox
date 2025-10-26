@@ -1,0 +1,72 @@
+{
+  "validation": {
+    "invalid_data": "Invalid event data",
+    "title_required": "Event title is required",
+    "title_min_length": "Title must be at least 2 characters",
+    "start_date_required": "Start date is required",
+    "end_date_required": "End date is required",
+    "end_date_invalid": "End date must be after start date",
+    "event_not_found": "Event not found",
+    "permission_denied": "You don't have permission to access this event",
+    "conflict_detected": "Time conflict detected with other events",
+    "time_conflicts": "Time conflict detected",
+    "no_permission_view": "No permission to view this event",
+    "only_creator_edit": "Only creator can edit this event",
+    "no_fields_to_update": "No fields to update",
+    "only_creator_delete": "Only creator can delete this event",
+    "dates_required": "Start and end dates are required",
+    "invalid_status": "Invalid status"
+  },
+  "list": {
+    "success": "Events listed successfully"
+  },
+  "create": {
+    "success": "Event created successfully",
+    "recurring_created": "{{count}} recurring events created successfully"
+  },
+  "show": {
+    "success": "Event retrieved successfully",
+    "not_found": "Event not found"
+  },
+  "update": {
+    "success": "Event updated successfully",
+    "not_found": "Event not found",
+    "permission_denied": "Only the event creator can edit it",
+    "conflict_detected": "Time conflict with other events"
+  },
+  "delete": {
+    "success": "Event deleted successfully",
+    "not_found": "Event not found",
+    "permission_denied": "Only the event creator can delete it"
+  },
+  "calendar": {
+    "view_success": "Calendar view retrieved successfully"
+  },
+  "status": {
+    "update_success": "Event status updated to {{status}}",
+    "invalid_transition": "Invalid status transition"
+  },
+  "attendees": {
+    "add_success": "Attendee added successfully",
+    "remove_success": "Attendee removed successfully",
+    "already_added": "Attendee already added to this event"
+  },
+  "conflicts": {
+    "found": "{{count}} time conflict(s) found",
+    "user_busy": "User {{user}} already has an event at this time"
+  },
+  "audit": {
+    "events_listed": "Events listed",
+    "event_created": "Event '{{title}}' created",
+    "event_viewed": "Event '{{title}}' viewed",
+    "event_updated": "Event '{{title}}' updated",
+    "event_deleted": "Event '{{title}}' deleted",
+    "status_changed": "Event '{{title}}' status changed to {{status}}",
+    "attendee_added": "Attendee added to event '{{title}}'",
+    "calendar_viewed": "Calendar viewed",
+    "conflicts_checked": "Time conflicts checked"
+  },
+  "updateStatus": {
+    "success": "Event status updated successfully"
+  }
+}

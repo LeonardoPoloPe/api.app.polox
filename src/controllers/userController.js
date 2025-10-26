@@ -6,8 +6,9 @@
 
 // Importar módulos internos
 const { query } = require('../config/database');
-const { logger } = require('../utils/logger');
+const { logger, auditLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
+const { tc } = require('../config/i18n');
 
 /**
  * Controller de usuários simplificado
@@ -65,8 +66,17 @@ class UserController {
         createdAt: user.created_at
       }));
 
+      // Log de auditoria
+      auditLogger(tc(req, 'userController', 'audit.users_listed'), {
+        userId: req.user?.id,
+        companyId: req.user?.companyId,
+        count: users.length,
+        ip: req.ip
+      });
+
       res.json({
         success: true,
+        message: tc(req, 'userController', 'list.success'),
         data: {
           users,
           pagination: {
@@ -98,13 +108,21 @@ class UserController {
       `, [id]);
 
       if (userResult.rows.length === 0) {
-        throw new ApiError(404, 'Usuário não encontrado');
+        throw new ApiError(404, tc(req, 'userController', 'validation.user_not_found'));
       }
 
       const user = userResult.rows[0];
 
+      // Log de auditoria
+      auditLogger(tc(req, 'userController', 'audit.user_viewed'), {
+        userId: req.user?.id,
+        viewedUserId: id,
+        ip: req.ip
+      });
+
       res.json({
         success: true,
+        message: tc(req, 'userController', 'show.success'),
         data: {
           user: {
             id: user.id,
@@ -135,13 +153,20 @@ class UserController {
       `, [req.user.id]);
 
       if (userResult.rows.length === 0) {
-        throw new ApiError(404, 'Usuário não encontrado');
+        throw new ApiError(404, tc(req, 'userController', 'profile.not_found'));
       }
 
       const user = userResult.rows[0];
 
+      // Log de auditoria
+      auditLogger(tc(req, 'userController', 'audit.profile_viewed'), {
+        userId: req.user.id,
+        ip: req.ip
+      });
+
       res.json({
         success: true,
+        message: tc(req, 'userController', 'profile.get_success'),
         data: {
           user: {
             id: user.id,
@@ -168,7 +193,7 @@ class UserController {
     try {
       // Validações básicas
       if (!name || !email) {
-        throw new ApiError(400, 'Nome e email são obrigatórios');
+        throw new ApiError(400, tc(req, 'userController', 'validation.name_and_email_required'));
       }
 
       // Verificar se email já existe para outro usuário
@@ -179,7 +204,7 @@ class UserController {
         `, [email.toLowerCase(), req.user.id]);
 
         if (existingUser.rows.length > 0) {
-          throw new ApiError(409, 'Email já está em uso');
+          throw new ApiError(409, tc(req, 'userController', 'validation.email_in_use'));
         }
       }
 
@@ -192,14 +217,21 @@ class UserController {
       `, [name.trim(), email.toLowerCase(), req.user.id]);
 
       if (userResult.rows.length === 0) {
-        throw new ApiError(404, 'Usuário não encontrado');
+        throw new ApiError(404, tc(req, 'userController', 'profile.not_found'));
       }
 
       const user = userResult.rows[0];
 
+      // Log de auditoria
+      auditLogger(tc(req, 'userController', 'audit.profile_updated'), {
+        userId: req.user.id,
+        changes: { name, email },
+        ip: req.ip
+      });
+
       res.json({
         success: true,
-        message: 'Perfil atualizado com sucesso',
+        message: tc(req, 'userController', 'profile.update_success'),
         data: {
           user: {
             id: user.id,

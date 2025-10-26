@@ -16,6 +16,7 @@ const { query, beginTransaction, commitTransaction, rollbackTransaction } = requ
 const { logger, auditLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/response');
+const { tc } = require('../config/i18n');
 const Joi = require('joi');
 
 class SaleController {
@@ -206,7 +207,7 @@ class SaleController {
       totalPages,
       hasNextPage: page < totalPages,
       hasPreviousPage: page > 1
-    }, 'Sales retrieved successfully', {
+    }, tc(req, 'saleController', 'list.success'), {
       stats: statsResult.rows[0]
     });
   });
@@ -217,7 +218,7 @@ class SaleController {
    */
   static create = asyncHandler(async (req, res) => {
     const { error, value } = SaleController.createSaleSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'saleController', 'validation.invalid_data'));
 
     const saleData = value;
 
@@ -228,7 +229,7 @@ class SaleController {
     );
 
     if (clientCheck.rows.length === 0) {
-      throw new ApiError(404, 'Client not found');
+      throw new ApiError(404, tc(req, 'saleController', 'validation.client_not_found'));
     }
 
     const client = clientCheck.rows[0];
@@ -238,7 +239,7 @@ class SaleController {
     const netAmount = subtotal - saleData.discount_amount + saleData.tax_amount;
 
     if (netAmount < 0) {
-      throw new ApiError(400, 'Net amount cannot be negative');
+      throw new ApiError(400, tc(req, 'saleController', 'validation.invalid_amount'));
     }
 
     const transaction = await beginTransaction();
@@ -347,7 +348,10 @@ class SaleController {
       `, [
         req.user.id,
         xpReward,
-        `XP earned from sale: ${client.client_name} - R$ ${netAmount.toFixed(2)}`,
+        tc(req, 'saleController', 'achievement.xp_earned', { 
+          clientName: client.client_name, 
+          amount: netAmount.toFixed(2) 
+        }),
         newSale.id,
         JSON.stringify({ 
           client_id: saleData.client_id, 
@@ -356,7 +360,10 @@ class SaleController {
           company_id: req.user.companyId 
         }),
         coinReward,
-        `Coins earned from sale: ${client.client_name} - R$ ${netAmount.toFixed(2)}`
+        tc(req, 'saleController', 'achievement.coins_earned', { 
+          clientName: client.client_name, 
+          amount: netAmount.toFixed(2) 
+        })
       ], transaction);
 
       // 6️⃣ VERIFICAR CONQUISTAS relacionadas a vendas
@@ -390,7 +397,10 @@ class SaleController {
       const completeSaleResult = await query(completeSaleQuery, [newSale.id]);
 
       // 📋 Log de auditoria
-      auditLogger('Sale created', {
+      auditLogger(tc(req, 'saleController', 'audit.sale_created', {
+        clientName: client.client_name,
+        amount: netAmount.toFixed(2)
+      }), {
         userId: req.user.id,
         companyId: req.user.companyId,
         entityType: 'sale',
@@ -406,7 +416,7 @@ class SaleController {
         ip: req.ip
       });
 
-      return successResponse(res, completeSaleResult.rows[0], 'Sale created successfully', 201);
+      return successResponse(res, completeSaleResult.rows[0], tc(req, 'saleController', 'create.success'), 201);
 
     } catch (error) {
       await rollbackTransaction(transaction);
@@ -451,10 +461,10 @@ class SaleController {
     const saleResult = await query(saleQuery, [saleId, req.user.companyId]);
     
     if (saleResult.rows.length === 0) {
-      throw new ApiError(404, 'Sale not found');
+      throw new ApiError(404, tc(req, 'saleController', 'show.not_found'));
     }
 
-    return successResponse(res, saleResult.rows[0]);
+    return successResponse(res, saleResult.rows[0], tc(req, 'saleController', 'show.success'));
   });
 
   /**
@@ -464,7 +474,7 @@ class SaleController {
   static update = asyncHandler(async (req, res) => {
     const saleId = req.params.id;
     const { error, value } = SaleController.updateSaleSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'saleController', 'validation.invalid_data'));
 
     const updateData = value;
 
@@ -475,13 +485,13 @@ class SaleController {
     );
 
     if (saleCheck.rows.length === 0) {
-      throw new ApiError(404, 'Sale not found');
+      throw new ApiError(404, tc(req, 'saleController', 'validation.sale_not_found'));
     }
 
     const currentSale = saleCheck.rows[0];
 
     if (currentSale.status === 'cancelled') {
-      throw new ApiError(400, 'Cannot update cancelled sale');
+      throw new ApiError(400, tc(req, 'saleController', 'validation.cannot_update_cancelled'));
     }
 
     // 🔄 CONSTRUIR QUERY DE UPDATE
@@ -510,7 +520,10 @@ class SaleController {
     const updatedSaleResult = await query(updateQuery, updateValues);
 
     // 📋 Log de auditoria
-    auditLogger('Sale updated', {
+    auditLogger(tc(req, 'saleController', 'audit.sale_updated', {
+      saleId,
+      amount: updatedSaleResult.rows[0].net_amount
+    }), {
       userId: req.user.id,
       companyId: req.user.companyId,
       entityType: 'sale',
@@ -520,7 +533,7 @@ class SaleController {
       ip: req.ip
     });
 
-    return successResponse(res, updatedSaleResult.rows[0], 'Sale updated successfully');
+    return successResponse(res, updatedSaleResult.rows[0], tc(req, 'saleController', 'update.success'));
   });
 
   /**
@@ -540,13 +553,13 @@ class SaleController {
     );
 
     if (saleCheck.rows.length === 0) {
-      throw new ApiError(404, 'Sale not found');
+      throw new ApiError(404, tc(req, 'saleController', 'validation.sale_not_found'));
     }
 
     const sale = saleCheck.rows[0];
 
     if (sale.status === 'cancelled') {
-      throw new ApiError(400, 'Sale already cancelled');
+      throw new ApiError(400, tc(req, 'saleController', 'validation.sale_already_cancelled'));
     }
 
     const transaction = await beginTransaction();
@@ -587,7 +600,11 @@ class SaleController {
       await commitTransaction(transaction);
 
       // 📋 Log de auditoria
-      auditLogger('Sale cancelled', {
+      auditLogger(tc(req, 'saleController', 'audit.sale_cancelled', {
+        saleId,
+        clientName: sale.client_name,
+        amount: sale.net_amount || sale.total_amount
+      }), {
         userId: req.user.id,
         companyId: req.user.companyId,
         entityType: 'sale',
@@ -601,7 +618,7 @@ class SaleController {
         ip: req.ip
       });
 
-      return successResponse(res, { id: saleId, status: 'cancelled' }, 'Sale cancelled successfully');
+      return successResponse(res, { id: saleId, status: 'cancelled' }, tc(req, 'saleController', 'delete.success'));
 
     } catch (error) {
       await rollbackTransaction(transaction);

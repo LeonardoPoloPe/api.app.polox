@@ -1,7 +1,7 @@
 # 🎉 Sistema de Traduções - Status Atual
 
-**Data:** 25 de outubro de 2025  
-**Última Atualização:** 25/10/2025
+**Data:** 26 de outubro de 2025  
+**Última Atualização:** 26/10/2025 - 11:00
 
 ---
 
@@ -14,7 +14,17 @@
 | **AuthController** | ✅ 100% | PT, EN, ES | 3 | 12 | 25/10/2025 |
 | **ClientController** | ✅ 100% | PT, EN, ES | 9 | 18 | 25/10/2025 |
 | **CompanyController** | ✅ 100% | PT, EN, ES | 9 | 27 | 25/10/2025 |
-| **UserController** | ⚠️ Parcial | PT, EN, ES | - | - | - |
+| **LeadController** | ✅ 100% | PT, EN, ES | 18 | 37 | 25/10/2025 |
+| **ProductController** | ✅ 100% | PT, EN, ES | 10 | 42 | 25/10/2025 |
+| **SaleController** | ✅ 100% | PT, EN, ES | 5 | 28 | 25/10/2025 |
+| **TicketController** | ✅ 100% | PT, EN, ES | 10 | 42 | 25/10/2025 |
+| **UserController** | ✅ 100% | PT, EN, ES | 4 | 16 | 25/10/2025 |
+| **GamificationController** | ✅ 100% | PT, EN, ES | 9 | 43 | 26/10/2025 |
+| **ScheduleController** | ✅ 100% | PT, EN, ES | 8 | 34 | 26/10/2025 |
+| **SupplierController** | ✅ 100% | PT, EN, ES | 11 | 38 | 26/10/2025 |
+| **NotificationController** | ✅ 100% | PT, EN, ES | 8 | 26 | 26/10/2025 |
+
+**Total:** 12 controllers | 363 chaves | 1089 traduções (363 × 3)
 
 ---
 

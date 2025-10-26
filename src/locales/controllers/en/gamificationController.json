@@ -1,0 +1,83 @@
+{
+  "validation": {
+    "invalid_data": "Invalid gamification data",
+    "user_not_found": "User not found",
+    "invalid_xp_amount": "Invalid XP amount (0-10000)",
+    "invalid_coin_amount": "Invalid coin amount (0-10000)",
+    "reason_required": "Reason is required",
+    "no_points_awarded": "No points were awarded (XP and Coins = 0)",
+    "mission_not_found": "Mission not found",
+    "invalid_progress": "Invalid progress (1-100)",
+    "mission_already_completed": "Mission already completed in this cycle",
+    "achievement_not_found": "Achievement not found",
+    "reward_not_found": "Reward not found",
+    "insufficient_coins": "Insufficient coins to purchase this reward",
+    "reward_out_of_stock": "Reward out of stock",
+    "permission_denied": "Only administrators can award points to other users",
+    "profile_not_found": "Gamification profile not found",
+    "admin_only": "Only administrators can award points to other users",
+    "min_points_required": "At least 1 XP or 1 Coin must be awarded",
+    "purchase_limit_reached": "Purchase limit for this reward reached",
+    "insufficient_balance": "Insufficient balance. Required: {{required}} coins, current: {{current}} coins"
+  },
+  "profile": {
+    "get_success": "Gamification profile retrieved successfully",
+    "not_found": "Gamification profile not found",
+    "level_updated": "Level updated automatically"
+  },
+  "award": {
+    "success": "Points awarded successfully",
+    "xp_awarded": "{{xp_amount}} XP awarded",
+    "coins_awarded": "{{coin_amount}} coins awarded",
+    "level_up": "Congratulations! You leveled up to level {{level}}!",
+    "level_up_reward": "Level reward: {{xp}} XP and {{coins}} coins"
+  },
+  "missions": {
+    "list_success": "Missions listed successfully",
+    "complete_success": "Mission completed successfully",
+    "progress_updated": "Mission progress updated: {{current}}/{{target}}",
+    "mission_completed": "Mission '{{name}}' completed!",
+    "reward_earned": "Reward received: {{xp}} XP and {{coins}} coins",
+    "cycle_reset": "{{type}} mission progress reset for new cycle"
+  },
+  "completeMission": {
+    "completed": "Mission completed!",
+    "progress_updated": "Progress updated"
+  },
+  "achievements": {
+    "list_success": "Achievements listed successfully",
+    "unlocked_success": "Unlocked achievements retrieved successfully",
+    "unlocked": "Achievement unlocked: {{name}}!",
+    "reward_earned": "Reward: {{xp}} XP and {{coins}} coins"
+  },
+  "leaderboard": {
+    "get_success": "Leaderboard retrieved successfully",
+    "position": "You are ranked {{rank}} out of {{total}} players"
+  },
+  "history": {
+    "get_success": "Points history retrieved successfully"
+  },
+  "rewards": {
+    "list_success": "Rewards listed successfully",
+    "buy_success": "Reward purchased successfully",
+    "purchased": "You purchased: {{name}}",
+    "coins_deducted": "{{coins}} coins deducted"
+  },
+  "audit": {
+    "profile_viewed": "Gamification profile viewed",
+    "points_awarded": "Points awarded: {{xp}} XP, {{coins}} coins to {{user}}",
+    "level_up_achieved": "Level {{level}} achieved by {{user}}",
+    "mission_completed": "Mission '{{mission}}' completed by {{user}}",
+    "achievement_unlocked": "Achievement '{{achievement}}' unlocked by {{user}}",
+    "reward_purchased": "Reward '{{reward}}' purchased by {{user}}",
+    "leaderboard_viewed": "Leaderboard viewed",
+    "history_viewed": "Points history viewed",
+    "missions_viewed": "Missions viewed",
+    "achievements_viewed": "Achievements viewed",
+    "rewards_viewed": "Rewards viewed",
+    "points_awarded_log": "Points awarded: {{xp}} XP, {{coins}} coins to {{user}}",
+    "mission_progress_log": "Mission '{{mission}}' progress updated",
+    "reward_purchased_log": "Reward '{{reward}}' purchased",
+    "mission_progress": "Mission {{missionName}} progress: {{progress}}/{{target}}"
+  }
+}

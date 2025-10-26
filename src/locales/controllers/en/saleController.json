@@ -1,0 +1,54 @@
+{
+  "validation": {
+    "client_required": "Client is required",
+    "items_min": "At least one item is required",
+    "client_not_found": "Client not found",
+    "invalid_amount": "Total amount cannot be negative",
+    "sale_not_found": "Sale not found",
+    "cannot_update_cancelled": "Cannot update cancelled sale",
+    "sale_already_cancelled": "Sale already cancelled",
+    "invalid_data": "Invalid data provided"
+  },
+  "list": {
+    "success": "Sales returned successfully"
+  },
+  "create": {
+    "success": "Sale created successfully"
+  },
+  "show": {
+    "not_found": "Sale not found",
+    "success": "Sale returned successfully"
+  },
+  "update": {
+    "not_found": "Sale not found",
+    "success": "Sale updated successfully",
+    "cannot_update_completed": "Cannot update completed sale"
+  },
+  "delete": {
+    "not_found": "Sale not found",
+    "success": "Sale cancelled successfully",
+    "already_cancelled": "Sale has already been cancelled"
+  },
+  "achievement": {
+    "unlocked": "Achievement unlocked: {{achievement}}",
+    "first_sale": "First Sale",
+    "sales_10": "10 Sales Completed",
+    "sales_50": "50 Sales Completed",
+    "sales_100": "100 Sales Completed",
+    "high_value": "High Value Sale",
+    "xp_earned": "XP earned from sale: {{clientName}} - ${{amount}}",
+    "coins_earned": "Coins earned from sale: {{clientName}} - ${{amount}}",
+    "xp_reward": "XP reward from achievement: {{achievementName}}",
+    "coins_reward": "Coins reward from achievement: {{achievementName}}"
+  },
+  "audit": {
+    "sales_listed": "Sales listed",
+    "sale_created": "Sale created: {{clientName}} - ${{amount}}",
+    "sale_viewed": "Sale viewed: ID {{saleId}}",
+    "sale_updated": "Sale updated: ID {{saleId}} - ${{amount}}",
+    "sale_cancelled": "Sale cancelled: {{clientName}} - ${{amount}}",
+    "stock_reduced": "Stock reduced",
+    "stock_restored": "Stock restored",
+    "achievement_unlocked": "Achievement unlocked"
+  }
+}

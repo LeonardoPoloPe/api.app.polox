@@ -1,0 +1,79 @@
+{
+  "validation": {
+    "name_required": "El nombre del producto es obligatorio",
+    "name_min_length": "El nombre debe tener al menos 2 caracteres",
+    "name_max_length": "El nombre no puede exceder 255 caracteres",
+    "price_required": "El precio es obligatorio",
+    "price_min": "El precio debe ser mayor o igual a cero",
+    "type_invalid": "El tipo debe ser \"product\" o \"service\"",
+    "sku_exists": "El SKU ya existe para otro producto",
+    "category_name_required": "El nombre de la categoría es obligatorio",
+    "adjustment_type_required": "El tipo de ajuste es obligatorio",
+    "adjustment_type_invalid": "El tipo debe ser \"in\", \"out\" o \"set\"",
+    "quantity_required": "La cantidad es obligatoria",
+    "reason_required": "El motivo es obligatorio",
+    "insufficient_stock": "Stock insuficiente",
+    "product_not_found": "Producto no encontrado",
+    "name_exists": "El nombre del producto ya existe",
+    "not_found": "Producto no encontrado",
+    "sku_in_use": "SKU ya está en uso",
+    "no_fields_to_update": "No hay campos para actualizar",
+    "has_active_sales": "El producto tiene ventas activas",
+    "product_id_required": "El ID del producto es obligatorio",
+    "invalid_data": "Datos de producto inválidos",
+    "category_exists": "La categoría ya existe",
+    "has_sales": "El producto tiene ventas registradas",
+    "invalid_adjustment_type": "Tipo de ajuste inválido"
+  },
+  "list": {
+    "success": "Productos devueltos con éxito"
+  },
+  "create": {
+    "success": "Producto creado con éxito"
+  },
+  "show": {
+    "not_found": "Producto no encontrado",
+    "success": "Producto devuelto con éxito"
+  },
+  "update": {
+    "not_found": "Producto no encontrado",
+    "success": "Producto actualizado con éxito"
+  },
+  "delete": {
+    "not_found": "Producto no encontrado",
+    "success": "Producto eliminado con éxito",
+    "has_sales": "No se puede eliminar producto con ventas asociadas"
+  },
+  "stock": {
+    "adjust_success": "Stock ajustado con éxito",
+    "low_stock_success": "Productos con stock bajo devueltos",
+    "product_not_found": "Producto no encontrado"
+  },
+  "category": {
+    "list_success": "Categorías devueltas con éxito",
+    "create_success": "Categoría creada con éxito",
+    "name_exists": "Ya existe una categoría con este nombre"
+  },
+  "reports": {
+    "success": "Informes generados con éxito"
+  },
+  "audit": {
+    "products_listed": "Productos listados",
+    "product_created": "Producto creado",
+    "product_viewed": "Producto visualizado",
+    "product_updated": "Producto actualizado",
+    "product_deleted": "Producto eliminado",
+    "stock_adjusted": "Stock ajustado",
+    "low_stock_checked": "Stock bajo verificado",
+    "categories_listed": "Categorías listadas",
+    "category_created": "Categoría creada",
+    "reports_generated": "Informes generados"
+  },
+  "adjustStock": {
+    "low_stock_alert": "Alerta: Stock bajo ({{current}} unidades)",
+    "success": "Stock ajustado con éxito"
+  },
+  "createCategory": {
+    "success": "Categoría creada con éxito"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "validation": {
+    "invalid_period": "Invalid period",
+    "invalid_report_type": "Invalid report type",
+    "report_type_required": "Report type is required",
+    "invalid_group_by": "Invalid grouping",
+    "invalid_comparison": "Invalid comparison type",
+    "dashboard_error": "Error loading dashboard",
+    "sales_error": "Error getting sales analytics",
+    "customers_error": "Error getting customer analytics",
+    "products_error": "Error getting product analytics",
+    "financial_error": "Error getting financial analytics",
+    "invalid_analysis_type": "Invalid analysis type",
+    "performance_error": "Error getting performance analysis",
+    "comparisons_error": "Error getting comparisons",
+    "export_error": "Error exporting report"
+  },
+  "dashboard": {
+    "get_success": "Dashboard retrieved successfully",
+    "error": "Error generating dashboard"
+  },
+  "sales": {
+    "analytics_success": "Sales analytics retrieved successfully",
+    "error": "Error generating sales analytics"
+  },
+  "customers": {
+    "analytics_success": "Customer analytics retrieved successfully",
+    "error": "Error generating customer analytics"
+  },
+  "products": {
+    "analytics_success": "Product analytics retrieved successfully",
+    "error": "Error generating product analytics"
+  },
+  "financial": {
+    "analytics_success": "Financial analytics retrieved successfully",
+    "error": "Error generating financial analytics",
+    "invalid_type": "Invalid financial analysis type"
+  },
+  "performance": {
+    "analytics_success": "Performance analytics retrieved successfully",
+    "error": "Error generating performance analytics"
+  },
+  "comparisons": {
+    "get_success": "Comparisons retrieved successfully",
+    "error": "Error generating comparisons"
+  },
+  "export": {
+    "success": "Report exported successfully",
+    "error": "Error exporting report",
+    "created": "Export created: {{export_id}}"
+  },
+  "audit": {
+    "dashboard_viewed": "Dashboard viewed - period: {{period}}",
+    "sales_analytics_viewed": "Sales analytics viewed",
+    "customers_analytics_viewed": "Customer analytics viewed",
+    "products_analytics_viewed": "Product analytics viewed",
+    "financial_analytics_viewed": "Financial analytics viewed",
+    "performance_analytics_viewed": "Performance analytics viewed",
+    "comparisons_viewed": "Comparisons viewed",
+    "report_exported": "Report {{type}} exported in {{format}} format"
+  },
+  "exportReport": {
+    "success": "Report exported successfully"
+  }
+}

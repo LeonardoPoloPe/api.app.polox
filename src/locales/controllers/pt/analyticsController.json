@@ -1,0 +1,65 @@
+{
+  "validation": {
+    "invalid_period": "Período inválido",
+    "invalid_report_type": "Tipo de relatório inválido",
+    "report_type_required": "Tipo de relatório é obrigatório",
+    "invalid_group_by": "Agrupamento inválido",
+    "invalid_comparison": "Tipo de comparação inválido",
+    "dashboard_error": "Erro ao carregar dashboard",
+    "sales_error": "Erro ao obter análises de vendas",
+    "customers_error": "Erro ao obter análises de clientes",
+    "products_error": "Erro ao obter análises de produtos",
+    "financial_error": "Erro ao obter análises financeiras",
+    "invalid_analysis_type": "Tipo de análise inválido",
+    "performance_error": "Erro ao obter análise de desempenho",
+    "comparisons_error": "Erro ao obter comparações",
+    "export_error": "Erro ao exportar relatório"
+  },
+  "dashboard": {
+    "get_success": "Dashboard obtido com sucesso",
+    "error": "Erro ao gerar dashboard"
+  },
+  "sales": {
+    "analytics_success": "Analytics de vendas obtidos com sucesso",
+    "error": "Erro ao gerar analytics de vendas"
+  },
+  "customers": {
+    "analytics_success": "Analytics de clientes obtidos com sucesso",
+    "error": "Erro ao gerar analytics de clientes"
+  },
+  "products": {
+    "analytics_success": "Analytics de produtos obtidos com sucesso",
+    "error": "Erro ao gerar analytics de produtos"
+  },
+  "financial": {
+    "analytics_success": "Analytics financeiros obtidos com sucesso",
+    "error": "Erro ao gerar analytics financeiros",
+    "invalid_type": "Tipo de análise financeira inválido"
+  },
+  "performance": {
+    "analytics_success": "Analytics de performance obtidos com sucesso",
+    "error": "Erro ao gerar analytics de performance"
+  },
+  "comparisons": {
+    "get_success": "Comparações obtidas com sucesso",
+    "error": "Erro ao gerar comparações"
+  },
+  "export": {
+    "success": "Relatório exportado com sucesso",
+    "error": "Erro ao exportar relatório",
+    "created": "Exportação criada: {{export_id}}"
+  },
+  "audit": {
+    "dashboard_viewed": "Dashboard visualizado - período: {{period}}",
+    "sales_analytics_viewed": "Analytics de vendas visualizado",
+    "customers_analytics_viewed": "Analytics de clientes visualizado",
+    "products_analytics_viewed": "Analytics de produtos visualizado",
+    "financial_analytics_viewed": "Analytics financeiros visualizado",
+    "performance_analytics_viewed": "Analytics de performance visualizado",
+    "comparisons_viewed": "Comparações visualizadas",
+    "report_exported": "Relatório {{type}} exportado em formato {{format}}"
+  },
+  "exportReport": {
+    "success": "Relatório exportado com sucesso"
+  }
+}

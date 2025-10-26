@@ -1,0 +1,54 @@
+{
+  "validation": {
+    "client_required": "El cliente es obligatorio",
+    "items_min": "Se requiere al menos un artículo",
+    "client_not_found": "Cliente no encontrado",
+    "invalid_amount": "El monto total no puede ser negativo",
+    "sale_not_found": "Venta no encontrada",
+    "cannot_update_cancelled": "No se puede actualizar una venta cancelada",
+    "sale_already_cancelled": "La venta ya está cancelada",
+    "invalid_data": "Datos inválidos proporcionados"
+  },
+  "list": {
+    "success": "Ventas devueltas con éxito"
+  },
+  "create": {
+    "success": "Venta creada con éxito"
+  },
+  "show": {
+    "not_found": "Venta no encontrada",
+    "success": "Venta devuelta con éxito"
+  },
+  "update": {
+    "not_found": "Venta no encontrada",
+    "success": "Venta actualizada con éxito",
+    "cannot_update_completed": "No se puede actualizar venta completada"
+  },
+  "delete": {
+    "not_found": "Venta no encontrada",
+    "success": "Venta cancelada con éxito",
+    "already_cancelled": "La venta ya ha sido cancelada"
+  },
+  "achievement": {
+    "unlocked": "Logro desbloqueado: {{achievement}}",
+    "first_sale": "Primera Venta",
+    "sales_10": "10 Ventas Completadas",
+    "sales_50": "50 Ventas Completadas",
+    "sales_100": "100 Ventas Completadas",
+    "high_value": "Venta de Alto Valor",
+    "xp_earned": "XP ganado de la venta: {{clientName}} - ${{amount}}",
+    "coins_earned": "Monedas ganadas de la venta: {{clientName}} - ${{amount}}",
+    "xp_reward": "Recompensa XP del logro: {{achievementName}}",
+    "coins_reward": "Recompensa de monedas del logro: {{achievementName}}"
+  },
+  "audit": {
+    "sales_listed": "Ventas listadas",
+    "sale_created": "Venta creada: {{clientName}} - ${{amount}}",
+    "sale_viewed": "Venta visualizada: ID {{saleId}}",
+    "sale_updated": "Venta actualizada: ID {{saleId}} - ${{amount}}",
+    "sale_cancelled": "Venta cancelada: {{clientName}} - ${{amount}}",
+    "stock_reduced": "Stock reducido",
+    "stock_restored": "Stock restaurado",
+    "achievement_unlocked": "Logro desbloqueado"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "validation": {
+    "type_required": "Tipo da transação é obrigatório",
+    "type_invalid": "Tipo deve ser 'income' (receita) ou 'expense' (despesa)",
+    "amount_required": "Valor é obrigatório",
+    "amount_positive": "Valor deve ser maior que zero",
+    "description_required": "Descrição é obrigatória",
+    "description_max": "Descrição não pode exceder 255 caracteres",
+    "category_name_required": "Nome da categoria é obrigatório",
+    "category_exists": "Categoria com este nome já existe",
+    "transaction_not_found": "Transação não encontrada",
+    "no_fields_to_update": "Nenhum campo para atualizar",
+    "invalid_data": "Dados financeiros inválidos"
+  },
+  "dashboard": {
+    "get_success": "Dashboard financeiro obtido com sucesso"
+  },
+  "transactions": {
+    "list_success": "Transações listadas com sucesso",
+    "create_success": "Transação criada com sucesso",
+    "update_success": "Transação atualizada com sucesso",
+    "delete_success": "Transação deletada com sucesso"
+  },
+  "cash_flow": {
+    "get_success": "Fluxo de caixa obtido com sucesso"
+  },
+  "categories": {
+    "list_success": "Categorias listadas com sucesso",
+    "create_success": "Categoria criada com sucesso"
+  },
+  "profit_loss": {
+    "get_success": "DRE obtido com sucesso"
+  },
+  "audit": {
+    "dashboard_viewed": "Dashboard financeiro visualizado - período: {{period}}",
+    "transactions_listed": "Transações listadas",
+    "transaction_created": "Transação criada: {{type}} R$ {{amount}} - {{description}}",
+    "transaction_updated": "Transação atualizada: {{description}}",
+    "transaction_deleted": "Transação deletada: {{description}} - R$ {{amount}}",
+    "cash_flow_viewed": "Fluxo de caixa visualizado",
+    "categories_viewed": "Categorias visualizadas",
+    "category_created": "Categoria criada: {{name}}",
+    "profit_loss_viewed": "DRE visualizado"
+  },
+  "gamification": {
+    "xp_earned": "{{xp}} XP ganhos por gestão financeira",
+    "coins_earned": "{{coins}} moedas ganhas"
+  },
+  "create": {
+    "success": "Transação financeira criada com sucesso"
+  },
+  "update": {
+    "success": "Transação financeira atualizada com sucesso"
+  },
+  "delete": {
+    "success": "Transação financeira excluída com sucesso"
+  },
+  "createCategory": {
+    "success": "Categoria financeira criada com sucesso"
+  }
+}

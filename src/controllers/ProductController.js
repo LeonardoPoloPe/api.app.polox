@@ -1,6 +1,7 @@
 const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../config/database');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
+const { tc } = require('../config/i18n');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
 
@@ -212,7 +213,7 @@ class ProductController {
   // Criar produto
   static create = asyncHandler(async (req, res) => {
     const { error, value } = ProductController.createProductSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'productController', 'validation.invalid_data'));
 
     const productData = value;
 
@@ -224,7 +225,7 @@ class ProductController {
       );
 
       if (skuCheck.rows.length > 0) {
-        throw new ApiError(400, 'Produto com este SKU já existe');
+        throw new ApiError(400, tc(req, 'productController', 'validation.sku_exists'));
       }
     }
 
@@ -309,7 +310,7 @@ class ProductController {
       return res.status(201).json({
         success: true,
         data: newProduct,
-        message: 'Produto criado com sucesso'
+        message: tc(req, 'productController', 'create.success')
       });
 
     } catch (error) {
@@ -372,7 +373,7 @@ class ProductController {
     const productResult = await query(productQuery, [productId, req.user.companyId]);
 
     if (productResult.rows.length === 0) {
-      throw new ApiError(404, 'Produto não encontrado');
+      throw new ApiError(404, tc(req, 'productController', 'validation.not_found'));
     }
 
     const product = productResult.rows[0];
@@ -392,7 +393,7 @@ class ProductController {
   static update = asyncHandler(async (req, res) => {
     const productId = req.params.id;
     const { error, value } = ProductController.updateProductSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'productController', 'validation.invalid_data'));
 
     const updateData = value;
 
@@ -403,7 +404,7 @@ class ProductController {
     );
 
     if (existingProduct.rows.length === 0) {
-      throw new ApiError(404, 'Produto não encontrado');
+      throw new ApiError(404, tc(req, 'productController', 'validation.not_found'));
     }
 
     const product = existingProduct.rows[0];
@@ -416,7 +417,7 @@ class ProductController {
       );
 
       if (skuCheck.rows.length > 0) {
-        throw new ApiError(400, 'Produto com este SKU já existe');
+        throw new ApiError(400, tc(req, 'productController', 'validation.sku_exists'));
       }
     }
 
@@ -472,7 +473,7 @@ class ProductController {
       });
 
       if (fieldsToUpdate.length === 0) {
-        throw new ApiError(400, 'Nenhum campo para atualizar');
+        throw new ApiError(400, tc(req, 'productController', 'validation.no_fields_to_update'));
       }
 
       // Adicionar campos de controle
@@ -507,7 +508,7 @@ class ProductController {
       return res.status(200).json({
         success: true,
         data: updatedProduct,
-        message: 'Produto atualizado com sucesso'
+        message: tc(req, 'productController', 'update.success')
       });
 
     } catch (error) {
@@ -527,7 +528,7 @@ class ProductController {
     );
 
     if (existingProduct.rows.length === 0) {
-      throw new ApiError(404, 'Produto não encontrado');
+      throw new ApiError(404, tc(req, 'productController', 'validation.not_found'));
     }
 
     const product = existingProduct.rows[0];
@@ -539,7 +540,7 @@ class ProductController {
     );
 
     if (parseInt(salesCheck.rows[0].count) > 0) {
-      throw new ApiError(400, 'Não é possível deletar produto com vendas associadas. Desative o produto ao invés de deletá-lo.');
+      throw new ApiError(400, tc(req, 'productController', 'validation.has_sales'));
     }
 
     const client = await beginTransaction();
@@ -567,7 +568,7 @@ class ProductController {
 
       return res.status(200).json({
         success: true,
-        message: 'Produto deletado com sucesso'
+        message: tc(req, 'productController', 'delete.success')
       });
 
     } catch (error) {
@@ -580,7 +581,7 @@ class ProductController {
   static adjustStock = asyncHandler(async (req, res) => {
     const productId = req.params.id;
     const { error, value } = ProductController.stockAdjustmentSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'productController', 'validation.invalid_data'));
 
     const adjustmentData = value;
 
@@ -593,7 +594,7 @@ class ProductController {
     const productResult = await query(productQuery, [productId, req.user.companyId]);
     
     if (productResult.rows.length === 0) {
-      throw new ApiError(404, 'Produto não encontrado');
+      throw new ApiError(404, tc(req, 'productController', 'validation.not_found'));
     }
 
     const product = productResult.rows[0];
@@ -607,14 +608,14 @@ class ProductController {
       case 'out':
         newStock = product.stock_quantity - adjustmentData.quantity;
         if (newStock < 0) {
-          throw new ApiError(400, 'Estoque insuficiente');
+          throw new ApiError(400, tc(req, 'productController', 'validation.insufficient_stock'));
         }
         break;
       case 'set':
         newStock = adjustmentData.quantity;
         break;
       default:
-        throw new ApiError(400, 'Tipo de ajuste inválido');
+        throw new ApiError(400, tc(req, 'productController', 'validation.invalid_adjustment_type'));
     }
 
     const client = await beginTransaction();
@@ -652,7 +653,10 @@ class ProductController {
       if (newStock <= product.min_stock_level && product.min_stock_level > 0) {
         alert = {
           type: 'low_stock',
-          message: `Produto "${product.product_name}" está com estoque baixo (${newStock} restantes)`
+          message: tc(req, 'productController', 'adjustStock.low_stock_alert', {
+            productName: product.product_name,
+            stock: newStock
+          })
         };
 
         // Criar notificação de estoque baixo
@@ -683,7 +687,7 @@ class ProductController {
           adjustment: adjustmentData,
           alert
         },
-        message: 'Estoque ajustado com sucesso'
+        message: tc(req, 'productController', 'adjustStock.success')
       });
 
     } catch (error) {
@@ -759,7 +763,7 @@ class ProductController {
   // Criar categoria
   static createCategory = asyncHandler(async (req, res) => {
     const { error, value } = ProductController.createCategorySchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'productController', 'validation.invalid_data'));
 
     const categoryData = value;
 
@@ -770,7 +774,7 @@ class ProductController {
     );
 
     if (existingCategory.rows.length > 0) {
-      throw new ApiError(400, 'Categoria com este nome já existe');
+      throw new ApiError(400, tc(req, 'productController', 'validation.category_exists'));
     }
 
     const createCategoryQuery = `
@@ -792,7 +796,7 @@ class ProductController {
     return res.status(201).json({
       success: true,
       data: newCategory,
-      message: 'Categoria criada com sucesso'
+      message: tc(req, 'productController', 'createCategory.success')
     });
   });
 

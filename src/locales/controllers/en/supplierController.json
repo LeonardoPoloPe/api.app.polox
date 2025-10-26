@@ -1,0 +1,94 @@
+{
+  "validation": {
+    "invalid_data": "Invalid supplier data",
+    "name_required": "Supplier name is required",
+    "contact_required": "Contact information is required",
+    "supplier_not_found": "Supplier not found",
+    "invalid_rating": "Invalid rating (1-5)",
+    "order_items_required": "Order items are required",
+    "invalid_order_data": "Invalid order data",
+    "supplier_blocked": "Supplier is blocked",
+    "email_exists": "Email already registered",
+    "cnpj_exists": "CNPJ already registered",
+    "not_found": "Supplier not found",
+    "email_in_use": "Email already in use",
+    "cnpj_in_use": "CNPJ already in use",
+    "no_fields_to_update": "No fields to update",
+    "has_active_orders": "Supplier has active orders",
+    "items_required": "Items are required",
+    "supplier_inactive": "Supplier inactive",
+    "item_fields_required": "Item fields are required",
+    "credit_limit_exceeded": "Credit limit exceeded",
+    "invalid_report_type": "Invalid report type",
+    "suppliers_list_required": "Suppliers list is required"
+  },
+  "list": {
+    "success": "Suppliers listed successfully"
+  },
+  "create": {
+    "success": "Supplier created successfully",
+    "contact_created": "Primary contact created"
+  },
+  "show": {
+    "success": "Supplier retrieved successfully",
+    "not_found": "Supplier not found"
+  },
+  "update": {
+    "success": "Supplier updated successfully",
+    "not_found": "Supplier not found"
+  },
+  "delete": {
+    "success": "Supplier deleted successfully",
+    "not_found": "Supplier not found",
+    "has_orders": "Cannot delete supplier with active orders"
+  },
+  "products": {
+    "list_success": "Supplier products listed successfully",
+    "supplier_not_found": "Supplier not found"
+  },
+  "orders": {
+    "create_success": "Purchase order created successfully",
+    "list_success": "Orders listed successfully",
+    "items_required": "Order must contain at least one item",
+    "supplier_not_found": "Supplier not found",
+    "order_number_generated": "Order number: {{order_number}}"
+  },
+  "rating": {
+    "success": "Rating recorded successfully",
+    "updated": "Average rating updated to {{rating}}",
+    "invalid_range": "Rating must be between 1 and 5"
+  },
+  "reports": {
+    "performance_success": "Performance report generated successfully",
+    "spending_success": "Spending report generated successfully"
+  },
+  "import": {
+    "success": "{{total}} suppliers imported successfully",
+    "partial_success": "{{success}} of {{total}} suppliers imported",
+    "failed": "Failed to import suppliers"
+  },
+  "audit": {
+    "suppliers_listed": "Suppliers listed",
+    "supplier_created": "Supplier '{{name}}' created",
+    "supplier_viewed": "Supplier '{{name}}' viewed",
+    "supplier_updated": "Supplier '{{name}}' updated",
+    "supplier_deleted": "Supplier '{{name}}' deleted",
+    "purchase_order_created": "Purchase order {{orderNumber}} created for supplier '{{supplier}}'",
+    "supplier_rated": "Supplier '{{name}}' rated with score {{rating}}",
+    "order_created": "Order {{order_number}} created for supplier '{{supplier}}'",
+    "rating_added": "Rating {{rating}} assigned to supplier '{{supplier}}'",
+    "products_viewed": "Products from supplier '{{supplier}}' viewed",
+    "orders_viewed": "Orders from supplier '{{supplier}}' viewed",
+    "report_generated": "Suppliers report generated",
+    "suppliers_imported": "{{success}} of {{total}} suppliers imported"
+  },
+  "createOrder": {
+    "success": "Order created successfully"
+  },
+  "rateSupplier": {
+    "success": "Rating registered successfully"
+  },
+  "importSuppliers": {
+    "success": "Suppliers imported successfully"
+  }
+}

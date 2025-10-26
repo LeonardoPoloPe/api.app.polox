@@ -1,6 +1,7 @@
 const { query, beginTransaction, commit, rollback } = require('../models/database');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
+const { tc } = require('../config/i18n');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
 
@@ -332,7 +333,7 @@ class FinanceController {
   // Criar transação
   static createTransaction = asyncHandler(async (req, res) => {
     const { error, value } = FinanceController.createTransactionSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'financeController', 'validation.invalid_data'));
 
     const transactionData = value;
     const transactionId = uuidv4();
@@ -441,7 +442,7 @@ class FinanceController {
           ...newTransaction,
           amount: parseFloat(newTransaction.amount)
         },
-        message: 'Transação criada com sucesso'
+        message: tc(req, 'financeController', 'create.success')
       });
 
     } catch (error) {
@@ -454,7 +455,7 @@ class FinanceController {
   static updateTransaction = asyncHandler(async (req, res) => {
     const transactionId = req.params.id;
     const { error, value } = FinanceController.updateTransactionSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'financeController', 'validation.invalid_data'));
 
     const updateData = value;
 
@@ -465,7 +466,7 @@ class FinanceController {
     );
 
     if (existingTransaction.rows.length === 0) {
-      throw new ApiError(404, 'Transação não encontrada');
+      throw new ApiError(404, tc(req, 'financeController', 'validation.transaction_not_found'));
     }
 
     const transaction = existingTransaction.rows[0];
@@ -524,7 +525,7 @@ class FinanceController {
       });
 
       if (fieldsToUpdate.length === 0) {
-        throw new ApiError(400, 'Nenhum campo para atualizar');
+        throw new ApiError(400, tc(req, 'financeController', 'validation.no_fields_to_update'));
       }
 
       // Adicionar campos de controle
@@ -563,7 +564,7 @@ class FinanceController {
           ...updatedTransaction,
           amount: parseFloat(updatedTransaction.amount)
         },
-        message: 'Transação atualizada com sucesso'
+        message: tc(req, 'financeController', 'update.success')
       });
 
     } catch (error) {
@@ -583,7 +584,7 @@ class FinanceController {
     );
 
     if (existingTransaction.rows.length === 0) {
-      throw new ApiError(404, 'Transação não encontrada');
+      throw new ApiError(404, tc(req, 'financeController', 'validation.transaction_not_found'));
     }
 
     const transaction = existingTransaction.rows[0];
@@ -614,7 +615,7 @@ class FinanceController {
 
       return res.status(200).json({
         success: true,
-        message: 'Transação deletada com sucesso'
+        message: tc(req, 'financeController', 'delete.success')
       });
 
     } catch (error) {
@@ -739,7 +740,7 @@ class FinanceController {
   // Criar categoria financeira
   static createCategory = asyncHandler(async (req, res) => {
     const { error, value } = FinanceController.createCategorySchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'financeController', 'validation.invalid_data'));
 
     const categoryData = value;
 
@@ -750,7 +751,7 @@ class FinanceController {
     );
 
     if (existingCategory.rows.length > 0) {
-      throw new ApiError(400, 'Categoria com este nome já existe');
+      throw new ApiError(400, tc(req, 'financeController', 'validation.category_exists'));
     }
 
     const createCategoryQuery = `
@@ -776,7 +777,7 @@ class FinanceController {
     return res.status(201).json({
       success: true,
       data: newCategory,
-      message: 'Categoria criada com sucesso'
+      message: tc(req, 'financeController', 'createCategory.success')
     });
   });
 

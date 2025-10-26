@@ -1,0 +1,93 @@
+{
+  "validation": {
+    "invalid_data": "Datos inválidos",
+    "ticket_not_found": "Ticket no encontrado",
+    "invalid_status": "Estado inválido",
+    "invalid_priority": "Prioridad inválida",
+    "user_not_found": "Usuario no encontrado",
+    "reply_required": "La respuesta es obligatoria",
+    "not_found": "Ticket no encontrado",
+    "subject_required": "El asunto es obligatorio",
+    "description_required": "La descripción es obligatoria",
+    "no_permission": "Sin permiso para acceder a este ticket",
+    "invalid_report_type": "Tipo de informe inválido",
+    "client_not_found": "Cliente no encontrado",
+    "no_permission_edit": "Sin permiso para editar este ticket",
+    "no_changes": "No se proporcionaron cambios",
+    "no_permission_delete": "Sin permiso para eliminar este ticket",
+    "cannot_delete_closed": "No se pueden eliminar tickets cerrados",
+    "message_required": "El mensaje es obligatorio",
+    "cannot_reply_closed": "No se puede responder a tickets cerrados",
+    "escalation_reason_required": "El motivo de escalación es obligatorio",
+    "cannot_escalate_closed": "No se pueden escalar tickets cerrados",
+    "already_in_status": "El ticket ya está en este estado"
+  },
+  "list": {
+    "success": "Tickets devueltos con éxito"
+  },
+  "create": {
+    "success": "Ticket creado con éxito"
+  },
+  "show": {
+    "not_found": "Ticket no encontrado",
+    "success": "Ticket devuelto con éxito"
+  },
+  "update": {
+    "not_found": "Ticket no encontrado",
+    "success": "Ticket actualizado con éxito"
+  },
+  "delete": {
+    "not_found": "Ticket no encontrado",
+    "success": "Ticket eliminado con éxito"
+  },
+  "reply": {
+    "add_success": "Respuesta agregada con éxito",
+    "ticket_not_found": "Ticket no encontrado",
+    "not_found": "Respuesta no encontrada",
+    "success": "Respuesta añadida con éxito"
+  },
+  "addReply": {
+    "success": "Respuesta añadida con éxito"
+  },
+  "escalate": {
+    "success": "Ticket escalado con éxito",
+    "not_found": "Ticket no encontrado",
+    "already_max_priority": "El ticket ya está en la prioridad máxima"
+  },
+  "escalateTicket": {
+    "success": "Ticket escalado con éxito"
+  },
+  "status": {
+    "change_success": "Estado del ticket cambiado con éxito",
+    "not_found": "Ticket no encontrado",
+    "invalid_transition": "Transición de estado inválida"
+  },
+  "assign": {
+    "success": "Ticket asignado con éxito",
+    "not_found": "Ticket no encontrado",
+    "user_not_found": "Usuario no encontrado"
+  },
+  "reports": {
+    "success": "Informes generados con éxito"
+  },
+  "audit": {
+    "tickets_listed": "Tickets listados",
+    "ticket_created": "Ticket {{number}} creado: {{title}}",
+    "ticket_viewed": "Ticket visualizado",
+    "ticket_updated": "Ticket {{number}} actualizado",
+    "ticket_deleted": "Ticket {{number}} eliminado",
+    "ticket_reply_added": "Respuesta añadida al ticket {{number}}",
+    "reply_added": "Respuesta añadida al ticket",
+    "ticket_escalated": "Ticket {{number}} escalado a prioridad {{priority}}",
+    "status_changed": "Estado del ticket cambiado",
+    "ticket_assigned": "Ticket asignado",
+    "reports_generated": "Informes generados"
+  },
+  "changeStatus": {
+    "success": "Estado del ticket actualizado con éxito"
+  },
+  "assignTicket": {
+    "success": "Ticket asignado con éxito",
+    "removed": "Asignación eliminada con éxito"
+  }
+}

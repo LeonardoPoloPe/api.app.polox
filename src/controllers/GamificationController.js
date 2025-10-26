@@ -15,6 +15,7 @@ const { query, beginTransaction, commitTransaction, rollbackTransaction } = requ
 const { logger, auditLogger, securityLogger } = require('../utils/logger');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
+const { tc } = require('../config/i18n');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
 
@@ -100,7 +101,7 @@ class GamificationController {
     const result = await query(profileQuery, [req.user.id, req.user.company_id]);
     
     if (result.rows.length === 0) {
-      throw new ApiError(404, 'Perfil de gamificação não encontrado');
+      throw new ApiError(404, tc(req, 'gamificationController', 'validation.profile_not_found'));
     }
 
     const profile = result.rows[0];
@@ -157,14 +158,14 @@ class GamificationController {
    */
   static awardPoints = asyncHandler(async (req, res) => {
     const { error, value } = GamificationController.awardPointsSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'gamificationController', 'validation.invalid_data'));
 
     const { user_id, xp_amount, coin_amount, reason, action_type } = value;
     const targetUserId = user_id || req.user.id;
 
     // Verificar permissões - apenas admins podem conceder pontos para outros usuários
     if (targetUserId !== req.user.id && !['company_admin', 'super_admin'].includes(req.user.role)) {
-      throw new ApiError(403, 'Apenas administradores podem conceder pontos para outros usuários');
+      throw new ApiError(403, tc(req, 'gamificationController', 'validation.admin_only'));
     }
 
     // Verificar se usuário existe na empresa
@@ -174,13 +175,13 @@ class GamificationController {
     );
 
     if (userCheck.rows.length === 0) {
-      throw new ApiError(404, 'Usuário não encontrado na empresa');
+      throw new ApiError(404, tc(req, 'gamificationController', 'validation.user_not_found'));
     }
 
     const targetUser = userCheck.rows[0];
 
     if (xp_amount === 0 && coin_amount === 0) {
-      throw new ApiError(400, 'Deve ser concedido pelo menos 1 XP ou 1 Coin');
+      throw new ApiError(400, tc(req, 'gamificationController', 'validation.min_points_required'));
     }
 
     const client = await beginTransaction();
@@ -203,7 +204,7 @@ class GamificationController {
       ]);
 
       if (profileResult.rows.length === 0) {
-        throw new ApiError(404, 'Perfil de gamificação não encontrado');
+        throw new ApiError(404, tc(req, 'gamificationController', 'validation.profile_not_found'));
       }
 
       const updatedProfile = profileResult.rows[0];
@@ -262,7 +263,11 @@ class GamificationController {
       await commitTransaction(client);
 
       // Log de auditoria
-      auditLogger('Points awarded', {
+      auditLogger(tc(req, 'gamificationController', 'audit.points_awarded', {
+        xp: xp_amount,
+        coins: coin_amount,
+        userName: targetUser.name
+      }), {
         awardedBy: req.user.id,
         targetUser: targetUserId,
         targetUserName: targetUser.name,
@@ -385,7 +390,7 @@ class GamificationController {
     const { progress_amount = 1 } = req.body;
 
     if (progress_amount < 1 || progress_amount > 100) {
-      throw new ApiError(400, 'progress_amount deve estar entre 1 e 100');
+      throw new ApiError(400, tc(req, 'gamificationController', 'validation.invalid_progress'));
     }
 
     // Buscar missão
@@ -399,7 +404,7 @@ class GamificationController {
     const missionResult = await query(missionQuery, [missionId, req.user.company_id]);
     
     if (missionResult.rows.length === 0) {
-      throw new ApiError(404, 'Missão não encontrada ou não está ativa');
+      throw new ApiError(404, tc(req, 'gamificationController', 'validation.mission_not_found'));
     }
 
     const mission = missionResult.rows[0];
@@ -441,7 +446,7 @@ class GamificationController {
       ]);
 
       if (currentProgress.rows.length > 0 && currentProgress.rows[0].is_completed) {
-        throw new ApiError(400, 'Missão já foi completada neste período');
+        throw new ApiError(400, tc(req, 'gamificationController', 'validation.mission_already_completed'));
       }
 
       // Atualizar ou criar progresso da missão
@@ -519,7 +524,11 @@ class GamificationController {
       await commitTransaction(client);
 
       // Log de auditoria
-      auditLogger('Mission progress updated', {
+      auditLogger(tc(req, 'gamificationController', 'audit.mission_progress', {
+        missionName: mission.name,
+        progress: progress.current_count,
+        target: mission.target_count
+      }), {
         userId: req.user.id,
         missionId: mission.id,
         missionName: mission.name,
@@ -543,7 +552,10 @@ class GamificationController {
         completed: missionCompleted,
         rewards_earned: rewardsEarned,
         cycle_date: cycleDate
-      }, missionCompleted ? 'Missão completada!' : 'Progresso atualizado');
+      }, missionCompleted 
+        ? tc(req, 'gamificationController', 'completeMission.completed') 
+        : tc(req, 'gamificationController', 'completeMission.progress_updated')
+      );
 
     } catch (error) {
       await rollbackTransaction(client);
@@ -890,14 +902,14 @@ class GamificationController {
     const rewardResult = await query(rewardQuery, [req.user.id, rewardId, req.user.company_id]);
     
     if (rewardResult.rows.length === 0) {
-      throw new ApiError(404, 'Recompensa não encontrada');
+      throw new ApiError(404, tc(req, 'gamificationController', 'validation.reward_not_found'));
     }
 
     const reward = rewardResult.rows[0];
 
     // Verificar se pode comprar
     if (reward.max_purchases_per_user && reward.times_purchased_by_user >= reward.max_purchases_per_user) {
-      throw new ApiError(400, 'Limite de compras desta recompensa atingido');
+      throw new ApiError(400, tc(req, 'gamificationController', 'validation.purchase_limit_reached'));
     }
 
     // Buscar saldo atual
@@ -910,7 +922,10 @@ class GamificationController {
     const currentCoins = balanceResult.rows[0]?.current_coins || 0;
 
     if (currentCoins < reward.coin_cost) {
-      throw new ApiError(400, `Saldo insuficiente. Necessário: ${reward.coin_cost} coins, atual: ${currentCoins} coins`);
+      throw new ApiError(400, tc(req, 'gamificationController', 'validation.insufficient_balance', {
+        required: reward.coin_cost,
+        current: currentCoins
+      }));
     }
 
     const client = await beginTransaction();
@@ -942,7 +957,10 @@ class GamificationController {
       await commitTransaction(client);
 
       // Log de auditoria
-      auditLogger('Reward purchased', {
+      auditLogger(tc(req, 'gamificationController', 'audit.reward_purchased', {
+        rewardName: reward.name,
+        cost: reward.coin_cost
+      }), {
         userId: req.user.id,
         rewardId: reward.id,
         rewardName: reward.name,

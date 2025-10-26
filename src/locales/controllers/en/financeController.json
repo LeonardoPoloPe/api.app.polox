@@ -1,0 +1,61 @@
+{
+  "validation": {
+    "type_required": "Transaction type is required",
+    "type_invalid": "Type must be 'income' or 'expense'",
+    "amount_required": "Amount is required",
+    "amount_positive": "Amount must be greater than zero",
+    "description_required": "Description is required",
+    "description_max": "Description cannot exceed 255 characters",
+    "category_name_required": "Category name is required",
+    "category_exists": "Category with this name already exists",
+    "transaction_not_found": "Transaction not found",
+    "no_fields_to_update": "No fields to update",
+    "invalid_data": "Invalid financial data"
+  },
+  "dashboard": {
+    "get_success": "Financial dashboard retrieved successfully"
+  },
+  "transactions": {
+    "list_success": "Transactions listed successfully",
+    "create_success": "Transaction created successfully",
+    "update_success": "Transaction updated successfully",
+    "delete_success": "Transaction deleted successfully"
+  },
+  "cash_flow": {
+    "get_success": "Cash flow retrieved successfully"
+  },
+  "categories": {
+    "list_success": "Categories listed successfully",
+    "create_success": "Category created successfully"
+  },
+  "profit_loss": {
+    "get_success": "P&L statement retrieved successfully"
+  },
+  "audit": {
+    "dashboard_viewed": "Financial dashboard viewed - period: {{period}}",
+    "transactions_listed": "Transactions listed",
+    "transaction_created": "Transaction created: {{type}} $ {{amount}} - {{description}}",
+    "transaction_updated": "Transaction updated: {{description}}",
+    "transaction_deleted": "Transaction deleted: {{description}} - $ {{amount}}",
+    "cash_flow_viewed": "Cash flow viewed",
+    "categories_viewed": "Categories viewed",
+    "category_created": "Category created: {{name}}",
+    "profit_loss_viewed": "P&L statement viewed"
+  },
+  "gamification": {
+    "xp_earned": "{{xp}} XP earned for financial management",
+    "coins_earned": "{{coins}} coins earned"
+  },
+  "create": {
+    "success": "Financial transaction created successfully"
+  },
+  "update": {
+    "success": "Financial transaction updated successfully"
+  },
+  "delete": {
+    "success": "Financial transaction deleted successfully"
+  },
+  "createCategory": {
+    "success": "Financial category created successfully"
+  }
+}

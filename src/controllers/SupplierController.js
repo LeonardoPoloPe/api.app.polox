@@ -9,6 +9,7 @@
 const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
 const { asyncHandler, ApiError } = require('../utils/errors');
 const { logger, auditLogger } = require('../utils/logger');
+const { tc } = require('../config/i18n');
 const { cache } = require('../config/cache');
 const { trackUser } = require('../config/monitoring');
 const { 
@@ -141,7 +142,7 @@ class SupplierController {
     // Validar dados
     const validation = validateSupplierData(supplierData);
     if (!validation.isValid) {
-      throw new ApiError(400, 'Dados inválidos', validation.errors);
+      throw new ApiError(400, tc(req, 'supplierController', 'validation.invalid_data'), validation.errors);
     }
 
     const transaction = await beginTransaction();
@@ -155,7 +156,7 @@ class SupplierController {
         );
 
         if (emailCheck.rows.length > 0) {
-          throw new ApiError(409, 'Fornecedor com este email já existe');
+          throw new ApiError(409, tc(req, 'supplierController', 'validation.email_exists'));
         }
       }
 
@@ -167,7 +168,7 @@ class SupplierController {
         );
 
         if (cnpjCheck.rows.length > 0) {
-          throw new ApiError(409, 'Fornecedor com este CNPJ já existe');
+          throw new ApiError(409, tc(req, 'supplierController', 'validation.cnpj_exists'));
         }
       }
 
@@ -238,7 +239,9 @@ class SupplierController {
       await cache.del(`suppliers:${req.user.companyId}`, `supplier_stats:${req.user.companyId}`);
 
       // Log de auditoria
-      auditLogger('Supplier created', {
+      auditLogger(tc(req, 'supplierController', 'audit.supplier_created', {
+        name: supplierData.name
+      }), {
         userId: req.user.id,
         supplierId: supplierId,
         supplierName: supplierData.name,
@@ -251,7 +254,7 @@ class SupplierController {
 
       res.status(201).json({
         success: true,
-        message: 'Fornecedor criado com sucesso',
+        message: tc(req, 'supplierController', 'create.success'),
         data: sanitizeSupplierOutput(newSupplier),
         gamification: {
           xp: 15,
@@ -294,7 +297,7 @@ class SupplierController {
     const supplierResult = await query(supplierQuery, [supplierId, req.user.companyId]);
 
     if (supplierResult.rows.length === 0) {
-      throw new ApiError(404, 'Fornecedor não encontrado');
+      throw new ApiError(404, tc(req, 'supplierController', 'validation.not_found'));
     }
 
     const supplier = supplierResult.rows[0];
@@ -352,7 +355,7 @@ class SupplierController {
     // Validar dados de atualização
     const validation = validateUpdateData(updateData, 'supplier');
     if (!validation.isValid) {
-      throw new ApiError(400, 'Dados inválidos', validation.errors);
+      throw new ApiError(400, tc(req, 'supplierController', 'validation.invalid_data'), validation.errors);
     }
 
     const transaction = await beginTransaction();
@@ -365,7 +368,7 @@ class SupplierController {
       );
 
       if (supplierCheck.rows.length === 0) {
-        throw new ApiError(404, 'Fornecedor não encontrado');
+        throw new ApiError(404, tc(req, 'supplierController', 'validation.not_found'));
       }
 
       const currentSupplier = supplierCheck.rows[0];
@@ -378,7 +381,7 @@ class SupplierController {
         );
 
         if (emailCheck.rows.length > 0) {
-          throw new ApiError(409, 'Email já está sendo usado por outro fornecedor');
+          throw new ApiError(409, tc(req, 'supplierController', 'validation.email_in_use'));
         }
       }
 
@@ -390,7 +393,7 @@ class SupplierController {
         );
 
         if (cnpjCheck.rows.length > 0) {
-          throw new ApiError(409, 'CNPJ já está sendo usado por outro fornecedor');
+          throw new ApiError(409, tc(req, 'supplierController', 'validation.cnpj_in_use'));
         }
       }
 
@@ -418,7 +421,7 @@ class SupplierController {
       });
 
       if (updateFields.length === 0) {
-        throw new ApiError(400, 'Nenhum campo válido fornecido para atualização');
+        throw new ApiError(400, tc(req, 'supplierController', 'validation.no_fields_to_update'));
       }
 
       updateFields.push(`updated_at = NOW()`);
@@ -440,7 +443,9 @@ class SupplierController {
       await cache.del(`supplier:${supplierId}`, `suppliers:${req.user.companyId}`);
 
       // Log de auditoria
-      auditLogger('Supplier updated', {
+      auditLogger(tc(req, 'supplierController', 'audit.supplier_updated', {
+        name: currentSupplier.name
+      }), {
         userId: req.user.id,
         supplierId: supplierId,
         supplierName: currentSupplier.name,
@@ -454,7 +459,7 @@ class SupplierController {
 
       res.json({
         success: true,
-        message: 'Fornecedor atualizado com sucesso',
+        message: tc(req, 'supplierController', 'update.success'),
         data: sanitizeSupplierOutput(updatedSupplier)
       });
 
@@ -482,7 +487,7 @@ class SupplierController {
       );
 
       if (supplierResult.rows.length === 0) {
-        throw new ApiError(404, 'Fornecedor não encontrado');
+        throw new ApiError(404, tc(req, 'supplierController', 'validation.not_found'));
       }
 
       const supplier = supplierResult.rows[0];
@@ -494,7 +499,7 @@ class SupplierController {
       );
 
       if (parseInt(activePurchaseOrders.rows[0].count) > 0) {
-        throw new ApiError(400, 'Não é possível deletar fornecedor com pedidos de compra ativos');
+        throw new ApiError(400, tc(req, 'supplierController', 'validation.has_active_orders'));
       }
 
       // Soft delete do fornecedor
@@ -509,7 +514,9 @@ class SupplierController {
       await cache.del(`supplier:${supplierId}`, `suppliers:${req.user.companyId}`);
 
       // Log de auditoria
-      auditLogger('Supplier deleted', {
+      auditLogger(tc(req, 'supplierController', 'audit.supplier_deleted', {
+        name: supplier.name
+      }), {
         userId: req.user.id,
         supplierId: supplierId,
         supplierName: supplier.name,
@@ -522,7 +529,7 @@ class SupplierController {
 
       res.json({
         success: true,
-        message: 'Fornecedor removido com sucesso'
+        message: tc(req, 'supplierController', 'delete.success')
       });
 
     } catch (error) {
@@ -546,7 +553,7 @@ class SupplierController {
     );
 
     if (supplierCheck.rows.length === 0) {
-      throw new ApiError(404, 'Fornecedor não encontrado');
+      throw new ApiError(404, tc(req, 'supplierController', 'validation.not_found'));
     }
 
     const productsQuery = `
@@ -582,7 +589,7 @@ class SupplierController {
 
     // Validação básica
     if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
-      throw new ApiError(400, 'Itens do pedido são obrigatórios');
+      throw new ApiError(400, tc(req, 'supplierController', 'validation.items_required'));
     }
 
     const transaction = await beginTransaction();
@@ -595,26 +602,29 @@ class SupplierController {
       );
 
       if (supplierCheck.rows.length === 0) {
-        throw new ApiError(404, 'Fornecedor não encontrado');
+        throw new ApiError(404, tc(req, 'supplierController', 'validation.not_found'));
       }
 
       const supplier = supplierCheck.rows[0];
 
       if (supplier.status !== 'active') {
-        throw new ApiError(400, 'Não é possível criar pedido para fornecedor inativo');
+        throw new ApiError(400, tc(req, 'supplierController', 'validation.supplier_inactive'));
       }
 
       // Calcular total do pedido
       const totalAmount = orderData.items.reduce((sum, item) => {
         if (!item.quantity || !item.unit_price) {
-          throw new ApiError(400, 'Quantidade e preço unitário são obrigatórios para todos os itens');
+          throw new ApiError(400, tc(req, 'supplierController', 'validation.item_fields_required'));
         }
         return sum + (item.quantity * item.unit_price);
       }, 0);
 
       // Verificar limite de crédito se aplicável
       if (supplier.credit_limit > 0 && totalAmount > supplier.credit_limit) {
-        throw new ApiError(400, `Valor do pedido (${totalAmount}) excede o limite de crédito (${supplier.credit_limit})`);
+        throw new ApiError(400, tc(req, 'supplierController', 'validation.credit_limit_exceeded', {
+          orderAmount: totalAmount,
+          creditLimit: supplier.credit_limit
+        }));
       }
 
       // Gerar número do pedido
@@ -686,7 +696,10 @@ class SupplierController {
       `, [uuidv4(), req.user.id, req.user.companyId, xpReward, orderId, uuidv4(), coinReward]);
 
       // Log de auditoria
-      auditLogger('Purchase order created', {
+      auditLogger(tc(req, 'supplierController', 'audit.purchase_order_created', {
+        orderNumber: orderNumber,
+        supplier: supplier.name
+      }), {
         userId: req.user.id,
         orderId: orderId,
         orderNumber: orderNumber,
@@ -703,7 +716,7 @@ class SupplierController {
 
       res.status(201).json({
         success: true,
-        message: 'Pedido de compra criado com sucesso',
+        message: tc(req, 'supplierController', 'createOrder.success'),
         data: {
           ...newOrder,
           items: orderData.items.map((item, index) => ({
@@ -742,7 +755,7 @@ class SupplierController {
     );
 
     if (supplierCheck.rows.length === 0) {
-      throw new ApiError(404, 'Fornecedor não encontrado');
+      throw new ApiError(404, tc(req, 'supplierController', 'validation.not_found'));
     }
 
     let whereClause = 'WHERE po.supplier_id = $1 AND po.company_id = $2 AND po.deleted_at IS NULL';
@@ -802,7 +815,7 @@ class SupplierController {
 
     // Validações
     if (!rating || rating < 1 || rating > 5) {
-      throw new ApiError(400, 'Rating deve ser entre 1 e 5');
+      throw new ApiError(400, tc(req, 'supplierController', 'validation.invalid_rating'));
     }
 
     const transaction = await beginTransaction();
@@ -815,7 +828,7 @@ class SupplierController {
       );
 
       if (supplierCheck.rows.length === 0) {
-        throw new ApiError(404, 'Fornecedor não encontrado');
+        throw new ApiError(404, tc(req, 'supplierController', 'validation.not_found'));
       }
 
       const supplier = supplierCheck.rows[0];
@@ -865,7 +878,10 @@ class SupplierController {
       `, [req.user.id, req.user.companyId]);
 
       // Log de auditoria
-      auditLogger('Supplier rated', {
+      auditLogger(tc(req, 'supplierController', 'audit.supplier_rated', {
+        name: supplier.name,
+        rating: rating
+      }), {
         userId: req.user.id,
         supplierId: supplierId,
         supplierName: supplier.name,
@@ -878,7 +894,7 @@ class SupplierController {
 
       res.json({
         success: true,
-        message: 'Fornecedor avaliado com sucesso',
+        message: tc(req, 'supplierController', 'rateSupplier.success'),
         data: {
           rating: rating,
           comment: comment,
@@ -988,7 +1004,7 @@ class SupplierController {
       });
 
     } else {
-      throw new ApiError(400, 'Tipo de relatório inválido');
+      throw new ApiError(400, tc(req, 'supplierController', 'validation.invalid_report_type'));
     }
   });
 
@@ -1000,7 +1016,7 @@ class SupplierController {
     const { suppliers } = req.body;
 
     if (!suppliers || !Array.isArray(suppliers) || suppliers.length === 0) {
-      throw new ApiError(400, 'Lista de fornecedores é obrigatória');
+      throw new ApiError(400, tc(req, 'supplierController', 'validation.suppliers_list_required'));
     }
 
     const transaction = await beginTransaction();
@@ -1077,7 +1093,10 @@ class SupplierController {
       }
 
       // Log de auditoria
-      auditLogger('Suppliers imported', {
+      auditLogger(tc(req, 'supplierController', 'audit.suppliers_imported', {
+        success: successCount,
+        total: suppliers.length
+      }), {
         userId: req.user.id,
         totalAttempted: suppliers.length,
         imported: results.imported,
@@ -1088,7 +1107,10 @@ class SupplierController {
 
       res.json({
         success: true,
-        message: `Importação concluída: ${results.imported} importados, ${results.skipped} ignorados`,
+        message: tc(req, 'supplierController', 'importSuppliers.success', {
+          imported: results.imported,
+          skipped: results.skipped
+        }),
         data: results,
         gamification: results.imported > 0 ? {
           xp: results.imported * 5,

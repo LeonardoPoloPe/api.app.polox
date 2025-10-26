@@ -9,6 +9,7 @@
 const { query, beginTransaction, commitTransaction, rollbackTransaction } = require('../models/database');
 const { asyncHandler, ApiError } = require('../utils/errors');
 const { logger, auditLogger } = require('../utils/logger');
+const { tc } = require('../config/i18n');
 const { cache } = require('../config/cache');
 const { trackUser } = require('../config/monitoring');
 const { 
@@ -176,7 +177,7 @@ class TicketController {
     // Validar dados
     const validation = validateTicketData(ticketData);
     if (!validation.isValid) {
-      throw new ApiError(400, 'Dados inválidos', validation.errors);
+      throw new ApiError(400, tc(req, 'ticketController', 'validation.invalid_data'), validation.errors);
     }
 
     const transaction = await beginTransaction();
@@ -190,7 +191,7 @@ class TicketController {
         );
 
         if (customerCheck.rows.length === 0) {
-          throw new ApiError(404, 'Cliente não encontrado');
+          throw new ApiError(404, tc(req, 'ticketController', 'validation.client_not_found'));
         }
       }
 
@@ -202,7 +203,7 @@ class TicketController {
         );
 
         if (assigneeCheck.rows.length === 0) {
-          throw new ApiError(404, 'Usuário para designação não encontrado');
+          throw new ApiError(404, tc(req, 'ticketController', 'validation.user_not_found'));
         }
       }
 
@@ -285,7 +286,10 @@ class TicketController {
       await cache.del(`tickets:${req.user.companyId}`, `ticket_stats:${req.user.companyId}`);
 
       // Log de auditoria
-      auditLogger('Ticket created', {
+      auditLogger(tc(req, 'ticketController', 'audit.ticket_created', {
+        number: ticketNumber,
+        title: ticketData.title
+      }), {
         userId: req.user.id,
         ticketId: ticketId,
         ticketNumber: ticketNumber,
@@ -302,7 +306,7 @@ class TicketController {
 
       res.status(201).json({
         success: true,
-        message: 'Ticket criado com sucesso',
+        message: tc(req, 'ticketController', 'create.success'),
         data: sanitizeTicketOutput(newTicket),
         gamification: {
           xp: xpReward,
@@ -344,7 +348,7 @@ class TicketController {
     const ticketResult = await query(ticketQuery, [ticketId, req.user.companyId]);
 
     if (ticketResult.rows.length === 0) {
-      throw new ApiError(404, 'Ticket não encontrado');
+      throw new ApiError(404, tc(req, 'ticketController', 'validation.not_found'));
     }
 
     const ticket = ticketResult.rows[0];
@@ -399,7 +403,7 @@ class TicketController {
     // Validar dados de atualização
     const validation = validateUpdateData(updateData, 'ticket');
     if (!validation.isValid) {
-      throw new ApiError(400, 'Dados inválidos', validation.errors);
+      throw new ApiError(400, tc(req, 'ticketController', 'validation.invalid_data'), validation.errors);
     }
 
     const transaction = await beginTransaction();
@@ -412,7 +416,7 @@ class TicketController {
       );
 
       if (ticketCheck.rows.length === 0) {
-        throw new ApiError(404, 'Ticket não encontrado');
+        throw new ApiError(404, tc(req, 'ticketController', 'validation.not_found'));
       }
 
       const currentTicket = ticketCheck.rows[0];
@@ -421,7 +425,7 @@ class TicketController {
       if (currentTicket.created_by !== req.user.id && 
           currentTicket.assigned_to !== req.user.id && 
           req.user.role !== 'admin') {
-        throw new ApiError(403, 'Sem permissão para editar este ticket');
+        throw new ApiError(403, tc(req, 'ticketController', 'validation.no_permission_edit'));
       }
 
       // Construir query de atualização dinâmica
@@ -463,7 +467,7 @@ class TicketController {
       });
 
       if (updateFields.length === 0) {
-        throw new ApiError(400, 'Nenhuma alteração detectada');
+        throw new ApiError(400, tc(req, 'ticketController', 'validation.no_changes'));
       }
 
       // Atualizar timestamp de resolução se status mudou para resolved/closed
@@ -538,7 +542,9 @@ class TicketController {
       await cache.del(`ticket:${ticketId}`, `tickets:${req.user.companyId}`);
 
       // Log de auditoria
-      auditLogger('Ticket updated', {
+      auditLogger(tc(req, 'ticketController', 'audit.ticket_updated', {
+        number: currentTicket.ticket_number
+      }), {
         userId: req.user.id,
         ticketId: ticketId,
         ticketNumber: currentTicket.ticket_number,
@@ -549,7 +555,7 @@ class TicketController {
 
       res.json({
         success: true,
-        message: 'Ticket atualizado com sucesso',
+        message: tc(req, 'ticketController', 'update.success'),
         data: sanitizeTicketOutput(updatedTicket),
         gamification: updateData.status && ['resolved', 'closed'].includes(updateData.status) ? {
           xp: currentTicket.priority === 'urgent' ? 50 : 35,
@@ -581,19 +587,19 @@ class TicketController {
       );
 
       if (ticketResult.rows.length === 0) {
-        throw new ApiError(404, 'Ticket não encontrado');
+        throw new ApiError(404, tc(req, 'ticketController', 'validation.not_found'));
       }
 
       const ticket = ticketResult.rows[0];
 
       // Verificar permissões (apenas criador ou admin pode deletar)
       if (ticket.created_by !== req.user.id && req.user.role !== 'admin') {
-        throw new ApiError(403, 'Sem permissão para deletar este ticket');
+        throw new ApiError(403, tc(req, 'ticketController', 'validation.no_permission_delete'));
       }
 
       // Não permitir deletar tickets resolvidos/fechados (apenas admin)
       if (['resolved', 'closed'].includes(ticket.status) && req.user.role !== 'admin') {
-        throw new ApiError(400, 'Não é possível deletar tickets resolvidos/fechados');
+        throw new ApiError(400, tc(req, 'ticketController', 'validation.cannot_delete_closed'));
       }
 
       // Soft delete do ticket
@@ -620,7 +626,9 @@ class TicketController {
       await cache.del(`ticket:${ticketId}`, `tickets:${req.user.companyId}`);
 
       // Log de auditoria
-      auditLogger('Ticket deleted', {
+      auditLogger(tc(req, 'ticketController', 'audit.ticket_deleted', {
+        number: ticket.ticket_number
+      }), {
         userId: req.user.id,
         ticketId: ticketId,
         ticketNumber: ticket.ticket_number,
@@ -630,7 +638,7 @@ class TicketController {
 
       res.json({
         success: true,
-        message: 'Ticket removido com sucesso'
+        message: tc(req, 'ticketController', 'delete.success')
       });
 
     } catch (error) {
@@ -648,7 +656,7 @@ class TicketController {
     const { message, is_internal = false } = req.body;
 
     if (!message || message.trim().length === 0) {
-      throw new ApiError(400, 'Mensagem é obrigatória');
+      throw new ApiError(400, tc(req, 'ticketController', 'validation.message_required'));
     }
 
     const transaction = await beginTransaction();
@@ -661,14 +669,14 @@ class TicketController {
       );
 
       if (ticketResult.rows.length === 0) {
-        throw new ApiError(404, 'Ticket não encontrado');
+        throw new ApiError(404, tc(req, 'ticketController', 'validation.not_found'));
       }
 
       const ticket = ticketResult.rows[0];
 
       // Verificar se pode responder (ticket não fechado)
       if (ticket.status === 'closed') {
-        throw new ApiError(400, 'Não é possível responder ticket fechado');
+        throw new ApiError(400, tc(req, 'ticketController', 'validation.cannot_reply_closed'));
       }
 
       // Criar resposta
@@ -747,7 +755,9 @@ class TicketController {
       `, [xpReward, coinReward, req.user.id, req.user.companyId]);
 
       // Log de auditoria
-      auditLogger('Ticket reply added', {
+      auditLogger(tc(req, 'ticketController', 'audit.ticket_reply_added', {
+        number: ticket.ticket_number
+      }), {
         userId: req.user.id,
         ticketId: ticketId,
         ticketNumber: ticket.ticket_number,
@@ -759,7 +769,7 @@ class TicketController {
 
       res.status(201).json({
         success: true,
-        message: 'Resposta adicionada com sucesso',
+        message: tc(req, 'ticketController', 'addReply.success'),
         data: newReply,
         status_updated: statusUpdate,
         gamification: {
@@ -784,7 +794,7 @@ class TicketController {
     const { reason, escalate_to } = req.body;
 
     if (!reason || reason.trim().length === 0) {
-      throw new ApiError(400, 'Motivo da escalação é obrigatório');
+      throw new ApiError(400, tc(req, 'ticketController', 'validation.escalation_reason_required'));
     }
 
     const transaction = await beginTransaction();
@@ -797,14 +807,14 @@ class TicketController {
       );
 
       if (ticketResult.rows.length === 0) {
-        throw new ApiError(404, 'Ticket não encontrado');
+        throw new ApiError(404, tc(req, 'ticketController', 'validation.not_found'));
       }
 
       const ticket = ticketResult.rows[0];
 
       // Verificar se pode escalar
       if (['resolved', 'closed'].includes(ticket.status)) {
-        throw new ApiError(400, 'Não é possível escalar ticket resolvido/fechado');
+        throw new ApiError(400, tc(req, 'ticketController', 'validation.cannot_escalate_closed'));
       }
 
       // Definir nova prioridade baseada na atual
@@ -879,7 +889,10 @@ class TicketController {
       await commitTransaction(transaction);
 
       // Log de auditoria
-      auditLogger('Ticket escalated', {
+      auditLogger(tc(req, 'ticketController', 'audit.ticket_escalated', {
+        number: ticket.ticket_number,
+        priority: newPriority
+      }), {
         userId: req.user.id,
         ticketId: ticketId,
         ticketNumber: ticket.ticket_number,
@@ -893,7 +906,7 @@ class TicketController {
 
       res.json({
         success: true,
-        message: 'Ticket escalado com sucesso',
+        message: tc(req, 'ticketController', 'escalateTicket.success'),
         data: {
           ...sanitizeTicketOutput(updatedTicket),
           escalation_reason: reason,
@@ -919,7 +932,7 @@ class TicketController {
     const validStatuses = ['open', 'in_progress', 'pending', 'resolved', 'closed'];
     
     if (!status || !validStatuses.includes(status)) {
-      throw new ApiError(400, 'Status inválido');
+      throw new ApiError(400, tc(req, 'ticketController', 'validation.invalid_status'));
     }
 
     const transaction = await beginTransaction();
@@ -932,14 +945,14 @@ class TicketController {
       );
 
       if (ticketResult.rows.length === 0) {
-        throw new ApiError(404, 'Ticket não encontrado');
+        throw new ApiError(404, tc(req, 'ticketController', 'validation.not_found'));
       }
 
       const ticket = ticketResult.rows[0];
 
       // Verificar se mudança é válida
       if (ticket.status === status) {
-        throw new ApiError(400, 'Ticket já está neste status');
+        throw new ApiError(400, tc(req, 'ticketController', 'validation.already_in_status'));
       }
 
       // Atualizar ticket
@@ -1005,7 +1018,7 @@ class TicketController {
 
       res.json({
         success: true,
-        message: `Status alterado para ${status} com sucesso`,
+        message: tc(req, 'ticketController', 'changeStatus.success', { status }),
         data: sanitizeTicketOutput(updatedTicket),
         gamification: gamificationReward
       });
@@ -1034,7 +1047,7 @@ class TicketController {
       );
 
       if (ticketResult.rows.length === 0) {
-        throw new ApiError(404, 'Ticket não encontrado');
+        throw new ApiError(404, tc(req, 'ticketController', 'validation.not_found'));
       }
 
       const ticket = ticketResult.rows[0];
@@ -1047,7 +1060,7 @@ class TicketController {
         );
 
         if (assigneeCheck.rows.length === 0) {
-          throw new ApiError(404, 'Usuário para designação não encontrado');
+          throw new ApiError(404, tc(req, 'ticketController', 'validation.user_not_found'));
         }
       }
 
@@ -1086,7 +1099,9 @@ class TicketController {
 
       res.json({
         success: true,
-        message: assigned_to ? 'Ticket designado com sucesso' : 'Designação removida com sucesso',
+        message: assigned_to 
+          ? tc(req, 'ticketController', 'assignTicket.success') 
+          : tc(req, 'ticketController', 'assignTicket.removed'),
         data: {
           ticket_id: ticketId,
           assigned_to: assigned_to,
@@ -1212,7 +1227,7 @@ class TicketController {
       });
 
     } else {
-      throw new ApiError(400, 'Tipo de relatório inválido');
+      throw new ApiError(400, tc(req, 'ticketController', 'validation.invalid_report_type'));
     }
   });
 

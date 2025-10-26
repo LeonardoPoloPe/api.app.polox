@@ -1,0 +1,93 @@
+{
+  "validation": {
+    "invalid_data": "Invalid data",
+    "ticket_not_found": "Ticket not found",
+    "invalid_status": "Invalid status",
+    "invalid_priority": "Invalid priority",
+    "user_not_found": "User not found",
+    "reply_required": "Reply is required",
+    "not_found": "Ticket not found",
+    "subject_required": "Subject is required",
+    "description_required": "Description is required",
+    "no_permission": "No permission to access this ticket",
+    "invalid_report_type": "Invalid report type",
+    "client_not_found": "Client not found",
+    "no_permission_edit": "No permission to edit this ticket",
+    "no_changes": "No changes provided",
+    "no_permission_delete": "No permission to delete this ticket",
+    "cannot_delete_closed": "Cannot delete closed tickets",
+    "message_required": "Message is required",
+    "cannot_reply_closed": "Cannot reply to closed tickets",
+    "escalation_reason_required": "Escalation reason is required",
+    "cannot_escalate_closed": "Cannot escalate closed tickets",
+    "already_in_status": "Ticket is already in this status"
+  },
+  "list": {
+    "success": "Tickets returned successfully"
+  },
+  "create": {
+    "success": "Ticket created successfully"
+  },
+  "show": {
+    "not_found": "Ticket not found",
+    "success": "Ticket returned successfully"
+  },
+  "update": {
+    "not_found": "Ticket not found",
+    "success": "Ticket updated successfully"
+  },
+  "delete": {
+    "not_found": "Ticket not found",
+    "success": "Ticket deleted successfully"
+  },
+  "reply": {
+    "add_success": "Reply added successfully",
+    "ticket_not_found": "Ticket not found",
+    "not_found": "Reply not found",
+    "success": "Reply added successfully"
+  },
+  "addReply": {
+    "success": "Reply added successfully"
+  },
+  "escalate": {
+    "success": "Ticket escalated successfully",
+    "not_found": "Ticket not found",
+    "already_max_priority": "Ticket is already at maximum priority"
+  },
+  "escalateTicket": {
+    "success": "Ticket escalated successfully"
+  },
+  "status": {
+    "change_success": "Ticket status changed successfully",
+    "not_found": "Ticket not found",
+    "invalid_transition": "Invalid status transition"
+  },
+  "assign": {
+    "success": "Ticket assigned successfully",
+    "not_found": "Ticket not found",
+    "user_not_found": "User not found"
+  },
+  "reports": {
+    "success": "Reports generated successfully"
+  },
+  "audit": {
+    "tickets_listed": "Tickets listed",
+    "ticket_created": "Ticket {{number}} created: {{title}}",
+    "ticket_viewed": "Ticket viewed",
+    "ticket_updated": "Ticket {{number}} updated",
+    "ticket_deleted": "Ticket {{number}} deleted",
+    "ticket_reply_added": "Reply added to ticket {{number}}",
+    "reply_added": "Reply added to ticket",
+    "ticket_escalated": "Ticket {{number}} escalated to priority {{priority}}",
+    "status_changed": "Ticket status changed",
+    "ticket_assigned": "Ticket assigned",
+    "reports_generated": "Reports generated"
+  },
+  "changeStatus": {
+    "success": "Ticket status updated successfully"
+  },
+  "assignTicket": {
+    "success": "Ticket assigned successfully",
+    "removed": "Assignment removed successfully"
+  }
+}

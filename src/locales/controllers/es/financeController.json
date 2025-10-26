@@ -1,0 +1,61 @@
+{
+  "validation": {
+    "type_required": "El tipo de transacción es obligatorio",
+    "type_invalid": "El tipo debe ser 'income' (ingreso) o 'expense' (gasto)",
+    "amount_required": "El monto es obligatorio",
+    "amount_positive": "El monto debe ser mayor que cero",
+    "description_required": "La descripción es obligatoria",
+    "description_max": "La descripción no puede exceder 255 caracteres",
+    "category_name_required": "El nombre de la categoría es obligatorio",
+    "category_exists": "Ya existe una categoría con este nombre",
+    "transaction_not_found": "Transacción no encontrada",
+    "no_fields_to_update": "No hay campos para actualizar",
+    "invalid_data": "Datos financieros inválidos"
+  },
+  "dashboard": {
+    "get_success": "Dashboard financiero obtenido con éxito"
+  },
+  "transactions": {
+    "list_success": "Transacciones listadas con éxito",
+    "create_success": "Transacción creada con éxito",
+    "update_success": "Transacción actualizada con éxito",
+    "delete_success": "Transacción eliminada con éxito"
+  },
+  "cash_flow": {
+    "get_success": "Flujo de caja obtenido con éxito"
+  },
+  "categories": {
+    "list_success": "Categorías listadas con éxito",
+    "create_success": "Categoría creada con éxito"
+  },
+  "profit_loss": {
+    "get_success": "Estado de resultados obtenido con éxito"
+  },
+  "audit": {
+    "dashboard_viewed": "Dashboard financiero visualizado - período: {{period}}",
+    "transactions_listed": "Transacciones listadas",
+    "transaction_created": "Transacción creada: {{type}} $ {{amount}} - {{description}}",
+    "transaction_updated": "Transacción actualizada: {{description}}",
+    "transaction_deleted": "Transacción eliminada: {{description}} - $ {{amount}}",
+    "cash_flow_viewed": "Flujo de caja visualizado",
+    "categories_viewed": "Categorías visualizadas",
+    "category_created": "Categoría creada: {{name}}",
+    "profit_loss_viewed": "Estado de resultados visualizado"
+  },
+  "gamification": {
+    "xp_earned": "{{xp}} XP ganados por gestión financiera",
+    "coins_earned": "{{coins}} monedas ganadas"
+  },
+  "create": {
+    "success": "Transacción financiera creada con éxito"
+  },
+  "update": {
+    "success": "Transacción financiera actualizada con éxito"
+  },
+  "delete": {
+    "success": "Transacción financiera eliminada con éxito"
+  },
+  "createCategory": {
+    "success": "Categoría financiera creada con éxito"
+  }
+}

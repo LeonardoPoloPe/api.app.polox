@@ -1,0 +1,79 @@
+{
+  "validation": {
+    "name_required": "Product name is required",
+    "name_min_length": "Name must be at least 2 characters",
+    "name_max_length": "Name cannot exceed 255 characters",
+    "price_required": "Price is required",
+    "price_min": "Price must be greater than or equal to zero",
+    "type_invalid": "Type must be \"product\" or \"service\"",
+    "sku_exists": "SKU already exists for another product",
+    "category_name_required": "Category name is required",
+    "adjustment_type_required": "Adjustment type is required",
+    "adjustment_type_invalid": "Type must be \"in\", \"out\" or \"set\"",
+    "quantity_required": "Quantity is required",
+    "reason_required": "Reason is required",
+    "insufficient_stock": "Insufficient stock",
+    "product_not_found": "Product not found",
+    "name_exists": "Product name already exists",
+    "not_found": "Product not found",
+    "sku_in_use": "SKU already in use",
+    "no_fields_to_update": "No fields to update",
+    "has_active_sales": "Product has active sales",
+    "product_id_required": "Product ID is required",
+    "invalid_data": "Invalid product data",
+    "category_exists": "Category already exists",
+    "has_sales": "Product has registered sales",
+    "invalid_adjustment_type": "Invalid adjustment type"
+  },
+  "list": {
+    "success": "Products returned successfully"
+  },
+  "create": {
+    "success": "Product created successfully"
+  },
+  "show": {
+    "not_found": "Product not found",
+    "success": "Product returned successfully"
+  },
+  "update": {
+    "not_found": "Product not found",
+    "success": "Product updated successfully"
+  },
+  "delete": {
+    "not_found": "Product not found",
+    "success": "Product deleted successfully",
+    "has_sales": "Cannot delete product with associated sales"
+  },
+  "stock": {
+    "adjust_success": "Stock adjusted successfully",
+    "low_stock_success": "Low stock products returned",
+    "product_not_found": "Product not found"
+  },
+  "category": {
+    "list_success": "Categories returned successfully",
+    "create_success": "Category created successfully",
+    "name_exists": "Category with this name already exists"
+  },
+  "reports": {
+    "success": "Reports generated successfully"
+  },
+  "audit": {
+    "products_listed": "Products listed",
+    "product_created": "Product created",
+    "product_viewed": "Product viewed",
+    "product_updated": "Product updated",
+    "product_deleted": "Product deleted",
+    "stock_adjusted": "Stock adjusted",
+    "low_stock_checked": "Low stock checked",
+    "categories_listed": "Categories listed",
+    "category_created": "Category created",
+    "reports_generated": "Reports generated"
+  },
+  "adjustStock": {
+    "low_stock_alert": "Alert: Low stock ({{current}} units)",
+    "success": "Stock adjusted successfully"
+  },
+  "createCategory": {
+    "success": "Category created successfully"
+  }
+}

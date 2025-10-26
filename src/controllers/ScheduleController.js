@@ -1,6 +1,7 @@
 const { query, beginTransaction, commit, rollback } = require('../models/database');
 const { ApiError, asyncHandler } = require('../utils/errors');
 const { successResponse, paginatedResponse } = require('../utils/formatters');
+const { tc } = require('../config/i18n');
 const Joi = require('joi');
 const { v4: uuidv4 } = require('uuid');
 
@@ -218,7 +219,7 @@ class ScheduleController {
   // Criar evento
   static createEvent = asyncHandler(async (req, res) => {
     const { error, value } = ScheduleController.createEventSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'scheduleController', 'validation.invalid_data'));
 
     const eventData = value;
     const eventId = uuidv4();
@@ -236,7 +237,7 @@ class ScheduleController {
       if (conflicts.length > 0 && req.query.ignore_conflicts !== 'true') {
         return res.status(409).json({
           success: false,
-          message: 'Conflitos de horário detectados',
+          message: tc(req, 'scheduleController', 'validation.time_conflicts'),
           conflicts: conflicts
         });
       }
@@ -342,7 +343,7 @@ class ScheduleController {
       return res.status(201).json({
         success: true,
         data: newEvent,
-        message: 'Evento criado com sucesso'
+        message: tc(req, 'scheduleController', 'create.success')
       });
 
     } catch (error) {
@@ -397,7 +398,7 @@ class ScheduleController {
     const eventResult = await query(eventQuery, [eventId, req.user.companyId]);
 
     if (eventResult.rows.length === 0) {
-      throw new ApiError(404, 'Evento não encontrado');
+      throw new ApiError(404, tc(req, 'scheduleController', 'validation.event_not_found'));
     }
 
     const event = eventResult.rows[0];
@@ -406,7 +407,7 @@ class ScheduleController {
     if (event.is_private && event.created_by !== req.user.id) {
       const isAttendee = event.attendees.some(attendee => attendee.user_id === req.user.id);
       if (!isAttendee) {
-        throw new ApiError(403, 'Você não tem permissão para visualizar este evento');
+        throw new ApiError(403, tc(req, 'scheduleController', 'validation.no_permission_view'));
       }
     }
 
@@ -420,7 +421,7 @@ class ScheduleController {
   static update = asyncHandler(async (req, res) => {
     const eventId = req.params.id;
     const { error, value } = ScheduleController.updateEventSchema.validate(req.body);
-    if (error) throw new ApiError(400, error.details[0].message);
+    if (error) throw new ApiError(400, tc(req, 'scheduleController', 'validation.invalid_data'));
 
     const updateData = value;
 
@@ -431,14 +432,14 @@ class ScheduleController {
     );
 
     if (existingEvent.rows.length === 0) {
-      throw new ApiError(404, 'Evento não encontrado');
+      throw new ApiError(404, tc(req, 'scheduleController', 'validation.event_not_found'));
     }
 
     const event = existingEvent.rows[0];
 
     // Verificar permissão para editar
     if (event.created_by !== req.user.id) {
-      throw new ApiError(403, 'Apenas o criador do evento pode editá-lo');
+      throw new ApiError(403, tc(req, 'scheduleController', 'validation.only_creator_edit'));
     }
 
     // Verificar conflitos se horário foi alterado
@@ -468,7 +469,7 @@ class ScheduleController {
       if (conflicts.length > 0 && req.query.ignore_conflicts !== 'true') {
         return res.status(409).json({
           success: false,
-          message: 'Conflitos de horário detectados',
+          message: tc(req, 'scheduleController', 'validation.time_conflicts'),
           conflicts: conflicts
         });
       }
@@ -513,7 +514,7 @@ class ScheduleController {
       });
 
       if (fieldsToUpdate.length === 0 && !updateData.attendees) {
-        throw new ApiError(400, 'Nenhum campo para atualizar');
+        throw new ApiError(400, tc(req, 'scheduleController', 'validation.no_fields_to_update'));
       }
 
       // Atualizar evento se há campos para atualizar
@@ -593,7 +594,7 @@ class ScheduleController {
       return res.status(200).json({
         success: true,
         data: finalEventResult.rows[0],
-        message: 'Evento atualizado com sucesso'
+        message: tc(req, 'scheduleController', 'update.success')
       });
 
     } catch (error) {
@@ -613,14 +614,14 @@ class ScheduleController {
     );
 
     if (existingEvent.rows.length === 0) {
-      throw new ApiError(404, 'Evento não encontrado');
+      throw new ApiError(404, tc(req, 'scheduleController', 'validation.event_not_found'));
     }
 
     const event = existingEvent.rows[0];
 
     // Verificar permissão para deletar
     if (event.created_by !== req.user.id) {
-      throw new ApiError(403, 'Apenas o criador do evento pode deletá-lo');
+      throw new ApiError(403, tc(req, 'scheduleController', 'validation.only_creator_delete'));
     }
 
     const client = await beginTransaction();
@@ -655,7 +656,7 @@ class ScheduleController {
 
       return res.status(200).json({
         success: true,
-        message: 'Evento deletado com sucesso'
+        message: tc(req, 'scheduleController', 'delete.success')
       });
 
     } catch (error) {
@@ -785,7 +786,7 @@ class ScheduleController {
     const { start_date, end_date, view = 'month' } = req.query;
 
     if (!start_date || !end_date) {
-      throw new ApiError(400, 'start_date e end_date são obrigatórios');
+      throw new ApiError(400, tc(req, 'scheduleController', 'validation.dates_required'));
     }
 
     const calendarQuery = `
@@ -892,7 +893,7 @@ class ScheduleController {
     const { status, notes } = req.body;
 
     if (!status || !['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'].includes(status)) {
-      throw new ApiError(400, 'Status inválido');
+      throw new ApiError(400, tc(req, 'scheduleController', 'validation.invalid_status'));
     }
 
     // Verificar se evento existe
@@ -902,7 +903,7 @@ class ScheduleController {
     );
 
     if (existingEvent.rows.length === 0) {
-      throw new ApiError(404, 'Evento não encontrado');
+      throw new ApiError(404, tc(req, 'scheduleController', 'validation.event_not_found'));
     }
 
     const event = existingEvent.rows[0];
@@ -954,7 +955,7 @@ class ScheduleController {
     return res.status(200).json({
       success: true,
       data: updatedEvent,
-      message: 'Status do evento atualizado com sucesso'
+      message: tc(req, 'scheduleController', 'updateStatus.success')
     });
   });
 }
