@@ -5,6 +5,20 @@
  */
 
 const up = async (client) => {
+  // Verificar se a tabela users já existe (criada pela migration 000)
+  const checkTable = await client.query(`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'polox' 
+      AND table_name = 'users'
+    );
+  `);
+
+  if (checkTable.rows[0].exists) {
+    console.log("⏭️  Tabela users já existe (criada pela migration 000), pulando...");
+    return;
+  }
+
   const query = `
     -- Criar tabela users
     CREATE TABLE IF NOT EXISTS users (

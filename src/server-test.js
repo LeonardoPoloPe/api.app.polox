@@ -1,123 +1,96 @@
 /**
  * ==========================================
- * 🚀 SERVIDOR DE TESTE SIMPLIFICADO
+ * 🧪 SERVER TEST - Express Instance for Tests
  * ==========================================
+ * 
+ * Instância Express configurada especialmente para testes.
+ * NÃO inicia um servidor HTTP, apenas exporta o app.
+ * 
+ * Usado por Supertest para fazer requisições HTTP simuladas.
  */
 
-require('dotenv').config();
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const routes = require("./routes");
+const { i18nMiddleware } = require("./config/i18n");
+const {
+  responseHelpers,
+  errorHandler,
+  notFoundHandler,
+} = require("./utils/response-helpers");
+const { logger } = require("./utils/logger");
 
-const { createApp, configureProduction, configureErrorHandling } = require('./config/app');
-const { logger } = require('./utils/logger');
+// Criar instância Express
+const app = express();
 
-/**
- * Servidor simplificado para teste da infraestrutura
- */
-const startTestServer = async () => {
-  try {
-    logger.info('🚀 Iniciando servidor de teste...');
-    
-    const PORT = parseInt(process.env.PORT) || 3000;
-    const HOST = process.env.HOST || '0.0.0.0';
-    const NODE_ENV = process.env.NODE_ENV || 'development';
-    
-    // Criar aplicação básica
-    const app = createApp();
-    
-    // Health check básico
-    app.get('/health', (req, res) => {
-      res.json({
-        success: true,
-        message: 'Servidor CRM Enterprise funcionando!',
-        data: {
-          status: 'healthy',
-          timestamp: new Date().toISOString(),
-          environment: NODE_ENV,
-          version: '1.0.0',
-          uptime: process.uptime(),
-          memory: process.memoryUsage()
-        }
-      });
-    });
+// Middlewares de segurança (simplificados para testes)
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
-    // Endpoint de teste
-    app.get('/test', (req, res) => {
-      res.json({
-        success: true,
-        message: 'API CRM Enterprise está funcionando!',
-        data: {
-          features: [
-            '✅ Express.js Enterprise',
-            '✅ Sistema de Logging',
-            '✅ Middleware de Segurança',
-            '✅ Configuração Multi-tenant',
-            '✅ Validação Joi',
-            '✅ Sistema de Cache (Redis)',
-            '✅ Monitoramento Prometheus',
-            '✅ Upload de Arquivos',
-            '✅ Agendador de Tarefas'
-          ],
-          nextSteps: [
-            'COPILOT_PROMPT_2: AuthController e UserController',
-            'COPILOT_PROMPT_3: CompanyController e GamificationController',
-            'COPILOT_PROMPT_4: LeadController, ClientController, SaleController'
-          ]
-        }
-      });
-    });
+// CORS aberto para testes
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept-Language"],
+  })
+);
 
-    // Configurar tratamento de erros
-    configureErrorHandling(app);
-    
-    // Iniciar servidor
-    const server = app.listen(PORT, HOST, () => {
-      logger.info(`✅ Servidor de teste iniciado com sucesso!`, {
-        port: PORT,
-        host: HOST,
-        environment: NODE_ENV,
-        pid: process.pid
-      });
-      
-      console.log('\n🎉 COPILOT_PROMPT_1 - TESTE DE INFRAESTRUTURA');
-      console.log('===============================================');
-      console.log(`🔗 URLs de Teste:`);
-      console.log(`   Health Check: http://localhost:${PORT}/health`);
-      console.log(`   Teste API:    http://localhost:${PORT}/test`);
-      console.log(`   Debug Config: http://localhost:${PORT}/debug/config`);
-      console.log('\n📊 Status:');
-      console.log(`   ✅ Express.js Enterprise configurado`);
-      console.log(`   ✅ Sistema de segurança ativo`);
-      console.log(`   ✅ Logging estruturado funcionando`);
-      console.log(`   ✅ Middleware de validação pronto`);
-      console.log(`   ⚠️  Cache Redis desabilitado (desenvolvimento)`);
-      console.log(`   ⚠️  Banco de dados: conexão será testada pelos controllers`);
-      console.log('\n🎯 Próximo Passo: Implementar COPILOT_PROMPT_2\n');
-    });
+// Middlewares para parsing
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-    // Graceful shutdown
-    const shutdown = (signal) => {
-      logger.info(`Recebido ${signal}, encerrando servidor...`);
-      server.close(() => {
-        logger.info('Servidor encerrado graciosamente');
-        process.exit(0);
-      });
-    };
+// Middleware de internacionalização
+app.use(i18nMiddleware);
 
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
+// Middleware para helpers de resposta
+app.use(responseHelpers);
 
-    return server;
-
-  } catch (error) {
-    logger.error('❌ Erro ao iniciar servidor de teste', {
-      error: error.message,
-      stack: error.stack
-    });
-    process.exit(1);
+// Middleware de logging simplificado para testes
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV !== 'test' || process.env.TEST_VERBOSE === 'true') {
+    logger.info(`[TEST] ${req.method} ${req.url}`);
   }
-};
+  next();
+});
 
-if (require.main === module) {
-  startTestServer();
-}
+// Health check simplificado
+app.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "API Test Server is running",
+    data: {
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      environment: "test",
+    },
+  });
+});
 
-module.exports = { startTestServer };
+// Rota raiz
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "API Polox - Test Server",
+    environment: "test",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Registrar todas as rotas da API
+app.use("/api", routes);
+
+// Middleware para rotas não encontradas
+app.use("*", notFoundHandler);
+
+// Middleware global de tratamento de erros
+app.use(errorHandler);
+
+// Exportar apenas o app (NÃO iniciar servidor)
+module.exports = app;
