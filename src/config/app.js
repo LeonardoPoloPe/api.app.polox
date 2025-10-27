@@ -175,6 +175,21 @@ function createApp() {
 
   app.use(cors(corsOptions));
 
+  // Função auxiliar para detectar localhost
+  const isLocalhost = (req) => {
+    const ip =
+      req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+    // Verifica se é localhost, 127.0.0.1, ::1 (IPv6 localhost) ou ::ffff:127.0.0.1
+    return (
+      ip === "127.0.0.1" ||
+      ip === "::1" ||
+      ip === "::ffff:127.0.0.1" ||
+      ip === "localhost" ||
+      req.hostname === "localhost" ||
+      req.hostname === "127.0.0.1"
+    );
+  };
+
   // Rate Limiting Avançado
   const createRateLimit = (
     windowMs,
@@ -204,6 +219,14 @@ function createApp() {
       legacyHeaders: false,
       skipSuccessfulRequests,
       skip: (req) => {
+        // Pular rate limit para localhost nos registros
+        if (messageKey === "rateLimit.register_attempts" && isLocalhost(req)) {
+          console.log(
+            `[RATE LIMIT] Pulando rate limit de registro para localhost - IP: ${req.ip}, Host: ${req.hostname}`
+          );
+          return true;
+        }
+
         // Pular rate limit para super admins se configurado
         return (
           process.env.SKIP_RATE_LIMIT_FOR_SUPER_ADMIN === "true" &&
