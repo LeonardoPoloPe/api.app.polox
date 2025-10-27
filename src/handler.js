@@ -217,12 +217,12 @@ app.get("/", (req, res) => {
         current: req.language || "pt",
         supported: ["pt", "en", "es"],
       },
-      endpoints: {
-        health: "/health",
-        api: "/api",
-        docs: "/api/docs",
-        languages: "/languages",
-      },
+          endpoints: {
+            health: "/health",
+            api: "/api/v1",
+            docs: "/api/v1/docs",
+            languages: "/languages",
+          },
     },
     "api.welcome"
   );
@@ -341,8 +341,8 @@ app.get("/test-sentry-message", (req, res) => {
   });
 });
 
-// Registra todas as rotas da API
-app.use("/api", routes);
+// Registra todas as rotas da API (versão 1)
+app.use("/api/v1", routes);
 
 // Error handling middleware personalizado será aplicado automaticamente
 

@@ -50,19 +50,19 @@ if (process.env.NODE_ENV !== "production") {
         },
         servers: [
           {
-            url: "http://localhost:3000/api",
+            url: "http://localhost:3000/api/v1",
             description: "Servidor Local (Node.js)",
           },
           {
-            url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api",
+            url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1",
             description: "Desenvolvimento AWS Lambda",
           },
           {
-            url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api",
+            url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1",
             description: "Sandbox AWS Lambda",
           },
           {
-            url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api",
+            url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api/v1",
             description: "Produção AWS Lambda",
           },
         ],
@@ -72,6 +72,19 @@ if (process.env.NODE_ENV !== "production") {
               type: "http",
               scheme: "bearer",
               bearerFormat: "JWT",
+            },
+          },
+          parameters: {
+            AcceptLanguage: {
+              in: "header",
+              name: "Accept-Language",
+              schema: {
+                type: "string",
+                enum: ["pt", "en", "es"],
+                default: "pt",
+              },
+              description: "Define o idioma da resposta (pt, en, es).",
+              required: false,
             },
           },
         },
@@ -102,7 +115,7 @@ if (process.env.NODE_ENV !== "production") {
       res.send(swaggerSpec);
     });
 
-    console.log("📚 Swagger configurado em /api/docs");
+  console.log("📚 Swagger configurado em /api/v1/docs");
   } catch (error) {
     console.warn("⚠️  Swagger não pôde ser carregado:", error.message);
   }
@@ -124,14 +137,7 @@ if (process.env.NODE_ENV !== "production") {
  *     tags: [Autenticação]
  *     security: []
  *     parameters:
- *       - in: header
- *         name: Accept-Language
- *         schema:
- *           type: string
- *           enum: [pt, en, es]
- *           default: pt
- *         description: "Define o idioma da resposta (pt, en, es)."
- *         required: false
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -167,14 +173,7 @@ router.post("/auth/login", AuthController.login);
  *     tags: [Autenticação]
  *     security: []
  *     parameters:
- *       - in: header
- *         name: Accept-Language
- *         schema:
- *           type: string
- *           enum: [pt, en, es]
- *           default: pt
- *         description: "Define o idioma da resposta (pt, en, es)."
- *         required: false
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     requestBody:
  *       required: true
  *       content:
@@ -207,14 +206,7 @@ router.post("/auth/register", AuthController.register);
  *     summary: Logout do usuário
  *     tags: [Autenticação]
  *     parameters:
- *       - in: header
- *         name: Accept-Language
- *         schema:
- *           type: string
- *           enum: [pt, en, es]
- *           default: pt
- *         description: "Define o idioma da resposta (pt, en, es)."
- *         required: false
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Logout realizado com sucesso
@@ -229,14 +221,7 @@ router.post("/auth/logout", authenticateToken, AuthController.logout);
  *     tags: [Autenticação]
  *     security: []
  *     parameters:
- *       - in: header
- *         name: Accept-Language
- *         schema:
- *           type: string
- *           enum: [pt, en, es]
- *           default: pt
- *         description: "Define o idioma da resposta (pt, en, es)."
- *         required: false
+ *       - $ref: '#/components/parameters/AcceptLanguage'
  *     responses:
  *       200:
  *         description: Token renovado com sucesso
