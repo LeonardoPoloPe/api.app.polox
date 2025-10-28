@@ -146,7 +146,11 @@ app.use(
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        logger.warn(`CORS bloqueou origem: ${origin}`);
+        logger.warn(`CORS bloqueou origem: ${origin}`, {
+          origin,
+          allowedOrigins,
+          env: process.env.NODE_ENV
+        });
         callback(new Error(`Origem ${origin} não permitida por CORS`));
       }
     },
