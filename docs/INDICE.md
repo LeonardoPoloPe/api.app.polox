@@ -77,6 +77,21 @@
 
 ## 📖 Documentação Geral
 
+### 🌐 **CORS e Segurança**
+
+- **[CONFIGURACAO_CORS.md](./CONFIGURACAO_CORS.md)** ⭐ **NOVO**
+  - Guia completo de CORS (Cross-Origin Resource Sharing)
+  - Origens permitidas por ambiente (DEV, SANDBOX, PROD)
+  - Como adicionar novas origens
+  - Troubleshooting de erros CORS
+  - Configuração em 2 camadas (Express + API Gateway)
+
+- **[CORS_GUIA_RAPIDO.md](./CORS_GUIA_RAPIDO.md)** ⭐ **NOVO**
+  - Guia rápido de referência
+  - Como adicionar origem em 3 passos
+  - Verificar CORS bloqueado
+  - Erros comuns e soluções
+
 ### 📋 **Setup e Deploy**
 
 - [📖 README.md](./README.md) - Visão geral e quick start

@@ -88,7 +88,7 @@ functions:
           path: /{proxy+}
           method: ANY
           cors:
-            origin: "*"
+            origin: '*'
             headers:
               - Content-Type
               - X-Amz-Date
@@ -96,12 +96,17 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
               - X-Amz-User-Agent
-            allowCredentials: false
+              - Accept
+              - Accept-Language
+              - Origin
+              - X-Requested-With
+            allowCredentials: true
+            maxAge: 86400
       - http:
           path: /
           method: ANY
           cors:
-            origin: "*"
+            origin: '*'
             headers:
               - Content-Type
               - X-Amz-Date
@@ -109,7 +114,12 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
               - X-Amz-User-Agent
-            allowCredentials: false
+              - Accept
+              - Accept-Language
+              - Origin
+              - X-Requested-With
+            allowCredentials: true
+            maxAge: 86400
 
 resources:
   Outputs:

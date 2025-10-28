@@ -34,16 +34,134 @@ app.use(
   })
 );
 
-// Configuração CORS
+/**
+ * ============================================================================
+ * 🌐 CONFIGURAÇÃO CORS (Cross-Origin Resource Sharing)
+ * ============================================================================
+ * 
+ * Define as origens (domínios) permitidas para acessar a API.
+ * 
+ * 📖 DOCUMENTAÇÃO COMPLETA: docs/CONFIGURACAO_CORS.md
+ * 
+ * ⚠️  IMPORTANTE:
+ * - URLs devem ser EXATAS (http/https, com/sem www)
+ * - Separadas por ambiente (dev, sandbox, prod)
+ * - Após adicionar nova origem, fazer DEPLOY no ambiente
+ * - Testar com: curl -H "Origin: https://nova-url.com" [endpoint] -v
+ * 
+ * 🔍 TROUBLESHOOTING:
+ * - Se CORS bloquear, verificar logs: "CORS bloqueou origem: [url]"
+ * - Verificar se NODE_ENV está correto no Lambda
+ * - Confirmar que a URL é exatamente como o navegador envia
+ * 
+ * ============================================================================
+ */
+const getAllowedOrigins = () => {
+  const env = process.env.NODE_ENV || 'dev';
+  
+  const origins = {
+    // 🔴 PRODUÇÃO - Domínios oficiais e white-labels
+    prod: [
+      'https://app.polox.com',        // App principal
+      'https://app.polox.com.br',     // App principal (.br)
+      'https://polox.com',            // Site institucional
+      'https://polox.com.br',         // Site institucional (.br)
+      'https://bomelo.com.br'         // White-label: Bomelo (parceiro)
+      // 📝 Para adicionar novo white-label, adicione aqui e faça deploy
+    ],
+    
+    // 🟡 SANDBOX - Ambiente de homologação/testes
+    sandbox: [
+      'https://app-sandbox.polox.com',      // App de testes
+      'https://app-sandbox.polox.com.br',   // App de testes (.br)
+      'https://sandbox.polox.com',          // Sandbox alternativo
+      'https://sandbox.polox.com.br',       // Sandbox alternativo (.br)
+      'http://localhost:3000',              // Dev local (React padrão)
+      'http://localhost:3001'               // Dev local (porta alternativa)
+    ],
+    
+    // 🟢 DESENVOLVIMENTO - Apenas localhost
+    dev: [
+      'http://localhost:3000',   // React/Next.js padrão
+      'http://localhost:3001',   // Porta alternativa
+      'http://localhost:5173',   // Vite padrão
+      'http://localhost:5174'    // Vite alternativa
+    ]
+  };
+  
+  // Retorna origens do ambiente ou dev como fallback
+  return origins[env] || origins.dev;
+};
+
+/**
+ * ============================================================================
+ * 🔧 MIDDLEWARE CORS - Configuração do Express
+ * ============================================================================
+ * 
+ * Valida e permite requisições de diferentes origens (cross-origin).
+ * 
+ * 📋 CONFIGURAÇÕES:
+ * 
+ * • origin: Função que valida se a origem é permitida
+ *   - Permite requisições sem origin (mobile apps, Postman, curl)
+ *   - Valida contra a lista getAllowedOrigins()
+ *   - Loga tentativas bloqueadas para debugging
+ * 
+ * • credentials: true
+ *   - Permite envio de cookies e headers de autenticação
+ *   - Necessário para JWT em headers Authorization
+ * 
+ * • methods: Métodos HTTP permitidos
+ *   - GET, POST, PUT, DELETE, PATCH: Operações normais
+ *   - OPTIONS: Obrigatório para preflight requests do navegador
+ * 
+ * • allowedHeaders: Headers que o cliente pode enviar
+ *   - Content-Type: Tipo de conteúdo (application/json)
+ *   - Authorization: Token JWT (Bearer token)
+ *   - Accept-Language: Idioma preferido (pt, en, es)
+ *   - X-Requested-With: Identificação de requisições AJAX
+ * 
+ * • exposedHeaders: Headers que o cliente pode ler na resposta
+ *   - Content-Language: Idioma da resposta
+ * 
+ * • maxAge: 86400 (24 horas)
+ *   - Cache da resposta de preflight no navegador
+ *   - Reduz número de requests OPTIONS
+ * 
+ * 🔍 PREFLIGHT REQUEST:
+ * Navegadores fazem um request OPTIONS antes de POST/PUT/DELETE para verificar
+ * se a origem é permitida. Esta configuração responde automaticamente.
+ * 
+ * 📖 Docs completas: docs/CONFIGURACAO_CORS.md
+ * ============================================================================
+ */
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "prod"
-        ? ["https://app.polox.com", "https://polox.com"]
-        : ["http://localhost:3000", "http://localhost:3000"],
+    origin: (origin, callback) => {
+      const allowedOrigins = getAllowedOrigins();
+      
+      // Permitir requisições sem origin (como mobile apps, Postman, etc)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        logger.warn(`CORS bloqueou origem: ${origin}`);
+        callback(new Error(`Origem ${origin} não permitida por CORS`));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type", 
+      "Authorization", 
+      "X-Requested-With",
+      "Accept",
+      "Accept-Language",
+      "Origin"
+    ],
+    exposedHeaders: ["Content-Language"],
+    maxAge: 86400 // 24 horas
   })
 );
 
