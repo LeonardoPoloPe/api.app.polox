@@ -59,6 +59,13 @@ app.use(
 const getAllowedOrigins = () => {
   const env = process.env.NODE_ENV || 'dev';
   
+  // 🌐 URLs das APIs (para Swagger UI poder testar os endpoints)
+  const apiUrls = [
+    'https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com', // DEV API
+    'https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com', // SANDBOX API
+    'https://18yioqws85.execute-api.sa-east-1.amazonaws.com'  // PROD API
+  ];
+  
   const origins = {
     // 🔴 PRODUÇÃO - Domínios oficiais e white-labels
     prod: [
@@ -66,7 +73,8 @@ const getAllowedOrigins = () => {
       'https://app.polox.com.br',     // App principal (.br)
       'https://polox.com',            // Site institucional
       'https://polox.com.br',         // Site institucional (.br)
-      'https://bomelo.com.br'         // White-label: Bomelo (parceiro)
+      'https://bomelo.com.br',        // White-label: Bomelo (parceiro)
+      ...apiUrls                       // URLs da API (Swagger)
       // 📝 Para adicionar novo white-label, adicione aqui e faça deploy
     ],
     
@@ -77,7 +85,8 @@ const getAllowedOrigins = () => {
       'https://sandbox.polox.com',          // Sandbox alternativo
       'https://sandbox.polox.com.br',       // Sandbox alternativo (.br)
       'http://localhost:3000',              // Dev local (React padrão)
-      'http://localhost:3001'               // Dev local (porta alternativa)
+      'http://localhost:3001',              // Dev local (porta alternativa)
+      ...apiUrls                             // URLs da API (Swagger)
     ],
     
     // 🟢 DESENVOLVIMENTO - Apenas localhost
@@ -85,7 +94,8 @@ const getAllowedOrigins = () => {
       'http://localhost:3000',   // React/Next.js padrão
       'http://localhost:3001',   // Porta alternativa
       'http://localhost:5173',   // Vite padrão
-      'http://localhost:5174'    // Vite alternativa
+      'http://localhost:5174',   // Vite alternativa
+      ...apiUrls                  // URLs da API (Swagger)
     ]
   };
   
