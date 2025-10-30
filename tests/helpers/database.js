@@ -114,18 +114,17 @@ class DatabaseHelper {
   async createTestClient(companyId, data = {}) {
     const query = `
       INSERT INTO polox.clients (
-        company_id, name, email, phone, type, status
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        company_id, client_name, email, phone, status
+      ) VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
 
     const values = [
       companyId,
-      data.name || 'Test Client',
+      data.name || data.client_name || 'Test Client',
       data.email || `client${Date.now()}@test.com`,
       data.phone || '11888888888',
-      data.type || 'individual',
-      data.status || 'active',
+      data.status || 'ativo',
     ];
 
     const result = await this.pool.query(query, values);
@@ -142,14 +141,14 @@ class DatabaseHelper {
   async createTestLead(companyId, data = {}) {
     const query = `
       INSERT INTO polox.leads (
-        company_id, name, email, phone, company_name, status, created_by_id
+        company_id, lead_name, email, phone, company_name, status, created_by_id
       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
 
     const values = [
       companyId,
-      data.name || 'Test Lead',
+      data.name || data.lead_name || 'Test Lead',
       data.email || `lead${Date.now()}@test.com`,
       data.phone || '11777777777',
       data.company_name || 'Lead Company',
@@ -171,17 +170,16 @@ class DatabaseHelper {
   async createTestProduct(companyId, data = {}) {
     const query = `
       INSERT INTO polox.products (
-        company_id, name, description, price, stock, status
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        company_id, product_name, description, sale_price, status
+      ) VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
 
     const values = [
       companyId,
-      data.name || 'Test Product',
+      data.name || data.product_name || 'Test Product',
       data.description || 'Test Description',
-      data.price || '100.00',
-      data.stock || 10,
+      data.price || data.sale_price || '100.00',
       data.status || 'active',
     ];
 
@@ -199,17 +197,21 @@ class DatabaseHelper {
   async createTestSale(companyId, clientId, data = {}) {
     const query = `
       INSERT INTO polox.sales (
-        company_id, client_id, total, status, payment_method
-      ) VALUES ($1, $2, $3, $4, $5)
+        company_id, client_id, total_amount, net_amount, status, sale_date
+      ) VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
+
+    const totalAmount = data.total || data.total_amount || '100.00';
+    const netAmount = data.net_amount || totalAmount;
 
     const values = [
       companyId,
       clientId,
-      data.total || '100.00',
-      data.status || 'completed',
-      data.payment_method || 'credit_card',
+      totalAmount,
+      netAmount,
+      data.status || 'pending',
+      data.sale_date || new Date(),
     ];
 
     const result = await this.pool.query(query, values);

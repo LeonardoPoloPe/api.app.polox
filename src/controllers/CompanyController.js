@@ -52,7 +52,7 @@ class CompanyController {
     domain: Joi.string()
       .min(2)
       .max(100)
-      .pattern(/^[a-zA-Z0-9-]+$/)
+      .pattern(/^[a-zA-Z0-9.-]+$/)
       .required(),
     plan: Joi.string()
       .valid("starter", "professional", "enterprise")

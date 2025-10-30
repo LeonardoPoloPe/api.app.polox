@@ -85,6 +85,32 @@ describe('✅ Testes Simples - Criação de Dados', () => {
       expect(company.updated_at).toBeDefined();
       expect(new Date(company.created_at)).toBeInstanceOf(Date);
     });
+
+    it('deve aceitar domínios com pontos (ex: bomelo.com.br)', async () => {
+      const timestamp = Date.now();
+      const company = await helper.createTestCompany({
+        company_name: 'Bomelo E-commerce',
+        company_domain: `bomelo${timestamp}.com.br`,
+        industry: 'E-commerce',
+        admin_email: 'admin@bomelo.com.br'
+      });
+
+      expect(company).toBeDefined();
+      expect(company.company_domain).toBe(`bomelo${timestamp}.com.br`);
+    });
+
+    it('deve aceitar subdomínios com pontos (ex: crm.polox.com.br)', async () => {
+      const timestamp = Date.now();
+      const company = await helper.createTestCompany({
+        company_name: 'CRM Polox',
+        company_domain: `crm.polox${timestamp}.com.br`,
+        industry: 'SaaS',
+        admin_email: 'admin@polox.com.br'
+      });
+
+      expect(company).toBeDefined();
+      expect(company.company_domain).toBe(`crm.polox${timestamp}.com.br`);
+    });
   });
 
   describe('👤 Criação de Usuários', () => {
