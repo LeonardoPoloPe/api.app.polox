@@ -2,23 +2,21 @@
  * ==========================================
  * 🧪 SERVER TEST - Express Instance for Tests
  * ==========================================
- * 
+ *
  * Instância Express configurada especialmente para testes.
  * NÃO inicia um servidor HTTP, apenas exporta o app.
- * 
+ *
  * Usado por Supertest para fazer requisições HTTP simuladas.
  */
 
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const routes = require("./routes");
+// Usar o roteador modular (com validações/middlewares) em src/routes/index.js
+const routes = require("./routes/index.js");
 const { i18nMiddleware } = require("./config/i18n");
-const {
-  responseHelpers,
-  errorHandler,
-  notFoundHandler,
-} = require("./utils/response-helpers");
+const { responseHelpers } = require("./utils/response-helpers");
+const { errorHandler, notFoundHandler } = require("./utils/errors");
 const { logger } = require("./utils/logger");
 
 // Criar instância Express
@@ -38,7 +36,12 @@ app.use(
     origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept-Language"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept-Language",
+    ],
   })
 );
 
@@ -54,7 +57,7 @@ app.use(responseHelpers);
 
 // Middleware de logging simplificado para testes
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV !== 'test' || process.env.TEST_VERBOSE === 'true') {
+  if (process.env.NODE_ENV !== "test" || process.env.TEST_VERBOSE === "true") {
     logger.info(`[TEST] ${req.method} ${req.url}`);
   }
   next();
@@ -83,8 +86,8 @@ app.get("/", (req, res) => {
   });
 });
 
-// Registrar todas as rotas da API
-app.use("/api", routes);
+// Registrar todas as rotas da API com o prefixo usado nos testes
+app.use("/api/v1", routes);
 
 // Middleware para rotas não encontradas
 app.use("*", notFoundHandler);

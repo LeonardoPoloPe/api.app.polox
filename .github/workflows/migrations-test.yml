@@ -1,0 +1,56 @@
+name: Migrations - Test DB
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  run-migrations-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NODE_ENV: test
+      AWS_REGION: ${{ secrets.AWS_REGION || 'sa-east-1' }}
+      SECRET_NAME_TEST: ${{ secrets.SECRET_NAME_TEST || 'dev-mysql' }}
+      TEST_DB_NAME: ${{ secrets.TEST_DB_NAME || 'app_polox_test' }}
+      # Evitar re-migrar dentro do setup de testes
+      TEST_SKIP_MIGRATIONS: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Configure AWS (if secrets available)
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Migrate Test - status
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        run: node scripts/migrate-test.js status
+
+      - name: Migrate Test - apply
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        run: node scripts/migrate-test.js migrate
+
+      - name: Run integration tests
+        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        run: npm run test:integration
+
+      - name: Skip (no AWS secrets)
+        if: ${{ !(secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '') }}
+        run: |
+          echo "Skipping DB migrations/tests because AWS secrets are not configured in this repo."
+          echo "Set secrets AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, SECRET_NAME_TEST (dev-mysql) and TEST_DB_NAME (app_polox_test) to enable."

@@ -4,12 +4,16 @@
  * ==========================================
  */
 
-const express = require('express');
-const UserController = require('../controllers/userController');
-const { authenticateToken, requireCompanyAdmin, requireSuperAdmin } = require('../middleware/auth');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const { validateRequest } = require('../utils/validation');
-const Joi = require('joi');
+const express = require("express");
+const UserController = require("../controllers/userController");
+const {
+  authenticateToken,
+  requireCompanyAdmin,
+  requireSuperAdmin,
+} = require("../middleware/auth");
+const { rateLimiter } = require("../middleware/rateLimiter");
+const { validateRequest } = require("../utils/validation");
+const Joi = require("joi");
 
 const router = express.Router();
 
@@ -19,7 +23,7 @@ router.use(authenticateToken);
 // 📝 Validações específicas
 const updateProfileValidation = Joi.object({
   name: Joi.string().min(2).max(255),
-  email: Joi.string().email()
+  email: Joi.string().email(),
 });
 
 /**
@@ -71,7 +75,7 @@ const updateProfileValidation = Joi.object({
  *                     pagination:
  *                       $ref: '#/components/schemas/PaginationInfo'
  */
-router.get('/', rateLimiter.general, UserController.getUsers);
+router.get("/", rateLimiter.general, UserController.getUsers);
 
 /**
  * @swagger
@@ -100,7 +104,9 @@ router.get('/', rateLimiter.general, UserController.getUsers);
  *                     user:
  *                       $ref: '#/components/schemas/User'
  */
-router.get('/profile', rateLimiter.general, UserController.getProfile);
+router.get("/profile", rateLimiter.general, UserController.getProfile);
+// Alias para compatibilidade com testes: /users/me
+router.get("/me", rateLimiter.general, UserController.getProfile);
 
 /**
  * @swagger
@@ -137,7 +143,12 @@ router.get('/profile', rateLimiter.general, UserController.getProfile);
  *       409:
  *         description: Email já está em uso
  */
-router.put('/profile', rateLimiter.general, validateRequest(updateProfileValidation), UserController.updateProfile);
+router.put(
+  "/profile",
+  rateLimiter.general,
+  validateRequest(updateProfileValidation),
+  UserController.updateProfile
+);
 
 /**
  * @swagger
@@ -174,6 +185,6 @@ router.put('/profile', rateLimiter.general, validateRequest(updateProfileValidat
  *       404:
  *         description: Usuário não encontrado
  */
-router.get('/:id', rateLimiter.general, UserController.getUserById);
+router.get("/:id", rateLimiter.general, UserController.getUserById);
 
 module.exports = router;

@@ -6,7 +6,7 @@
  */
 
 const up = async (client) => {
-  console.log('🚀 Iniciando criação do schema polox...');
+  console.log("🚀 Iniciando criação do schema polox...");
 
   const createSchemaQuery = `
     -- ==========================================
@@ -22,7 +22,23 @@ const up = async (client) => {
     -- ==========================================
     -- 🔐 EMPRESAS (Multi-Tenant)
     -- ==========================================
-    
+
+    -- Se existir uma tabela companies sem a coluna 'domain' (estado antigo/corrompido),
+    -- descarta e recria com o layout correto. Isso protege ambientes de TESTE.
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'polox' AND table_name = 'companies'
+      ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'polox' AND table_name = 'companies' AND column_name = 'domain'
+      ) THEN
+        RAISE NOTICE 'Recriando polox.companies pois coluna domain não existe';
+        DROP TABLE polox.companies CASCADE;
+      END IF;
+    END$$;
+
     CREATE TABLE IF NOT EXISTS polox.companies (
         id BIGSERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -68,8 +84,8 @@ const up = async (client) => {
         subscription_ends_at TIMESTAMP WITH TIME ZONE
     );
     
-    -- Índices para companies
-    CREATE INDEX IF NOT EXISTS idx_companies_domain ON polox.companies(domain);
+  -- Índices para companies
+  CREATE INDEX IF NOT EXISTS idx_companies_domain ON polox.companies(domain);
     CREATE INDEX IF NOT EXISTS idx_companies_status ON polox.companies(status);
     CREATE INDEX IF NOT EXISTS idx_companies_plan ON polox.companies(plan);
     CREATE INDEX IF NOT EXISTS idx_companies_created_at ON polox.companies(created_at);
@@ -183,7 +199,7 @@ const up = async (client) => {
   `;
 
   await client.query(createSchemaQuery);
-  console.log('✅ Schema polox e tabelas principais criadas');
+  console.log("✅ Schema polox e tabelas principais criadas");
 
   // Criar triggers
   const createTriggersQuery = `
@@ -213,7 +229,7 @@ const up = async (client) => {
   `;
 
   await client.query(createTriggersQuery);
-  console.log('✅ Triggers criados');
+  console.log("✅ Triggers criados");
 
   // Inserir dados iniciais
   const insertInitialDataQuery = `
@@ -243,13 +259,13 @@ const up = async (client) => {
   `;
 
   await client.query(insertInitialDataQuery);
-  console.log('✅ Dados iniciais inseridos');
+  console.log("✅ Dados iniciais inseridos");
 
-  console.log('🎉 Schema polox criado com sucesso!');
+  console.log("🎉 Schema polox criado com sucesso!");
 };
 
 const down = async (client) => {
-  console.log('🗑️ Removendo schema polox...');
+  console.log("🗑️ Removendo schema polox...");
 
   const dropSchemaQuery = `
     -- Remover triggers
@@ -264,10 +280,10 @@ const down = async (client) => {
   `;
 
   await client.query(dropSchemaQuery);
-  console.log('✅ Schema polox removido com sucesso');
+  console.log("✅ Schema polox removido com sucesso");
 };
 
 module.exports = {
   up,
-  down
+  down,
 };

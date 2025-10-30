@@ -7,7 +7,7 @@
   "register": {
     "success": "Usuário registrado com sucesso",
     "missing_fields": "Nome, email e senha são obrigatórios",
-    "email_exists": "Email já cadastrado"
+    "email_exists": "Email já existe"
   },
   "logout": {
     "success": "Logout realizado com sucesso"

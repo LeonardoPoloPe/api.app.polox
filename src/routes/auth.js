@@ -113,4 +113,17 @@ router.post(
   AuthController.register
 );
 
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout do usuário (idempotente)
+ *     description: Encerra a sessão atual; caso não haja token, retorna sucesso mesmo assim.
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Logout realizado com sucesso
+ */
+router.post("/logout", AuthController.logout);
+
 module.exports = router;

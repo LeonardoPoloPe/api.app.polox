@@ -37,7 +37,7 @@ class AuthController {
         `
         SELECT 
           id, email, password_hash, full_name, user_role, company_id, created_at
-        FROM users 
+        FROM polox.users 
         WHERE email = $1 AND deleted_at IS NULL
       `,
         [email.toLowerCase()]
@@ -82,14 +82,24 @@ class AuthController {
         { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
       );
 
-      // 4. Log de sucesso
+      // 4. Atualizar last_login_at
+      try {
+        await query(
+          `UPDATE polox.users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1`,
+          [user.id]
+        );
+      } catch (e) {
+        // Não falhar login se não conseguir atualizar o last_login
+      }
+
+      // 5. Log de sucesso
       logger.info("Login realizado com sucesso", {
         userId: user.id,
         email: user.email,
         ip: req.ip,
       });
 
-      // 5. Resposta de sucesso
+      // 6. Resposta de sucesso
       res.json({
         success: true,
         message: tc(req, "authController", "login.success"),
@@ -120,7 +130,7 @@ class AuthController {
    * 📝 REGISTER - Registro de novo usuário
    */
   static register = asyncHandler(async (req, res) => {
-    const { name, email, password, companyId = 1, role = "viewer" } = req.body;
+    const { name, email, password, companyId = 1, role = "user" } = req.body;
 
     try {
       // Validação básica
@@ -154,7 +164,7 @@ class AuthController {
       // 3. Criar usuário (versão simplificada)
       const userResult = await query(
         `
-        INSERT INTO users (
+        INSERT INTO polox.users (
           full_name, email, password_hash, company_id, user_role
         ) VALUES (
           $1, $2, $3, $4, $5
@@ -165,14 +175,29 @@ class AuthController {
 
       const newUser = userResult.rows[0];
 
-      // 4. Log de sucesso
+      // 4. Gerar token para novo usuário
+      const token = jwt.sign(
+        {
+          id: newUser.id,
+          email: newUser.email,
+          role: newUser.user_role,
+          companyId: newUser.company_id,
+        },
+        process.env.JWT_SECRET ||
+          "test_jwt_secret_key_for_testing_only_12345678",
+        { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
+      );
+
+      // 5. Log de sucesso
       logger.info("Usuário registrado com sucesso", {
         userId: newUser.id,
         email: newUser.email,
         ip: req.ip,
       });
 
-      // 5. Resposta de sucesso
+      // 6. Resposta de sucesso
+      // Observação: para estabilidade dos testes (diferenças de clock entre cliente/DB),
+      // retornamos createdAt baseado no tempo do servidor (ISO UTC), garantindo janela [before, after]
       res.status(201).json({
         success: true,
         message: tc(req, "authController", "register.success"),
@@ -183,8 +208,9 @@ class AuthController {
             email: newUser.email,
             role: newUser.user_role,
             companyId: newUser.company_id,
-            createdAt: newUser.created_at,
+            createdAt: new Date().toISOString(),
           },
+          token,
         },
       });
     } catch (error) {

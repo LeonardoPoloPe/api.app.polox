@@ -21,25 +21,31 @@ const logger = winston.createLogger({
   ],
 });
 
-// Configuração do banco de dados
-const dbConfig = {
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-  connectionTimeoutMillis: 30000,
-  idleTimeoutMillis: 30000,
-  max: 5,
-};
+const MIGRATIONS_SCHEMA = process.env.MIGRATIONS_SCHEMA || "public";
+
+// Configuração do banco de dados (construída em runtime)
+function buildDbConfigFromEnv() {
+  return {
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT, 10) || 5432,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
+    max: 5,
+  };
+}
 
 class MigrationRunner {
   constructor() {
-    this.pool = new Pool(dbConfig);
+    // Lê as variáveis de ambiente no momento da construção para suportar carregamento tardio (ex.: AWS Secrets)
+    this.pool = new Pool(buildDbConfigFromEnv());
     this.migrationsDir = __dirname;
+    this.migrationColumn = null; // será resolvido em runtime: 'migration_name' ou 'name'
   }
 
   /**
@@ -47,13 +53,29 @@ class MigrationRunner {
    */
   async createMigrationsTable() {
     const query = `
-      CREATE TABLE IF NOT EXISTS migrations (
+      -- 1) Garantir existência da tabela com a coluna correta (migration_name)
+      CREATE TABLE IF NOT EXISTS ${MIGRATIONS_SCHEMA}.migrations (
         id SERIAL PRIMARY KEY,
         migration_name VARCHAR(255) UNIQUE NOT NULL,
         executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
-      
-      CREATE INDEX IF NOT EXISTS idx_migrations_name ON migrations(migration_name);
+
+      -- 2) Corrigir tabelas antigas que ainda usam coluna 'name'
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = '${MIGRATIONS_SCHEMA}' AND table_name = 'migrations' AND column_name = 'name'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = '${MIGRATIONS_SCHEMA}' AND table_name = 'migrations' AND column_name = 'migration_name'
+        ) THEN
+          ALTER TABLE ${MIGRATIONS_SCHEMA}.migrations RENAME COLUMN name TO migration_name;
+        END IF;
+      END$$;
+
+      -- 3) Garantir índice na coluna correta
+      CREATE INDEX IF NOT EXISTS idx_migrations_name ON ${MIGRATIONS_SCHEMA}.migrations(migration_name);
     `;
 
     try {
@@ -69,15 +91,34 @@ class MigrationRunner {
    * Obtém lista de migrations executadas
    */
   async getExecutedMigrations() {
+    const client = await this.pool.connect();
     try {
-      const result = await this.pool.query(
-        "SELECT migration_name FROM migrations ORDER BY executed_at ASC"
+      // Descobrir coluna correta em runtime (migration_name vs name)
+      const col = await this.resolveMigrationColumn(client);
+      const result = await client.query(
+        `SELECT ${col} AS migration_name
+         FROM ${MIGRATIONS_SCHEMA}.migrations
+         ORDER BY executed_at ASC`
       );
       return result.rows.map((row) => row.migration_name);
     } catch (error) {
       logger.error("Erro ao buscar migrations executadas:", error);
       throw error;
+    } finally {
+      client.release();
     }
+  }
+
+  async resolveMigrationColumn(client) {
+    if (this.migrationColumn) return this.migrationColumn;
+    const q = `SELECT column_name FROM information_schema.columns
+               WHERE table_schema = $1 AND table_name = 'migrations' AND column_name IN ('migration_name','name')`;
+    const res = await client.query(q, [MIGRATIONS_SCHEMA]);
+    const names = res.rows.map((r) => r.column_name);
+    this.migrationColumn = names.includes("migration_name")
+      ? "migration_name"
+      : "name";
+    return this.migrationColumn;
   }
 
   /**
@@ -123,8 +164,9 @@ class MigrationRunner {
         await migration.up(client);
 
         // Registra a migration como executada
+        const col = await this.resolveMigrationColumn(client);
         await client.query(
-          "INSERT INTO migrations (migration_name) VALUES ($1)",
+          `INSERT INTO ${MIGRATIONS_SCHEMA}.migrations (${col}) VALUES ($1)`,
           [migrationName]
         );
 
@@ -172,9 +214,11 @@ class MigrationRunner {
         await migration.down(client);
 
         // Remove o registro da migration
-        await client.query("DELETE FROM migrations WHERE migration_name = $1", [
-          migrationName,
-        ]);
+        const col = await this.resolveMigrationColumn(client);
+        await client.query(
+          `DELETE FROM ${MIGRATIONS_SCHEMA}.migrations WHERE ${col} = $1`,
+          [migrationName]
+        );
 
         await client.query("COMMIT");
         logger.info(`Migration ${migrationName} revertida com sucesso`);
