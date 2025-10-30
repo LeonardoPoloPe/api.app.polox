@@ -176,9 +176,10 @@ class EnvironmentMigrationRunner {
     try {
       await client.query("BEGIN");
       await migration.up(client);
-      await client.query("INSERT INTO migrations (migration_name) VALUES ($1)", [
-        migrationName,
-      ]);
+      await client.query(
+        "INSERT INTO migrations (migration_name) VALUES ($1)",
+        [migrationName]
+      );
       await client.query("COMMIT");
       console.log(`✅ ${migrationName} executada com sucesso`);
     } catch (error) {
@@ -223,6 +224,15 @@ class EnvironmentMigrationRunner {
     await this.createMigrationsTable();
     const executedMigrations = await this.getExecutedMigrations();
     const migrationFiles = this.getMigrationFiles();
+    const fileNames = migrationFiles.map((f) => path.basename(f, ".js"));
+
+    // Derivar pendentes e executadas-ausentes por nome
+    const pendingNames = fileNames.filter(
+      (name) => !executedMigrations.includes(name)
+    );
+    const executedButMissing = executedMigrations.filter(
+      (name) => !fileNames.includes(name)
+    );
 
     console.log("\n📊 STATUS DAS MIGRATIONS");
     console.log("========================\n");
@@ -236,9 +246,19 @@ class EnvironmentMigrationRunner {
 
     console.log(`\nTotal: ${migrationFiles.length} migrations`);
     console.log(`Executadas: ${executedMigrations.length}`);
-    console.log(
-      `Pendentes: ${migrationFiles.length - executedMigrations.length}\n`
-    );
+    console.log(`Pendentes: ${pendingNames.length}`);
+
+    if (executedButMissing.length > 0) {
+      console.log(
+        "\n⚠️  Observação: Existem migrations marcadas como executadas que não existem no diretório atual:"
+      );
+      executedButMissing.forEach((name) => console.log(`   - ${name}`));
+      console.log(
+        "   Isso pode ocorrer quando um arquivo foi renomeado ou removido após execução.\n"
+      );
+    } else {
+      console.log("");
+    }
   }
 
   async runPendingMigrations() {

@@ -54,7 +54,7 @@ provider:
     DB_PASSWORD: ${env:DB_PASSWORD, 'SenhaSeguraDev123!'}
     JWT_SECRET: ${env:JWT_SECRET, 'jwt_secret_dev_polox_2024_secure_key_development'}
     SKIP_MIGRATIONS: "true"
-    TZ: America/Sao_Paulo
+    TZ: UTC
     # Sentry Configuration
     SENTRY_DSN: "https://daf3479d9a3da6e76a5e3b03bf5d6e9d@o4510250740285440.ingest.de.sentry.io/4510250760077392"
     SENTRY_ENVIRONMENT: "${self:provider.stage}"
@@ -88,7 +88,7 @@ functions:
           path: /{proxy+}
           method: ANY
           cors:
-            origin: '*'
+            origin: "*"
             headers:
               - Content-Type
               - X-Amz-Date
@@ -106,7 +106,7 @@ functions:
           path: /
           method: ANY
           cors:
-            origin: '*'
+            origin: "*"
             headers:
               - Content-Type
               - X-Amz-Date

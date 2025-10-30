@@ -49,9 +49,9 @@ async function createPool() {
   if (pool) return pool;
 
   // 🧪 Em ambiente de teste, retornar global.testPool (já criado pelo setup.js)
-  if (process.env.NODE_ENV === 'test' && global.testPool) {
+  if (process.env.NODE_ENV === "test" && global.testPool) {
     pool = global.testPool;
-    console.log('🧪 [DATABASE] createPool() usando global.testPool');
+    console.log("🧪 [DATABASE] createPool() usando global.testPool");
     return pool;
   }
 
@@ -100,6 +100,9 @@ async function createPool() {
   // Configurar schema padrão para multi-tenancy (async)
   pool.on("connect", async (client) => {
     try {
+      // Garantir que a sessão do PostgreSQL está em UTC
+      await client.query("SET TIME ZONE 'UTC'");
+
       // Definir search_path para incluir schema polox
       await client.query("SET search_path TO polox, public");
 
@@ -144,9 +147,10 @@ async function createPool() {
  */
 const query = async (text, params = [], options = {}) => {
   // 🧪 Em ambiente de teste, usar global.testPool se disponível
-  const activePool = (process.env.NODE_ENV === 'test' && global.testPool) 
-    ? global.testPool 
-    : await createPool();
+  const activePool =
+    process.env.NODE_ENV === "test" && global.testPool
+      ? global.testPool
+      : await createPool();
 
   const client = await activePool.connect();
 
@@ -203,12 +207,11 @@ const query = async (text, params = [], options = {}) => {
  */
 const transaction = async (callback, options = {}) => {
   // 🧪 Em ambiente de teste, usar global.testPool se disponível
-  const activePool = (process.env.NODE_ENV === 'test' && global.testPool) 
-    ? global.testPool 
-    : pool;
+  const activePool =
+    process.env.NODE_ENV === "test" && global.testPool ? global.testPool : pool;
 
   if (!activePool) {
-    throw new Error('Pool de conexões não está disponível');
+    throw new Error("Pool de conexões não está disponível");
   }
 
   const client = await activePool.connect();

@@ -123,9 +123,10 @@ class MigrationRunner {
         await migration.up(client);
 
         // Registra a migration como executada
-        await client.query("INSERT INTO migrations (migration_name) VALUES ($1)", [
-          migrationName,
-        ]);
+        await client.query(
+          "INSERT INTO migrations (migration_name) VALUES ($1)",
+          [migrationName]
+        );
 
         await client.query("COMMIT");
         logger.info(`Migration ${migrationName} executada com sucesso`);
@@ -256,6 +257,18 @@ class MigrationRunner {
 
       const executedMigrations = await this.getExecutedMigrations();
       const migrationFiles = this.getMigrationFiles();
+      const fileNames = migrationFiles.map((file) =>
+        path.basename(file, ".js")
+      );
+
+      // Calcular pendentes com base em nomes, não apenas em contagem
+      const pendingMigrations = fileNames.filter(
+        (name) => !executedMigrations.includes(name)
+      );
+      // Detectar migrations executadas que não existem mais no diretório (ex.: removidas/renomeadas)
+      const executedButMissing = executedMigrations.filter(
+        (name) => !fileNames.includes(name)
+      );
 
       console.log("\n📊 STATUS DAS MIGRATIONS");
       console.log("========================\n");
@@ -273,11 +286,22 @@ class MigrationRunner {
         console.log(`${status} - ${migrationName}`);
       });
 
+      // Resumo com contagens consistentes
       console.log(`\nTotal: ${migrationFiles.length} migrations`);
       console.log(`Executadas: ${executedMigrations.length}`);
-      console.log(
-        `Pendentes: ${migrationFiles.length - executedMigrations.length}\n`
-      );
+      console.log(`Pendentes: ${pendingMigrations.length}`);
+
+      if (executedButMissing.length > 0) {
+        console.log(
+          "\n⚠️  Observação: Existem migrations marcadas como executadas que não existem no diretório atual:"
+        );
+        executedButMissing.forEach((name) => console.log(`   - ${name}`));
+        console.log(
+          "   Isso pode ocorrer quando um arquivo foi renomeado ou removido após execução.\n"
+        );
+      } else {
+        console.log("");
+      }
     } catch (error) {
       logger.error("Erro ao verificar status:", error);
       throw error;

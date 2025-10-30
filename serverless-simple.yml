@@ -18,7 +18,8 @@ provider:
     # Para desenvolvimento local, usa .env; para deploy AWS, usa SSM
     DB_PASSWORD: ${env:DB_PASSWORD, ssm:/polox/${self:provider.stage}/db/password~true}
     JWT_SECRET: ${env:JWT_SECRET, ssm:/polox/${self:provider.stage}/jwt/secret~true}
-    TZ: America/Sao_Paulo
+    SKIP_MIGRATIONS: "true"
+    TZ: UTC
 
 custom:
   dbConfig:

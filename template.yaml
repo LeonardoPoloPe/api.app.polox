@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: API Polox - Serverless Node.js API
 
@@ -13,7 +13,7 @@ Conditions:
 
 Globals:
   Function:
-    Timeout: 90  # Aumentado para VPC Lambdas (cold start mais lento)
+    Timeout: 90 # Aumentado para VPC Lambdas (cold start mais lento)
     MemorySize: 1024
     Runtime: nodejs18.x
     Environment:
@@ -22,18 +22,15 @@ Globals:
         DB_HOST: database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
         DB_PROXY_HOST: polox-rds-proxy.proxy-cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
         DB_PORT: 5432
-        DB_NAME: !Sub 'app_polox_${Stage}'
-        DB_USER: !Sub 'polox_${Stage}_user'
+        DB_NAME: !Sub "app_polox_${Stage}"
+        DB_USER: !Sub "polox_${Stage}_user"
         DB_PASSWORD: SenhaSeguraDev123!
         JWT_SECRET: jwt_secret_dev_polox_2024_secure_key_development
-        TZ: America/Sao_Paulo
+        TZ: UTC
         # Desabilitar migrations na inicialização da Lambda
-        SKIP_MIGRATIONS: true
+        SKIP_MIGRATIONS: "true"
         # Habilitar Swagger apenas em dev e sandbox
-        ENABLE_SWAGGER: !If 
-          - IsProductionStage
-          - "false"
-          - "true"
+        ENABLE_SWAGGER: !If [IsProductionStage, "false", "true"]
 
 Resources:
   ApiFunction:
@@ -44,12 +41,12 @@ Resources:
       # Configurar Lambda para executar na mesma VPC do RDS
       VpcConfig:
         SecurityGroupIds:
-          - sg-08caf7023512d2d69  # Security group que já tem acesso ao RDS
+          - sg-08caf7023512d2d69 # Security group que já tem acesso ao RDS
         SubnetIds:
           # Subnets onde o RDS está localizado
-          - subnet-09e31f88ffe864c21  # sa-east-1c
-          - subnet-05b6cbd90f2ca7c9d  # sa-east-1a
-          - subnet-0e39fb3446bf485c0  # sa-east-1b
+          - subnet-09e31f88ffe864c21 # sa-east-1c
+          - subnet-05b6cbd90f2ca7c9d # sa-east-1a
+          - subnet-0e39fb3446bf485c0 # sa-east-1b
       Events:
         ApiProxy:
           Type: Api
@@ -76,8 +73,8 @@ Resources:
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
-    Value: !Sub 'https://${PoloxRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/'
-  
+    Value: !Sub "https://${PoloxRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"
+
   DatabaseHost:
     Description: RDS Database Host
     Value: database-1.cd2em8e0a6ot.sa-east-1.rds.amazonaws.com
