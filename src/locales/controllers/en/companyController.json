@@ -2,7 +2,7 @@
   "validation": {
     "name_min_length": "Company name must be at least 2 characters",
     "name_required": "Company name is required",
-    "domain_pattern": "Domain must contain only letters, numbers and hyphens",
+    "domain_pattern": "Domain must contain only letters, numbers, hyphens and dots",
     "domain_required": "Domain is required",
     "admin_name_required": "Administrator name is required",
     "admin_email_valid": "Administrator email must be valid",
