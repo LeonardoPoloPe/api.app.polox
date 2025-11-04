@@ -373,7 +373,7 @@ router.post('/get-or-create', ContactController.getOrCreate);
  */
 router.post(
   '/get-or-create-with-negotiation',
-  rateLimiter(100, 1), // 100 requests por minuto
+  rateLimiter.general, // Rate limit geral
   ContactController.getOrCreateWithNegotiation
 );
 
@@ -472,7 +472,7 @@ router.get('/:id', ContactController.show);
  *       400:
  *         description: Dados inválidos
  */
-router.post('/', rateLimiter({ maxRequests: 100, windowMs: 60000 }), ContactController.create);
+router.post('/', rateLimiter.general, ContactController.create);
 
 /**
  * @swagger
@@ -683,7 +683,7 @@ router.get('/:contactId/notes', ContactNoteController.listByContact);
  *       201:
  *         description: Anotação criada
  */
-router.post('/:contactId/notes', rateLimiter({ maxRequests: 200, windowMs: 60000 }), ContactNoteController.create);
+router.post('/:contactId/notes', rateLimiter.general, ContactNoteController.create);
 
 /**
  * @swagger

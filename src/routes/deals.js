@@ -248,7 +248,7 @@ router.get('/:id', DealController.show);
  *       404:
  *         description: Contato não encontrado
  */
-router.post('/', rateLimiter({ maxRequests: 100, windowMs: 60000 }), DealController.create);
+router.post('/', rateLimiter.general, DealController.create);
 
 /**
  * @swagger

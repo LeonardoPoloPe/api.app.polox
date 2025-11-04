@@ -5,10 +5,10 @@ const UserModel = require("./User");
 const CompanyModel = require("./Company");
 const UserSessionModel = require("./UserSession");
 
-// Business Models
-const LeadModel = require("./Lead");
-const ClientModel = require("./Client");
-const ClientNoteModel = require("./ClientNote");
+// Business Models - Nova Arquitetura: Identidade vs. Intenção
+const ContactModel = require("./Contact"); // ✨ NOVO: Identidade Unificada (substitui Lead + Client)
+const ContactNoteModel = require("./ContactNote"); // ✨ NOVO: Histórico Unificado
+const DealModel = require("./Deal"); // ✨ NOVO: Pipeline de Vendas
 const SaleModel = require("./Sale");
 const SaleItemModel = require("./SaleItem");
 const ProductModel = require("./Product");
@@ -16,7 +16,6 @@ const ProductCategoryModel = require("./ProductCategory");
 
 // Sales Pipeline Models
 const PipelineModel = require("./Pipeline");
-const DealModel = require("./Deal");
 
 // Financial Models
 const FinancialAccountModel = require("./FinancialAccount");
@@ -63,10 +62,10 @@ module.exports = {
   CompanyModel,
   UserSessionModel,
 
-  // Business Models
-  LeadModel,
-  ClientModel,
-  ClientNoteModel,
+  // Business Models - Nova Arquitetura
+  ContactModel, // ✨ Identidade Unificada (substitui LeadModel + ClientModel)
+  ContactNoteModel, // ✨ Histórico Unificado
+  DealModel, // ✨ Pipeline de Vendas
   SaleModel,
   SaleItemModel,
   ProductModel,
@@ -74,7 +73,6 @@ module.exports = {
 
   // Sales Pipeline Models
   PipelineModel,
-  DealModel,
 
   // Financial Models
   FinancialAccountModel,
