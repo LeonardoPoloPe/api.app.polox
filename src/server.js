@@ -140,7 +140,14 @@ async function startServer() {
         app.use("/api/v1/docs", swaggerUi.serve);
         app.get("/api/v1/docs", swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 
+        // Endpoint para o JSON da especificação OpenAPI
+        app.get("/api/v1/api-docs.json", (req, res) => {
+          res.setHeader("Content-Type", "application/json");
+          res.json(swaggerSpec);
+        });
+
         console.log("📚 Swagger UI configurado em /api/v1/docs");
+        console.log("📄 Swagger JSON disponível em /api/v1/api-docs.json");
       } catch (error) {
         console.warn("Swagger não pôde ser carregado:", error.message);
       }

@@ -11,30 +11,61 @@ const { logger } = require("../utils/logger");
  * 🔒 Configuração avançada do Helmet
  * Aplica múltiplas camadas de segurança HTTP
  */
+
+// Configuração CSP mais permissiva para desenvolvimento (incluindo Swagger UI)
+const developmentCSP = {
+  defaultSrc: ["'self'"],
+  styleSrc: [
+    "'self'",
+    "'unsafe-inline'",
+    "https://unpkg.com",
+    "https://fonts.googleapis.com",
+    "https://cdnjs.cloudflare.com",
+  ],
+  scriptSrc: [
+    "'self'",
+    "'unsafe-inline'",
+    "'unsafe-eval'",
+    "https://unpkg.com",
+    "https://cdnjs.cloudflare.com",
+  ],
+  fontSrc: ["'self'", "https://fonts.gstatic.com"],
+  imgSrc: ["'self'", "data:", "https:", "blob:"],
+  connectSrc: ["'self'"],
+  frameSrc: ["'none'"],
+  objectSrc: ["'none'"],
+  mediaSrc: ["'self'"],
+  workerSrc: ["'self'", "blob:"],
+  childSrc: ["'self'"],
+  formAction: ["'self'"],
+};
+
+// Configuração CSP mais restritiva para produção
+const productionCSP = {
+  defaultSrc: ["'self'"],
+  styleSrc: ["'self'", "https://fonts.googleapis.com"],
+  scriptSrc: ["'self'"],
+  fontSrc: ["'self'", "https://fonts.gstatic.com"],
+  imgSrc: ["'self'", "data:", "https:"],
+  connectSrc: ["'self'"],
+  frameSrc: ["'none'"],
+  objectSrc: ["'none'"],
+  mediaSrc: ["'self'"],
+  workerSrc: ["'none'"],
+  childSrc: ["'none'"],
+  formAction: ["'self'"],
+  upgradeInsecureRequests: [],
+};
+
+const isDevelopment = process.env.NODE_ENV !== "production";
+
 const securityHeaders = helmet({
-  // Content Security Policy
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://unpkg.com",
-        "https://fonts.googleapis.com",
-      ],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      workerSrc: ["'none'"],
-      childSrc: ["'none'"],
-      formAction: ["'self'"],
-      upgradeInsecureRequests: [],
-    },
-  },
+  // Content Security Policy (dinâmica baseada no ambiente)
+  contentSecurityPolicy: isDevelopment
+    ? false
+    : {
+        directives: productionCSP,
+      },
 
   // Cross-Origin Embedder Policy
   crossOriginEmbedderPolicy: {

@@ -103,26 +103,24 @@ function createApp() {
   // MIDDLEWARE DE SEGURANÇA
   // ==========================================
 
-  // Helmet - Headers de segurança
+  // Helmet - Headers de segurança (CSP desabilitado em desenvolvimento)
   app.use(
     helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: [
-            "'self'",
-            "'unsafe-inline'",
-            "https://fonts.googleapis.com",
-          ],
-          fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "https:"],
-          scriptSrc: ["'self'"],
-          connectSrc: ["'self'"],
-          frameSrc: ["'none'"],
-          objectSrc: ["'none'"],
-          // upgradeInsecureRequests: process.env.NODE_ENV === 'production' // Remover esta linha
-        },
-      },
+      contentSecurityPolicy:
+        process.env.NODE_ENV === "production"
+          ? {
+              directives: {
+                defaultSrc: ["'self'"],
+                styleSrc: ["'self'", "https://fonts.googleapis.com"],
+                fontSrc: ["'self'", "https://fonts.gstatic.com"],
+                imgSrc: ["'self'", "data:", "https:"],
+                scriptSrc: ["'self'"],
+                connectSrc: ["'self'"],
+                frameSrc: ["'none'"],
+                objectSrc: ["'none'"],
+              },
+            }
+          : false, // Desabilita CSP completamente em desenvolvimento
       crossOriginEmbedderPolicy: false, // Permite embedding para Swagger UI
       hsts: {
         maxAge: 31536000,
