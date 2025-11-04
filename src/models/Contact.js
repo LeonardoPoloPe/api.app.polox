@@ -512,7 +512,7 @@ class Contact {
 
       const contact = result.rows[0];
 
-      // 2. Adicionar tags (via pivot table contato_tags)
+      // 2. Adicionar tags (via pivot table contact_tags)
       if (tags && tags.length > 0) {
         for (const tagName of tags) {
           if (tagName && tagName.trim() !== '') {
@@ -522,9 +522,9 @@ class Contact {
             // Criar ou buscar tag (multi-tenant)
             const tagResult = await client.query(
               `
-              INSERT INTO polox.tags (company_id, name, slug, color, created_at, updated_at)
+              INSERT INTO polox.tags (company_id, tag_name, slug, color, created_at, updated_at)
               VALUES ($1, $2, $3, $4, NOW(), NOW())
-              ON CONFLICT (company_id, slug) 
+              ON CONFLICT ON CONSTRAINT idx_tags_company_name_slug_unique
               DO UPDATE SET updated_at = NOW()
               RETURNING id
             `,
@@ -536,7 +536,7 @@ class Contact {
             // Associar tag ao contato
             await client.query(
               `
-              INSERT INTO polox.contato_tags (contato_id, tag_id, created_at)
+              INSERT INTO polox.contact_tags (contato_id, tag_id, created_at)
               VALUES ($1, $2, NOW())
               ON CONFLICT (contato_id, tag_id) DO NOTHING
             `,

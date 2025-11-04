@@ -142,6 +142,11 @@ class ContactController {
       throw new ValidationError(messages);
     }
 
+    // Auto-preencher owner_id com o usuário autenticado se não fornecido
+    if (!value.owner_id) {
+      value.owner_id = userId;
+    }
+
     // Criar contato
     const contact = await Contact.create(companyId, value);
 
