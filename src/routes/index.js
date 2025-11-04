@@ -10,11 +10,9 @@ const express = require("express");
 const authRoutes = require("./auth");
 const userRoutes = require("./users");
 const companyRoutes = require("./companies");
-const leadRoutes = require("./leads");
-const clientRoutes = require("./clients");
-const contactRoutes = require("./contacts"); // ✨ NOVO: Identidade Unificada
-const dealRoutes = require("./deals"); // ✨ NOVO: Pipeline de Vendas
-const contactNoteRoutes = require("./contact-notes"); // ✨ NOVO: Histórico Unificado
+const contactRoutes = require("./contacts"); // ✨ Identidade Unificada (substitui leads + clients)
+const dealRoutes = require("./deals"); // ✨ Pipeline de Vendas
+const contactNoteRoutes = require("./contact-notes"); // ✨ Histórico Unificado
 const saleRoutes = require("./sales");
 const productRoutes = require("./products");
 const financeRoutes = require("./finance");
@@ -39,12 +37,6 @@ router.use("/users", userRoutes);
 
 // 🏢 Empresas
 router.use("/companies", companyRoutes);
-
-// 🎯 Leads (LEGADO - considerar deprecação)
-router.use("/leads", leadRoutes);
-
-// 👤 Clientes (LEGADO - considerar deprecação)
-router.use("/clients", clientRoutes);
 
 // ==========================================
 // ✨ NOVA ARQUITETURA: IDENTIDADE VS. INTENÇÃO

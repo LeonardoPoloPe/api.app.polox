@@ -369,6 +369,46 @@ DELETE /api/v1/notes/:id                  → Deletar
 
 ---
 
-**Última Atualização**: 4 de novembro de 2025 - 02:37 BRT  
+## ✅ LIMPEZA EXECUTADA (04/11/2025 - 03:15 BRT)
+
+### **Arquivos Deletados**:
+```bash
+✅ src/models/Lead.js                      (deletado)
+✅ src/models/Client.js                    (deletado)
+✅ src/models/ClientNote.js                (deletado)
+✅ src/controllers/LeadController.js       (deletado)
+✅ src/controllers/ClientController.js     (deletado)
+✅ src/services/ClientService.js           (deletado)
+✅ src/routes/leads.js                     (deletado)
+✅ src/routes/clients.js                   (deletado)
+```
+
+### **Arquivos Corrigidos** (JOINs para `contacts`):
+```bash
+✅ src/routes/index.js                     (removido imports de leadRoutes/clientRoutes)
+✅ src/routes.js                           (removido imports e rotas legadas)
+✅ src/controllers/ScheduleController.js   (3 queries corrigidas)
+✅ src/controllers/SaleController.js       (5 queries corrigidas)
+✅ src/config/scheduler.js                 (2 queries corrigidas)
+```
+
+### **Resultado**:
+- ✅ **Nenhum erro de sintaxe detectado**
+- ✅ **Nenhuma importação quebrada**
+- ✅ **Todas as queries migraram para `polox.contacts`**
+- ✅ **Rotas `/api/v1/leads` e `/api/v1/clients` REMOVIDAS**
+
+### **Endpoints Ativos**:
+```
+❌ /api/v1/leads     → REMOVIDO
+❌ /api/v1/clients   → REMOVIDO
+✅ /api/v1/contacts  → ATIVO (substitui leads + clients)
+✅ /api/v1/deals     → ATIVO (pipeline de vendas)
+✅ /api/v1/notes     → ATIVO (histórico unificado)
+```
+
+---
+
+**Última Atualização**: 4 de novembro de 2025 - 03:15 BRT  
 **Autor**: Leonardo Polo  
-**Status**: 🟢 Backend 100% funcional | ⚠️ Código legado pendente de remoção
+**Status**: 🟢 Backend 100% funcional | ✅ Código legado REMOVIDO com sucesso

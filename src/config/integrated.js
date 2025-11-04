@@ -55,9 +55,13 @@ const createIntegratedApp = () => {
     const companyRoutes = require('../routes/companies');
     app.use('/api/companies', companyRoutes);
     
-    // Rotas de clientes
-    const clientRoutes = require('../routes/clients');
-    app.use('/api/clients', clientRoutes);
+    // Rotas de contatos (nova arquitetura - substitui leads + clients)
+    const contactsRoutes = require('../routes/contacts');
+    app.use('/api/contacts', contactsRoutes);
+    
+    // Rotas de negociações (pipeline de vendas)
+    const dealsRoutes = require('../routes/deals');
+    app.use('/api/deals', dealsRoutes);
     
     // Rotas de vendas
     const salesRoutes = require('../routes/sales');

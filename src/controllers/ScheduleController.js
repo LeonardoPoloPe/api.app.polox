@@ -147,11 +147,13 @@ class ScheduleController {
     const sortOrder = req.query.order === 'desc' ? 'DESC' : 'ASC';
 
     // Query principal
+    // ⚠️  NOTA: schedule_events ainda usa client_id/lead_id (legacy)
+    // TODO: Migrar para contact_id única em futura migration
     const eventsQuery = `
       SELECT 
         e.*,
-        c.name as client_name,
-        l.name as lead_name,
+        COALESCE(cont_c.nome, cont_l.nome) as contact_name,
+        COALESCE(cont_c.tipo, cont_l.tipo) as contact_type,
         u.full_name as organizer_name,
         COALESCE(
           json_agg(
@@ -167,13 +169,13 @@ class ScheduleController {
           '[]'::json
         ) as attendees
       FROM schedule_events e
-      LEFT JOIN clients c ON e.client_id = c.id AND c.company_id = e.company_id
-      LEFT JOIN leads l ON e.lead_id = l.id AND l.company_id = e.company_id
+      LEFT JOIN polox.contacts cont_c ON e.client_id = cont_c.id AND cont_c.company_id = e.company_id AND cont_c.tipo = 'cliente'
+      LEFT JOIN polox.contacts cont_l ON e.lead_id = cont_l.id AND cont_l.company_id = e.company_id AND cont_l.tipo = 'lead'
       LEFT JOIN users u ON e.created_by = u.id
       LEFT JOIN event_attendees ea ON e.id = ea.event_id AND ea.deleted_at IS NULL
       LEFT JOIN users u_att ON ea.user_id = u_att.id
       ${whereClause}
-      GROUP BY e.id, c.name, l.name, u.full_name
+      GROUP BY e.id, cont_c.nome, cont_l.nome, cont_c.tipo, cont_l.tipo, u.full_name
       ORDER BY e.${sortField} ${sortOrder}
       LIMIT $${++paramCount} OFFSET $${++paramCount}
     `;
@@ -385,14 +387,14 @@ class ScheduleController {
         ) as attendees,
         parent_event.title as parent_event_title
       FROM schedule_events e
-      LEFT JOIN clients c ON e.client_id = c.id AND c.company_id = e.company_id
-      LEFT JOIN leads l ON e.lead_id = l.id AND l.company_id = e.company_id
+      LEFT JOIN polox.contacts cont_c ON e.client_id = cont_c.id AND cont_c.company_id = e.company_id AND cont_c.tipo = 'cliente'
+      LEFT JOIN polox.contacts cont_l ON e.lead_id = cont_l.id AND cont_l.company_id = e.company_id AND cont_l.tipo = 'lead'
       LEFT JOIN users u ON e.created_by = u.id
       LEFT JOIN event_attendees ea ON e.id = ea.event_id AND ea.deleted_at IS NULL
       LEFT JOIN users u_att ON ea.user_id = u_att.id
       LEFT JOIN schedule_events parent_event ON e.parent_event_id = parent_event.id
       WHERE e.id = $1 AND e.company_id = $2 AND e.deleted_at IS NULL
-      GROUP BY e.id, c.name, c.email, c.phone, l.name, l.email, l.phone, u.full_name, u.email, parent_event.title
+      GROUP BY e.id, cont_c.nome, cont_c.email, cont_c.phone, cont_l.nome, cont_l.email, cont_l.phone, u.full_name, u.email, parent_event.title
     `;
 
     const eventResult = await query(eventQuery, [eventId, req.user.companyId]);
@@ -801,8 +803,8 @@ class ScheduleController {
         e.status,
         e.event_location,
         e.is_private,
-        c.client_name,
-        l.lead_name,
+        cont_c.nome as client_name,
+        cont_l.nome as lead_name,
         u.full_name as organizer_name,
         CASE 
           WHEN e.created_by = $4 THEN true
@@ -810,8 +812,8 @@ class ScheduleController {
           ELSE false
         END as is_participant
       FROM schedule_events e
-      LEFT JOIN clients c ON e.client_id = c.id AND c.company_id = e.company_id
-      LEFT JOIN leads l ON e.lead_id = l.id AND l.company_id = e.company_id
+      LEFT JOIN polox.contacts cont_c ON e.client_id = cont_c.id AND cont_c.company_id = e.company_id AND cont_c.tipo = 'cliente'
+      LEFT JOIN polox.contacts cont_l ON e.lead_id = cont_l.id AND cont_l.company_id = e.company_id AND cont_l.tipo = 'lead'
       LEFT JOIN users u ON e.created_by = u.id
       WHERE e.company_id = $1 
       AND e.deleted_at IS NULL

@@ -14,8 +14,9 @@ const { authenticateToken } = require("./middleware/auth");
 // Importar rotas específicas
 const companiesRoutes = require("./routes/companies");
 const gamificationRoutes = require("./routes/gamification");
-const leadsRoutes = require("./routes/leads");
-const clientsRoutes = require("./routes/clients");
+const contactsRoutes = require("./routes/contacts"); // ✨ Identidade Unificada (substitui leads + clients)
+const dealsRoutes = require("./routes/deals"); // ✨ Pipeline de Vendas
+const contactNotesRoutes = require("./routes/contact-notes"); // ✨ Histórico Unificado
 const salesRoutes = require("./routes/sales");
 const productsRoutes = require("./routes/products");
 const financeRoutes = require("./routes/finance");
@@ -342,14 +343,17 @@ router.use("/companies", companiesRoutes);
 router.use("/gamification", gamificationRoutes);
 
 // ==========================================
-// 📈 ROTAS DE LEADS (CRM)
+// ✨ NOVA ARQUITETURA: IDENTIDADE VS. INTENÇÃO
 // ==========================================
-router.use("/leads", leadsRoutes);
 
-// ==========================================
-// 👥 ROTAS DE CLIENTES
-// ==========================================
-router.use("/clients", clientsRoutes);
+// 👥 ROTAS DE CONTATOS (Identidade Unificada: Leads + Clientes)
+router.use("/contacts", contactsRoutes);
+
+// 💼 ROTAS DE NEGOCIAÇÕES (Pipeline de Vendas)
+router.use("/deals", dealsRoutes);
+
+// � ROTAS DE ANOTAÇÕES (Histórico Unificado)
+router.use("/notes", contactNotesRoutes);
 
 // ==========================================
 // 💰 ROTAS DE VENDAS

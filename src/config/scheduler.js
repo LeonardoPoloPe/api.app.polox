@@ -202,8 +202,8 @@ const generateDailyReport = async () => {
       
       query(`
         SELECT COUNT(*) as count, company_id
-        FROM clients 
-        WHERE created_at >= $1 
+        FROM polox.contacts 
+        WHERE created_at >= $1 AND tipo = 'cliente'
         GROUP BY company_id
       `, [today]),
       
@@ -331,8 +331,8 @@ const updateRealTimeStats = async () => {
         COUNT(CASE WHEN created_at >= NOW() - INTERVAL '24 hours' THEN 1 END) as new_clients_24h,
         COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as new_clients_7d,
         COUNT(*) as total_clients
-      FROM clients 
-      WHERE deleted_at IS NULL
+      FROM polox.contacts 
+      WHERE deleted_at IS NULL AND tipo = 'cliente'
       GROUP BY company_id
     `);
     

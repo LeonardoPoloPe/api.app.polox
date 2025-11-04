@@ -150,18 +150,18 @@ class SaleController {
     const salesQuery = `
       SELECT 
         s.*,
-        c.client_name,
+        c.nome as client_name,
         c.email as client_email,
         c.company_name as client_company,
         u.full_name as seller_name,
         u.email as seller_email,
         COUNT(si.id) as items_count
       FROM sales s
-      LEFT JOIN clients c ON s.client_id = c.id
+      LEFT JOIN polox.contacts c ON s.client_id = c.id AND c.tipo = 'cliente'
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN sale_items si ON s.id = si.sale_id
       ${whereClause}
-      GROUP BY s.id, c.client_name, c.email, c.company_name, u.full_name, u.email
+      GROUP BY s.id, c.nome, c.email, c.company_name, u.full_name, u.email
       ORDER BY ${sortField} ${sortOrder}
       LIMIT $${++paramCount} OFFSET $${++paramCount}
     `;
@@ -172,7 +172,7 @@ class SaleController {
     const countQuery = `
       SELECT COUNT(DISTINCT s.id) as total 
       FROM sales s
-      LEFT JOIN clients c ON s.client_id = c.id
+      LEFT JOIN polox.contacts c ON s.client_id = c.id AND c.tipo = 'cliente'
       ${whereClause}
     `;
 
@@ -222,10 +222,10 @@ class SaleController {
 
     const saleData = value;
 
-    // 🔍 Verificar se cliente existe
+    // 🔍 Verificar se cliente existe (usando contacts com tipo='cliente')
     const clientCheck = await query(
-      'SELECT id, client_name, email FROM clients WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-      [saleData.client_id, req.user.companyId]
+      'SELECT id, nome as client_name, email FROM polox.contacts WHERE id = $1 AND company_id = $2 AND tipo = $3 AND deleted_at IS NULL',
+      [saleData.client_id, req.user.companyId, 'cliente']
     );
 
     if (clientCheck.rows.length === 0) {
@@ -388,10 +388,10 @@ class SaleController {
             ) ORDER BY si.id
           ) as items
         FROM sales s
-        LEFT JOIN clients c ON s.client_id = c.id
+        LEFT JOIN polox.contacts c ON s.client_id = c.id AND c.tipo = 'cliente'
         LEFT JOIN sale_items si ON s.id = si.sale_id
         WHERE s.id = $1
-        GROUP BY s.id, c.client_name, c.email
+        GROUP BY s.id, c.nome, c.email
       `;
 
       const completeSaleResult = await query(completeSaleQuery, [newSale.id]);
@@ -451,11 +451,11 @@ class SaleController {
           ) ORDER BY si.id
         ) FILTER (WHERE si.id IS NOT NULL) as items
       FROM sales s
-      LEFT JOIN clients c ON s.client_id = c.id
+      LEFT JOIN polox.contacts c ON s.client_id = c.id AND c.tipo = 'cliente'
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN sale_items si ON s.id = si.sale_id
       WHERE s.id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL
-      GROUP BY s.id, c.client_name, c.email, c.phone, c.company_name, u.full_name, u.email
+      GROUP BY s.id, c.nome, c.email, c.phone, c.company_name, u.full_name, u.email
     `;
     
     const saleResult = await query(saleQuery, [saleId, req.user.companyId]);
@@ -545,9 +545,9 @@ class SaleController {
 
     // 🔍 Verificar se venda existe
     const saleCheck = await query(
-      `SELECT s.*, c.client_name 
+      `SELECT s.*, c.nome as client_name 
        FROM sales s 
-       LEFT JOIN clients c ON s.client_id = c.id
+       LEFT JOIN polox.contacts c ON s.client_id = c.id AND c.tipo = 'cliente'
        WHERE s.id = $1 AND s.company_id = $2 AND s.deleted_at IS NULL`,
       [saleId, req.user.companyId]
     );
