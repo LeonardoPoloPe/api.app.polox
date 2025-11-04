@@ -50,8 +50,8 @@ if (process.env.NODE_ENV !== "production") {
         },
         servers: [
           {
-            url: "http://localhost:3000/api/v1",
-            description: "Servidor Local (Node.js)",
+            url: "http://localhost:3000/dev/api/v1",
+            description: "Servidor Local (Node.js com serverless-offline)",
           },
           {
             url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1",
@@ -99,20 +99,53 @@ if (process.env.NODE_ENV !== "production") {
 
     const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-    // Rota para a UI do Swagger
-    router.use("/docs", swaggerUi.serve);
-    router.get(
-      "/docs",
-      swaggerUi.setup(swaggerSpec, {
-        customCss: ".swagger-ui .topbar { display: none }",
-        customSiteTitle: "Polox API Docs",
-      })
-    );
-
-    // Rota para o JSON do Swagger
+    // Rota para o JSON do Swagger (deve vir ANTES da UI)
     router.get("/docs.json", (req, res) => {
       res.setHeader("Content-Type", "application/json");
       res.send(swaggerSpec);
+    });
+
+    // Rota para a UI do Swagger - HTML customizado para funcionar com serverless-offline
+    router.get("/docs", (req, res) => {
+      const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Polox API Docs</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css">
+  <style>
+    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin:0; padding:0; }
+    .swagger-ui .topbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function() {
+      const ui = SwaggerUIBundle({
+        url: window.location.origin + window.location.pathname.replace(/\\/docs.*$/, '') + '/docs.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout"
+      });
+      window.ui = ui;
+    };
+  </script>
+</body>
+</html>`;
+      res.send(html);
     });
 
   console.log("📚 Swagger configurado em /api/v1/docs");
@@ -124,6 +157,71 @@ if (process.env.NODE_ENV !== "production") {
 // ==========================================
 // � CONFIGURAÇÃO DO SWAGGER MOVIDA PARA /config/swagger.js
 // ==========================================
+
+// ==========================================
+// 🏠 ROTA RAIZ DA API
+// ==========================================
+
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Informações da API
+ *     description: Retorna informações sobre a API, versão e links úteis
+ *     tags: [Informações]
+ *     security: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *     responses:
+ *       200:
+ *         description: Informações da API
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 api:
+ *                   type: object
+ *                 endpoints:
+ *                   type: object
+ */
+router.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Polox CRM API - Sistema de Gestão Multi-Tenant",
+    api: {
+      name: "Polox CRM API",
+      version: "1.0.0",
+      environment: process.env.NODE_ENV || "dev",
+      timestamp: new Date().toISOString()
+    },
+    architecture: {
+      type: "Identity vs. Intention",
+      description: "Identidade unificada (Contacts) + Pipeline de vendas (Deals)"
+    },
+    endpoints: {
+      documentation: "/docs",
+      swagger_json: "/docs.json",
+      authentication: "/auth/login",
+      contacts: "/contacts",
+      deals: "/deals",
+      notes: "/notes"
+    },
+    features: [
+      "🌐 Multi-idiomas (PT/EN/ES)",
+      "👥 Identidade unificada (Leads + Clientes)",
+      "💼 Pipeline de vendas",
+      "📝 Histórico de interações",
+      "🔐 Autenticação JWT",
+      "🏢 Multi-tenant"
+    ],
+    status: "✅ Online"
+  });
+});
 
 // ==========================================
 // 🔐 ROTAS DE AUTENTICAÇÃO

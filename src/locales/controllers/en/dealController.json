@@ -1,0 +1,61 @@
+{
+  "validation": {
+    "contact_id_required": "Contact ID is required",
+    "titulo_required": "Deal title is required",
+    "titulo_min_length": "Title must have at least 3 characters",
+    "valor_invalid": "Total value must be a number >= 0",
+    "probabilidade_invalid": "Probability must be between 0 and 100",
+    "etapa_required": "Pipeline stage is required",
+    "closed_reason_required": "Close reason is required for lost deals",
+    "contact_not_found": "Linked contact not found"
+  },
+  "create": {
+    "success": "Deal created successfully"
+  },
+  "update": {
+    "success": "Deal updated successfully",
+    "not_found": "Deal not found"
+  },
+  "delete": {
+    "success": "Deal deleted successfully",
+    "not_found": "Deal not found"
+  },
+  "show": {
+    "not_found": "Deal not found"
+  },
+  "list": {
+    "success": "Deals loaded successfully",
+    "empty": "No deals found"
+  },
+  "stage": {
+    "update_success": "Pipeline stage updated successfully",
+    "not_found": "Deal not found"
+  },
+  "win": {
+    "success": "Deal marked as won! Lead automatically converted to client.",
+    "not_found": "Deal not found",
+    "already_closed": "Deal is already closed"
+  },
+  "lose": {
+    "success": "Deal marked as lost",
+    "not_found": "Deal not found",
+    "already_closed": "Deal is already closed"
+  },
+  "reopen": {
+    "success": "Deal reopened successfully",
+    "not_found": "Deal not found",
+    "not_closed": "Deal is not closed"
+  },
+  "stats": {
+    "success": "Pipeline statistics loaded successfully"
+  },
+  "audit": {
+    "deal_created": "Deal created",
+    "deal_updated": "Deal updated",
+    "deal_deleted": "Deal deleted",
+    "deal_stage_updated": "Deal stage changed",
+    "deal_won": "Deal won",
+    "deal_lost": "Deal lost",
+    "deal_reopened": "Deal reopened"
+  }
+}

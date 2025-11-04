@@ -1,0 +1,39 @@
+{
+  "validation": {
+    "contact_id_required": "Contact ID is required",
+    "content_required": "Note content is required",
+    "content_min_length": "Content must have at least 3 characters",
+    "tipo_invalid": "Type must be 'nota', 'ligacao', 'email', 'reuniao' or 'whatsapp'",
+    "contact_not_found": "Contact not found"
+  },
+  "create": {
+    "success": "Note created successfully"
+  },
+  "update": {
+    "success": "Note updated successfully",
+    "not_found": "Note not found"
+  },
+  "delete": {
+    "success": "Note deleted successfully",
+    "not_found": "Note not found"
+  },
+  "show": {
+    "not_found": "Note not found"
+  },
+  "list": {
+    "success": "Notes loaded successfully",
+    "empty": "No notes found"
+  },
+  "list_by_contact": {
+    "success": "Contact history loaded successfully",
+    "empty": "No notes for this contact"
+  },
+  "stats": {
+    "success": "Interaction statistics loaded successfully"
+  },
+  "audit": {
+    "note_created": "Note created",
+    "note_updated": "Note updated",
+    "note_deleted": "Note deleted"
+  }
+}

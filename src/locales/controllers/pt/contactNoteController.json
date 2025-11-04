@@ -1,0 +1,39 @@
+{
+  "validation": {
+    "contact_id_required": "ID do contato é obrigatório",
+    "content_required": "Conteúdo da anotação é obrigatório",
+    "content_min_length": "Conteúdo deve ter pelo menos 3 caracteres",
+    "tipo_invalid": "Tipo deve ser 'nota', 'ligacao', 'email', 'reuniao' ou 'whatsapp'",
+    "contact_not_found": "Contato não encontrado"
+  },
+  "create": {
+    "success": "Anotação criada com sucesso"
+  },
+  "update": {
+    "success": "Anotação atualizada com sucesso",
+    "not_found": "Anotação não encontrada"
+  },
+  "delete": {
+    "success": "Anotação excluída com sucesso",
+    "not_found": "Anotação não encontrada"
+  },
+  "show": {
+    "not_found": "Anotação não encontrada"
+  },
+  "list": {
+    "success": "Anotações carregadas com sucesso",
+    "empty": "Nenhuma anotação encontrada"
+  },
+  "list_by_contact": {
+    "success": "Histórico do contato carregado com sucesso",
+    "empty": "Nenhuma anotação para este contato"
+  },
+  "stats": {
+    "success": "Estatísticas de interações carregadas com sucesso"
+  },
+  "audit": {
+    "note_created": "Anotação criada",
+    "note_updated": "Anotação atualizada",
+    "note_deleted": "Anotação excluída"
+  }
+}

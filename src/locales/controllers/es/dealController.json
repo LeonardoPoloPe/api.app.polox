@@ -1,0 +1,61 @@
+{
+  "validation": {
+    "contact_id_required": "Se requiere ID de contacto",
+    "titulo_required": "El título del negocio es obligatorio",
+    "titulo_min_length": "El título debe tener al menos 3 caracteres",
+    "valor_invalid": "El valor total debe ser un número >= 0",
+    "probabilidade_invalid": "La probabilidad debe estar entre 0 y 100",
+    "etapa_required": "La etapa del embudo es obligatoria",
+    "closed_reason_required": "Se requiere motivo de cierre para negocios perdidos",
+    "contact_not_found": "Contacto vinculado no encontrado"
+  },
+  "create": {
+    "success": "Negocio creado con éxito"
+  },
+  "update": {
+    "success": "Negocio actualizado con éxito",
+    "not_found": "Negocio no encontrado"
+  },
+  "delete": {
+    "success": "Negocio eliminado con éxito",
+    "not_found": "Negocio no encontrado"
+  },
+  "show": {
+    "not_found": "Negocio no encontrado"
+  },
+  "list": {
+    "success": "Negocios cargados con éxito",
+    "empty": "No se encontraron negocios"
+  },
+  "stage": {
+    "update_success": "Etapa del embudo actualizada con éxito",
+    "not_found": "Negocio no encontrado"
+  },
+  "win": {
+    "success": "¡Negocio marcado como ganado! Lead convertido a cliente automáticamente.",
+    "not_found": "Negocio no encontrado",
+    "already_closed": "El negocio ya está cerrado"
+  },
+  "lose": {
+    "success": "Negocio marcado como perdido",
+    "not_found": "Negocio no encontrado",
+    "already_closed": "El negocio ya está cerrado"
+  },
+  "reopen": {
+    "success": "Negocio reabierto con éxito",
+    "not_found": "Negocio no encontrado",
+    "not_closed": "El negocio no está cerrado"
+  },
+  "stats": {
+    "success": "Estadísticas del embudo cargadas con éxito"
+  },
+  "audit": {
+    "deal_created": "Negocio creado",
+    "deal_updated": "Negocio actualizado",
+    "deal_deleted": "Negocio eliminado",
+    "deal_stage_updated": "Etapa del negocio cambiada",
+    "deal_won": "Negocio ganado",
+    "deal_lost": "Negocio perdido",
+    "deal_reopened": "Negocio reabierto"
+  }
+}

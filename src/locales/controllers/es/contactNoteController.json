@@ -1,0 +1,39 @@
+{
+  "validation": {
+    "contact_id_required": "Se requiere ID de contacto",
+    "content_required": "El contenido de la nota es obligatorio",
+    "content_min_length": "El contenido debe tener al menos 3 caracteres",
+    "tipo_invalid": "El tipo debe ser 'nota', 'ligacao', 'email', 'reuniao' o 'whatsapp'",
+    "contact_not_found": "Contacto no encontrado"
+  },
+  "create": {
+    "success": "Nota creada con éxito"
+  },
+  "update": {
+    "success": "Nota actualizada con éxito",
+    "not_found": "Nota no encontrada"
+  },
+  "delete": {
+    "success": "Nota eliminada con éxito",
+    "not_found": "Nota no encontrada"
+  },
+  "show": {
+    "not_found": "Nota no encontrada"
+  },
+  "list": {
+    "success": "Notas cargadas con éxito",
+    "empty": "No se encontraron notas"
+  },
+  "list_by_contact": {
+    "success": "Historial de contacto cargado con éxito",
+    "empty": "No hay notas para este contacto"
+  },
+  "stats": {
+    "success": "Estadísticas de interacciones cargadas con éxito"
+  },
+  "audit": {
+    "note_created": "Nota creada",
+    "note_updated": "Nota actualizada",
+    "note_deleted": "Nota eliminada"
+  }
+}

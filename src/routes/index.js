@@ -12,6 +12,9 @@ const userRoutes = require("./users");
 const companyRoutes = require("./companies");
 const leadRoutes = require("./leads");
 const clientRoutes = require("./clients");
+const contactRoutes = require("./contacts"); // ✨ NOVO: Identidade Unificada
+const dealRoutes = require("./deals"); // ✨ NOVO: Pipeline de Vendas
+const contactNoteRoutes = require("./contact-notes"); // ✨ NOVO: Histórico Unificado
 const saleRoutes = require("./sales");
 const productRoutes = require("./products");
 const financeRoutes = require("./finance");
@@ -37,11 +40,24 @@ router.use("/users", userRoutes);
 // 🏢 Empresas
 router.use("/companies", companyRoutes);
 
-// 🎯 Leads
+// 🎯 Leads (LEGADO - considerar deprecação)
 router.use("/leads", leadRoutes);
 
-// 👤 Clientes
+// 👤 Clientes (LEGADO - considerar deprecação)
 router.use("/clients", clientRoutes);
+
+// ==========================================
+// ✨ NOVA ARQUITETURA: IDENTIDADE VS. INTENÇÃO
+// ==========================================
+
+// 👥 Contatos (Identidade Unificada: Leads + Clientes)
+router.use("/contacts", contactRoutes);
+
+// 💼 Negociações (Intenção: Pipeline de Vendas)
+router.use("/deals", dealRoutes);
+
+// 📝 Anotações (Histórico: Timeline de Interações)
+router.use("/notes", contactNoteRoutes);
 
 // 💰 Vendas
 router.use("/sales", saleRoutes);

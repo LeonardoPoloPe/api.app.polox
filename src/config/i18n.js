@@ -75,6 +75,9 @@ i18next
       "companyController",
       "leadController",
       "leadsController",
+      "contactController", // ✨ NOVO: Identidade Unificada (Contacts)
+      "dealController", // ✨ NOVO: Pipeline de Vendas (Deals)
+      "contactNoteController", // ✨ NOVO: Histórico Unificado (Contact Notes)
       "salesController",
       "productController",
       "saleController",

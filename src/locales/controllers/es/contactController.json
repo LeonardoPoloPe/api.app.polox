@@ -1,0 +1,60 @@
+{
+  "validation": {
+    "name_required": "El nombre es obligatorio",
+    "name_min_length": "El nombre debe tener al menos 2 caracteres",
+    "email_or_phone_required": "Se requiere correo electrónico o teléfono",
+    "email_invalid": "El correo electrónico debe tener formato válido",
+    "tipo_invalid": "El tipo debe ser 'lead' o 'cliente'",
+    "tags_must_be_array": "Las etiquetas deben ser un array",
+    "interests_must_be_array": "Los intereses deben ser un array",
+    "lifetime_value_invalid": "El valor de por vida debe ser un número >= 0"
+  },
+  "create": {
+    "success": "Contacto creado con éxito",
+    "restored": "Contacto restaurado con éxito (existía anteriormente eliminado)"
+  },
+  "update": {
+    "success": "Contacto actualizado con éxito",
+    "not_found": "Contacto no encontrado"
+  },
+  "delete": {
+    "success": "Contacto eliminado con éxito",
+    "not_found": "Contacto no encontrado"
+  },
+  "show": {
+    "not_found": "Contacto no encontrado"
+  },
+  "list": {
+    "success": "Contactos cargados con éxito",
+    "empty": "No se encontraron contactos"
+  },
+  "convert": {
+    "success": "Lead convertido a cliente con éxito",
+    "not_found": "Lead no encontrado",
+    "already_client": "El contacto ya es un cliente",
+    "not_lead": "Solo los leads pueden ser convertidos"
+  },
+  "get_or_create": {
+    "created": "Nuevo contacto creado",
+    "found_existing": "Contacto existente encontrado",
+    "restored": "Contacto eliminado restaurado"
+  },
+  "get_or_create_with_deal": {
+    "success": "Contacto procesado y negociación creada con éxito",
+    "contact_found": "Contacto existente encontrado",
+    "contact_created": "Nuevo contacto creado",
+    "deal_created": "Negociación creada automáticamente",
+    "phone_or_email_required": "Teléfono o email es requerido para buscar/crear contacto",
+    "name_required": "Nombre es requerido para crear nuevo contacto"
+  },
+  "stats": {
+    "success": "Estadísticas cargadas con éxito"
+  },
+  "audit": {
+    "contact_created": "Contacto creado",
+    "contact_updated": "Contacto actualizado",
+    "contact_deleted": "Contacto eliminado",
+    "lead_converted": "Lead convertido a cliente",
+    "contact_restored": "Contacto restaurado"
+  }
+}

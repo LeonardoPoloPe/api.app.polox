@@ -100,7 +100,7 @@ router.get("/", rateLimiter.admin, CompanyController.index);
  *               domain:
  *                 type: string
  *                 example: bomelo.com.br
- *                 description: Aceita letras, números, hífens e pontos (ex: bomelo.com.br, crm.polox.com.br)
+ *                 description: "Aceita letras, números, hífens e pontos (ex: bomelo.com.br, crm.polox.com.br)"
  *               plan:
  *                 type: string
  *                 enum: [starter, professional, enterprise]

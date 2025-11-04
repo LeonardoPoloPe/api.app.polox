@@ -1,0 +1,60 @@
+{
+  "validation": {
+    "name_required": "Name is required",
+    "name_min_length": "Name must have at least 2 characters",
+    "email_or_phone_required": "Email or phone is required",
+    "email_invalid": "Email must have valid format",
+    "tipo_invalid": "Type must be 'lead' or 'cliente'",
+    "tags_must_be_array": "Tags must be an array",
+    "interests_must_be_array": "Interests must be an array",
+    "lifetime_value_invalid": "Lifetime value must be a number >= 0"
+  },
+  "create": {
+    "success": "Contact created successfully",
+    "restored": "Contact restored successfully (was previously deleted)"
+  },
+  "update": {
+    "success": "Contact updated successfully",
+    "not_found": "Contact not found"
+  },
+  "delete": {
+    "success": "Contact deleted successfully",
+    "not_found": "Contact not found"
+  },
+  "show": {
+    "not_found": "Contact not found"
+  },
+  "list": {
+    "success": "Contacts loaded successfully",
+    "empty": "No contacts found"
+  },
+  "convert": {
+    "success": "Lead converted to client successfully",
+    "not_found": "Lead not found",
+    "already_client": "Contact is already a client",
+    "not_lead": "Only leads can be converted"
+  },
+  "get_or_create": {
+    "created": "New contact created",
+    "found_existing": "Existing contact found",
+    "restored": "Deleted contact restored"
+  },
+  "get_or_create_with_deal": {
+    "success": "Contact processed and deal created successfully",
+    "contact_found": "Existing contact found",
+    "contact_created": "New contact created",
+    "deal_created": "Deal created automatically",
+    "phone_or_email_required": "Phone or email is required to find/create contact",
+    "name_required": "Name is required to create new contact"
+  },
+  "stats": {
+    "success": "Statistics loaded successfully"
+  },
+  "audit": {
+    "contact_created": "Contact created",
+    "contact_updated": "Contact updated",
+    "contact_deleted": "Contact deleted",
+    "lead_converted": "Lead converted to client",
+    "contact_restored": "Contact restored"
+  }
+}

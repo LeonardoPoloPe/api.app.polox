@@ -1,0 +1,61 @@
+{
+  "validation": {
+    "contact_id_required": "ID do contato é obrigatório",
+    "titulo_required": "Título da negociação é obrigatório",
+    "titulo_min_length": "Título deve ter pelo menos 3 caracteres",
+    "valor_invalid": "Valor total deve ser um número >= 0",
+    "probabilidade_invalid": "Probabilidade deve estar entre 0 e 100",
+    "etapa_required": "Etapa do funil é obrigatória",
+    "closed_reason_required": "Motivo do fechamento é obrigatório para negociações perdidas",
+    "contact_not_found": "Contato vinculado não encontrado"
+  },
+  "create": {
+    "success": "Negociação criada com sucesso"
+  },
+  "update": {
+    "success": "Negociação atualizada com sucesso",
+    "not_found": "Negociação não encontrada"
+  },
+  "delete": {
+    "success": "Negociação excluída com sucesso",
+    "not_found": "Negociação não encontrada"
+  },
+  "show": {
+    "not_found": "Negociação não encontrada"
+  },
+  "list": {
+    "success": "Negociações carregadas com sucesso",
+    "empty": "Nenhuma negociação encontrada"
+  },
+  "stage": {
+    "update_success": "Etapa do funil atualizada com sucesso",
+    "not_found": "Negociação não encontrada"
+  },
+  "win": {
+    "success": "Negociação marcada como ganha! Lead convertido para cliente automaticamente.",
+    "not_found": "Negociação não encontrada",
+    "already_closed": "Negociação já está fechada"
+  },
+  "lose": {
+    "success": "Negociação marcada como perdida",
+    "not_found": "Negociação não encontrada",
+    "already_closed": "Negociação já está fechada"
+  },
+  "reopen": {
+    "success": "Negociação reaberta com sucesso",
+    "not_found": "Negociação não encontrada",
+    "not_closed": "Negociação não está fechada"
+  },
+  "stats": {
+    "success": "Estatísticas do funil carregadas com sucesso"
+  },
+  "audit": {
+    "deal_created": "Negociação criada",
+    "deal_updated": "Negociação atualizada",
+    "deal_deleted": "Negociação excluída",
+    "deal_stage_updated": "Etapa da negociação alterada",
+    "deal_won": "Negociação ganha",
+    "deal_lost": "Negociação perdida",
+    "deal_reopened": "Negociação reaberta"
+  }
+}

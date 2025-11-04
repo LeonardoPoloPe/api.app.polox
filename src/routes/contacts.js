@@ -1,0 +1,794 @@
+/**
+ * ==========================================
+ * 👥 ROTAS DE CONTATOS - IDENTIDADE UNIFICADA
+ * ==========================================
+ * 
+ * Arquitetura: "Identidade vs. Intenção"
+ * - Unifica Leads + Clientes em uma única tabela
+ * - Tabela: polox.contacts
+ */
+
+const express = require('express');
+const ContactController = require('../controllers/ContactController');
+const DealController = require('../controllers/DealController');
+const ContactNoteController = require('../controllers/ContactNoteController');
+const { authenticateToken } = require('../middleware/auth');
+const { rateLimiter } = require('../middleware/rateLimiter');
+
+const router = express.Router();
+
+// 🔐 Middleware obrigatório: autenticação
+router.use(authenticateToken);
+
+/**
+ * @swagger
+ * /contacts:
+ *   get:
+ *     summary: Listar contatos (leads + clientes)
+ *     description: Lista todos os contatos com filtros e paginação
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: query
+ *         name: tipo
+ *         schema:
+ *           type: string
+ *           enum: [lead, cliente]
+ *         description: Filtrar por tipo de contato
+ *       - in: query
+ *         name: origem
+ *         schema:
+ *           type: string
+ *         description: Filtrar por origem (ex site, whatsapp, indicacao)
+ *       - in: query
+ *         name: owner_id
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por responsável
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar por nome, email, telefone ou documento
+ *       - in: query
+ *         name: tags
+ *         schema:
+ *           type: string
+ *         description: Filtrar por tags (separar com vírgula)
+ *       - in: query
+ *         name: sort_by
+ *         schema:
+ *           type: string
+ *           enum: [created_at, updated_at, nome, lifetime_value_cents]
+ *           default: created_at
+ *         description: Campo para ordenação
+ *       - in: query
+ *         name: sort_order
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         description: Ordem de classificação
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *           maximum: 200
+ *         description: Itens por página
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Offset para paginação
+ *     responses:
+ *       200:
+ *         description: Lista de contatos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Contact'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     offset:
+ *                       type: integer
+ */
+router.get('/', ContactController.list);
+
+/**
+ * @swagger
+ * /contacts/search:
+ *   get:
+ *     summary: 🔍 Buscar contato por identificador
+ *     description: |
+ *       Busca rápida por phone/email/document
+ *       **Para Extensão WhatsApp**: verificar se contato já existe
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: query
+ *         name: phone
+ *         schema:
+ *           type: string
+ *         description: Buscar por telefone
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *         description: Buscar por email
+ *       - in: query
+ *         name: document
+ *         schema:
+ *           type: string
+ *         description: Buscar por CPF/CNPJ
+ *     responses:
+ *       200:
+ *         description: Resultado da busca
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 found:
+ *                   type: boolean
+ *                   description: true se encontrou, false se não encontrou
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   oneOf:
+ *                     - $ref: '#/components/schemas/Contact'
+ *                     - type: null
+ */
+router.get('/search', ContactController.searchContact);
+
+/**
+ * @swagger
+ * /contacts/stats:
+ *   get:
+ *     summary: Estatísticas de contatos
+ *     description: Retorna estatísticas gerais (total, leads, clientes, taxa de conversão)
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: query
+ *         name: owner_id
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por responsável
+ *       - in: query
+ *         name: origem
+ *         schema:
+ *           type: string
+ *         description: Filtrar por origem
+ *     responses:
+ *       200:
+ *         description: Estatísticas de contatos
+ */
+router.get('/stats', ContactController.getStats);
+
+/**
+ * @swagger
+ * /contacts/get-or-create:
+ *   post:
+ *     summary: Buscar ou criar contato (Find-or-Restore)
+ *     description: |
+ *       Busca contato por phone/email/document
+ *       - Se encontrar ativo: retorna
+ *       - Se encontrar deletado: restaura e retorna
+ *       - Se não encontrar: cria novo
+ *       (Útil para integração WhatsApp)
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 example: "+5511999999999"
+ *               email:
+ *                 type: string
+ *                 example: "joao@example.com"
+ *               document:
+ *                 type: string
+ *                 example: "12345678900"
+ *               nome:
+ *                 type: string
+ *                 example: "João Silva"
+ *     responses:
+ *       200:
+ *         description: Contato encontrado/criado
+ *       201:
+ *         description: Novo contato criado
+ */
+router.post('/get-or-create', ContactController.getOrCreate);
+
+/**
+ * @swagger
+ * /contacts/get-or-create-with-negotiation:
+ *   post:
+ *     summary: 🔥 ENDPOINT CRÍTICO - Buscar/Criar Contato + Criar Negociação
+ *     description: |
+ *       ⭐ Este é o CORAÇÃO da solução para Extensão WhatsApp + Landing Pages
+ *       
+ *       **COMPORTAMENTO:**
+ *       1. Busca contato existente por phone/email/document (prioridade: phone)
+ *       2. Se NÃO encontrar: Cria novo contato como 'lead'
+ *       3. Se encontrar deletado: Restaura o contato
+ *       4. **SEMPRE** cria uma NOVA negociação para esse contato
+ *       
+ *       **RESOLVE:**
+ *       - Cliente que virou lead de novo? ✅ Cria nova negociação
+ *       - Múltiplos deals por contato? ✅ Suportado nativamente
+ *       - Duplicidade? ✅ Constraints do banco impedem (Migration 036)
+ *       - Extensão WhatsApp? ✅ 1 telefone = 1 contato sempre
+ *       
+ *       **USO TÍPICO:**
+ *       - Extensão WhatsApp: Novo contato via chat
+ *       - Landing Pages: Lead preencheu formulário
+ *       - Integração Meta/Google Ads
+ *       - Sistema de captura multi-canal
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nome
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 example: "+5511999999999"
+ *                 description: Telefone (prioridade na busca)
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "joao@example.com"
+ *                 description: Email (segunda prioridade)
+ *               document:
+ *                 type: string
+ *                 example: "12345678900"
+ *                 description: CPF/CNPJ (terceira prioridade)
+ *               nome:
+ *                 type: string
+ *                 example: "João Silva"
+ *                 description: Nome completo (obrigatório)
+ *               origem_lp:
+ *                 type: string
+ *                 example: "LP Meta 04/11"
+ *                 description: Origem da captura (Landing Page, WhatsApp, etc)
+ *               valor_estimado:
+ *                 type: integer
+ *                 example: 500000
+ *                 description: Valor estimado da negociação em centavos
+ *               deal_title:
+ *                 type: string
+ *                 example: "Interesse em Produto X"
+ *                 description: Título da negociação (opcional, gera automático)
+ *               deal_stage:
+ *                 type: string
+ *                 enum: [novo, qualificado, proposta, negociacao, ganhos, perdido]
+ *                 default: novo
+ *                 description: Etapa inicial do funil
+ *             oneOf:
+ *               - required: [phone]
+ *               - required: [email]
+ *               - required: [document]
+ *     responses:
+ *       201:
+ *         description: Contato criado + negociação criada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Contato processado e negociação criada com sucesso"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     contact:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         name:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         tipo:
+ *                           type: string
+ *                           enum: [lead, cliente]
+ *                         action:
+ *                           type: string
+ *                           enum: [created, found, restored]
+ *                           description: Ação executada no contato
+ *                     deal:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         titulo:
+ *                           type: string
+ *                         etapa_funil:
+ *                           type: string
+ *                         valor_total_cents:
+ *                           type: integer
+ *                         origem:
+ *                           type: string
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     contact_action:
+ *                       type: string
+ *                     contact_message:
+ *                       type: string
+ *                     deal_message:
+ *                       type: string
+ *       200:
+ *         description: Contato encontrado + negociação criada
+ *       400:
+ *         description: Validação falhou (falta phone/email/document ou nome)
+ */
+router.post(
+  '/get-or-create-with-negotiation',
+  rateLimiter(100, 1), // 100 requests por minuto
+  ContactController.getOrCreateWithNegotiation
+);
+
+/**
+ * @swagger
+ * /contacts/{id}:
+ *   get:
+ *     summary: Buscar contato por ID
+ *     description: Retorna detalhes completos de um contato
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do contato
+ *     responses:
+ *       200:
+ *         description: Detalhes do contato
+ *       404:
+ *         description: Contato não encontrado
+ */
+router.get('/:id', ContactController.show);
+
+/**
+ * @swagger
+ * /contacts:
+ *   post:
+ *     summary: Criar novo contato
+ *     description: Cria um novo contato (lead ou cliente)
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nome
+ *             properties:
+ *               nome:
+ *                 type: string
+ *                 minLength: 2
+ *                 example: "João Silva"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "joao@example.com"
+ *               phone:
+ *                 type: string
+ *                 example: "+5511999999999"
+ *               document:
+ *                 type: string
+ *                 example: "12345678900"
+ *               tipo:
+ *                 type: string
+ *                 enum: [lead, cliente]
+ *                 default: lead
+ *               origem:
+ *                 type: string
+ *                 example: "site"
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["vip", "urgente"]
+ *               interests:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["produto-a", "servico-b"]
+ *               owner_id:
+ *                 type: integer
+ *                 example: 123
+ *               address:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *               zip_code:
+ *                 type: string
+ *               metadata:
+ *                 type: object
+ *     responses:
+ *       201:
+ *         description: Contato criado com sucesso
+ *       400:
+ *         description: Dados inválidos
+ */
+router.post('/', rateLimiter({ maxRequests: 100, windowMs: 60000 }), ContactController.create);
+
+/**
+ * @swagger
+ * /contacts/{id}:
+ *   put:
+ *     summary: Atualizar contato
+ *     description: Atualiza dados de um contato existente
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nome:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               document:
+ *                 type: string
+ *               tipo:
+ *                 type: string
+ *                 enum: [lead, cliente]
+ *               origem:
+ *                 type: string
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               interests:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               owner_id:
+ *                 type: integer
+ *               lifetime_value_cents:
+ *                 type: integer
+ *                 minimum: 0
+ *               metadata:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Contato atualizado
+ *       404:
+ *         description: Contato não encontrado
+ */
+router.put('/:id', ContactController.update);
+
+/**
+ * @swagger
+ * /contacts/{id}/convert:
+ *   post:
+ *     summary: Converter Lead em Cliente (manual)
+ *     description: Converte manualmente um lead para cliente (tipo='lead' → tipo='cliente')
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do lead
+ *     responses:
+ *       200:
+ *         description: Lead convertido para cliente
+ *       400:
+ *         description: Contato já é um cliente
+ *       404:
+ *         description: Lead não encontrado
+ */
+router.post('/:id/convert', ContactController.convertToClient);
+
+/**
+ * @swagger
+ * /contacts/{id}:
+ *   delete:
+ *     summary: Excluir contato (soft delete)
+ *     description: Exclusão lógica do contato (deleted_at = NOW())
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Contato excluído
+ *       404:
+ *         description: Contato não encontrado
+ */
+router.delete('/:id', ContactController.delete);
+
+// ==========================================
+// ROTAS ANINHADAS: DEALS E NOTES DE UM CONTATO
+// ==========================================
+
+/**
+ * @swagger
+ * /contacts/{contactId}/deals:
+ *   get:
+ *     summary: Listar negociações de um contato
+ *     description: Retorna todas as deals vinculadas a um contato
+ *     tags: [Contacts, Deals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: contactId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Lista de negociações do contato
+ */
+router.get('/:contactId/deals', DealController.listByContact);
+
+/**
+ * @swagger
+ * /contacts/{contactId}/notes:
+ *   get:
+ *     summary: Histórico completo do contato
+ *     description: Lista todas as anotações/interações de um contato
+ *     tags: [Contacts, Contact Notes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: contactId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: tipo
+ *         schema:
+ *           type: string
+ *           enum: [nota, ligacao, email, reuniao, whatsapp]
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *     responses:
+ *       200:
+ *         description: Histórico de interações do contato
+ */
+router.get('/:contactId/notes', ContactNoteController.listByContact);
+
+/**
+ * @swagger
+ * /contacts/{contactId}/notes:
+ *   post:
+ *     summary: Criar anotação para o contato
+ *     description: Adiciona nova anotação/interação ao histórico do contato
+ *     tags: [Contacts, Contact Notes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: contactId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 minLength: 3
+ *                 example: "Cliente ligou perguntando sobre prazos"
+ *               tipo:
+ *                 type: string
+ *                 enum: [nota, ligacao, email, reuniao, whatsapp]
+ *                 default: nota
+ *                 example: "ligacao"
+ *               metadata:
+ *                 type: object
+ *                 example: { "duracao": "15min", "assunto": "Prazos" }
+ *     responses:
+ *       201:
+ *         description: Anotação criada
+ */
+router.post('/:contactId/notes', rateLimiter({ maxRequests: 200, windowMs: 60000 }), ContactNoteController.create);
+
+/**
+ * @swagger
+ * /contacts/{contactId}/notes/stats:
+ *   get:
+ *     summary: Estatísticas de interações do contato
+ *     description: Retorna contadores de interações por tipo (quantas ligações, emails, etc)
+ *     tags: [Contacts, Contact Notes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: contactId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Estatísticas de interações
+ */
+router.get('/:contactId/notes/stats', ContactNoteController.getContactStats);
+
+/**
+ * @swagger
+ * /contacts/{contactId}/notes/recent:
+ *   get:
+ *     summary: Anotações recentes do contato
+ *     description: Retorna as 5 últimas interações com o contato
+ *     tags: [Contacts, Contact Notes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: contactId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *     responses:
+ *       200:
+ *         description: Anotações recentes
+ */
+router.get('/:contactId/notes/recent', ContactNoteController.getRecentByContact);
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Contact:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         company_id:
+ *           type: integer
+ *         nome:
+ *           type: string
+ *         email:
+ *           type: string
+ *         phone:
+ *           type: string
+ *         document:
+ *           type: string
+ *         tipo:
+ *           type: string
+ *           enum: [lead, cliente]
+ *         origem:
+ *           type: string
+ *         owner_id:
+ *           type: integer
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *         interests:
+ *           type: array
+ *           items:
+ *             type: string
+ *         lifetime_value_cents:
+ *           type: integer
+ *         last_purchase_date:
+ *           type: string
+ *           format: date-time
+ *         address:
+ *           type: string
+ *         city:
+ *           type: string
+ *         state:
+ *           type: string
+ *         zip_code:
+ *           type: string
+ *         metadata:
+ *           type: object
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ */
+
+module.exports = router;
