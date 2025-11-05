@@ -74,6 +74,11 @@ const changePasswordValidation = Joi.object({
  *         schema:
  *           type: string
  *         description: Busca por nome ou email
+ *       - in: query
+ *         name: companyId
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por ID da empresa
  *     responses:
  *       200:
  *         description: Lista de usuários

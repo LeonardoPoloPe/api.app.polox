@@ -18,17 +18,25 @@ class UserController {
    * 📋 GET ALL USERS - Listar usuários (versão simplificada)
    */
   static getUsers = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, search = "" } = req.query;
+    const { page = 1, limit = 20, search = "", companyId } = req.query;
 
     try {
-      // Versão simplificada - buscar todos os usuários
       let whereClause = "WHERE deleted_at IS NULL";
       let queryParams = [];
+      let paramIndex = 1;
 
       // Filtro de busca por nome ou email
       if (search) {
-        whereClause += " AND (full_name ILIKE $1 OR email ILIKE $1)";
+        whereClause += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
         queryParams.push(`%${search}%`);
+        paramIndex++;
+      }
+
+      // Filtro por companyId
+      if (companyId) {
+        whereClause += ` AND company_id = $${paramIndex}`;
+        queryParams.push(companyId);
+        paramIndex++;
       }
 
       // Query para contar total de usuários
@@ -52,7 +60,7 @@ class UserController {
         FROM users 
         ${whereClause}
         ORDER BY created_at DESC
-        LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `,
         [...queryParams, limit, offset]
       );
