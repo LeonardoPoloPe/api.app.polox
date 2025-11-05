@@ -37,24 +37,32 @@ const swaggerOptions = {
         url: "https://opensource.org/licenses/MIT",
       },
     },
-    servers: [
-      {
-        url: "http://localhost:3000/api/v1",
-        description: "Servidor Local (Node.js)",
-      },
-      {
-        url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1",
-        description: "Desenvolvimento AWS Lambda",
-      },
-      {
-        url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1",
-        description: "Sandbox AWS Lambda",
-      },
-      {
-        url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api/v1",
-        description: "Produção AWS Lambda",
-      },
-    ],
+    servers:
+      process.env.NODE_ENV === "development"
+        ? [
+            {
+              url: "http://localhost:3000/api/v1",
+              description: "Servidor Local (Node.js) - Desenvolvimento",
+            },
+          ]
+        : [
+            {
+              url: "http://localhost:3000/api/v1",
+              description: "Servidor Local (Node.js)",
+            },
+            {
+              url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1",
+              description: "Desenvolvimento AWS Lambda",
+            },
+            {
+              url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1",
+              description: "Sandbox AWS Lambda",
+            },
+            {
+              url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api/v1",
+              description: "Produção AWS Lambda",
+            },
+          ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -578,6 +586,129 @@ const swaggerOptions = {
             },
           },
         },
+        ScheduleEvent: {
+          type: "object",
+          required: ["title", "start_datetime", "end_datetime"],
+          properties: {
+            id: {
+              type: "integer",
+              description: "ID único do evento",
+              example: 1,
+            },
+            title: {
+              type: "string",
+              description: "Título do evento",
+              example: "Reunião com cliente",
+            },
+            description: {
+              type: "string",
+              description: "Descrição do evento",
+              example: "Reunião para discutir proposta comercial",
+            },
+            start_datetime: {
+              type: "string",
+              format: "date-time",
+              description: "Data e hora de início",
+              example: "2025-11-05T14:00:00Z",
+            },
+            end_datetime: {
+              type: "string",
+              format: "date-time",
+              description: "Data e hora de fim",
+              example: "2025-11-05T15:00:00Z",
+            },
+            all_day: {
+              type: "boolean",
+              description: "Evento de dia inteiro",
+              example: false,
+            },
+            event_type: {
+              type: "string",
+              enum: [
+                "meeting",
+                "call",
+                "task",
+                "reminder",
+                "event",
+                "appointment",
+              ],
+              description: "Tipo do evento",
+              example: "meeting",
+            },
+            priority: {
+              type: "string",
+              enum: ["low", "medium", "high", "urgent"],
+              description: "Prioridade do evento",
+              example: "medium",
+            },
+            status: {
+              type: "string",
+              enum: [
+                "scheduled",
+                "confirmed",
+                "in_progress",
+                "completed",
+                "cancelled",
+                "no_show",
+              ],
+              description: "Status do evento",
+              example: "scheduled",
+            },
+            location: {
+              type: "string",
+              description: "Local do evento",
+              example: "Sala de reunião 1",
+            },
+            contato_id: {
+              type: "integer",
+              description: "ID do contato relacionado",
+              example: 123,
+            },
+            timezone: {
+              type: "string",
+              description: "Fuso horário",
+              example: "America/Sao_Paulo",
+            },
+            visibility: {
+              type: "string",
+              enum: ["public", "private"],
+              description: "Visibilidade do evento",
+              example: "private",
+            },
+            reminder_minutes: {
+              type: "integer",
+              description: "Minutos antes do evento para lembrete",
+              example: 15,
+            },
+            metadata: {
+              type: "object",
+              description: "Metadados adicionais",
+              example: { zoom_link: "https://zoom.us/j/123456789" },
+            },
+            contact_name: {
+              type: "string",
+              description: "Nome do contato",
+              example: "João Silva",
+            },
+            organizer_name: {
+              type: "string",
+              description: "Nome do organizador",
+              example: "Maria Santos",
+            },
+            created_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação",
+              example: "2025-11-04T18:00:00Z",
+            },
+            updated_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de atualização",
+              example: "2025-11-04T18:00:00Z",
+            },
+          },
+        },
         PaginationInfo: {
           type: "object",
           properties: {
@@ -655,6 +786,8 @@ const swaggerUiOptions = {
     showExtensions: true,
     showCommonExtensions: true,
     tryItOutEnabled: true,
+    defaultServerIndex: 0, // Força usar o primeiro servidor (localhost)
+    validatorUrl: null, // Desabilita validação externa
   },
 };
 

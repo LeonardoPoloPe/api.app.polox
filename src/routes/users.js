@@ -26,6 +26,25 @@ const updateProfileValidation = Joi.object({
   email: Joi.string().email(),
 });
 
+const createUserValidation = Joi.object({
+  name: Joi.string().min(2).max(255).required(),
+  email: Joi.string().email().required(),
+  password: Joi.string().min(6).required(),
+  company_id: Joi.number().integer().optional(),
+  role: Joi.string()
+    .valid("super_admin", "company_admin", "manager", "user")
+    .default("user"),
+});
+
+const resetPasswordValidation = Joi.object({
+  newPassword: Joi.string().min(6).required(),
+});
+
+const changePasswordValidation = Joi.object({
+  currentPassword: Joi.string().required(),
+  newPassword: Joi.string().min(6).required(),
+});
+
 /**
  * @swagger
  * /users:
@@ -186,5 +205,164 @@ router.put(
  *         description: Usuário não encontrado
  */
 router.get("/:id", rateLimiter.general, UserController.getUserById);
+
+/**
+ * @swagger
+ * /users:
+ *   post:
+ *     summary: Criar novo usuário
+ *     description: Cria um novo usuário no sistema (requer permissões de admin)
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 255
+ *                 example: "Maria Silva"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "maria@exemplo.com"
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: "senha123"
+ *               role:
+ *                 type: string
+ *                 enum: ["super_admin", "company_admin", "manager", "user"]
+ *                 default: "user"
+ *                 example: "user"
+ *     responses:
+ *       201:
+ *         description: Usuário criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Dados inválidos
+ *       409:
+ *         description: Email já está em uso
+ */
+router.post(
+  "/",
+  requireCompanyAdmin,
+  rateLimiter.general,
+  validateRequest(createUserValidation),
+  UserController.createUser
+);
+
+/**
+ * @swagger
+ * /users/{id}/reset-password:
+ *   put:
+ *     summary: Resetar senha do usuário
+ *     description: Reseta a senha de um usuário específico (requer permissões de admin)
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do usuário
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newPassword
+ *             properties:
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: "novaSenha123"
+ *     responses:
+ *       200:
+ *         description: Senha resetada com sucesso
+ *       400:
+ *         description: Dados inválidos
+ *       404:
+ *         description: Usuário não encontrado
+ */
+router.put(
+  "/:userId/reset-password",
+  requireCompanyAdmin,
+  rateLimiter.general,
+  validateRequest(resetPasswordValidation),
+  UserController.resetPassword
+);
+
+/**
+ * @swagger
+ * /users/change-password:
+ *   put:
+ *     summary: Alterar própria senha
+ *     description: Permite ao usuário autenticado alterar sua própria senha
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 example: "senhaAtual123"
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: "novaSenha123"
+ *     responses:
+ *       200:
+ *         description: Senha alterada com sucesso
+ *       400:
+ *         description: Dados inválidos
+ *       401:
+ *         description: Senha atual incorreta
+ */
+router.put(
+  "/change-password",
+  rateLimiter.general,
+  validateRequest(changePasswordValidation),
+  UserController.changePassword
+);
 
 module.exports = router;

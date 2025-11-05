@@ -7,7 +7,7 @@
  * Arquitetura: "Identidade vs. Intenção"
  * - Identidade (Contact): QUEM a pessoa é
  * - Intenção (Deal): O QUE a pessoa quer comprar
- * 
+ *
  * Features:
  * - CRUD completo de contatos
  * - Find-or-Restore: busca por phone/email/document
@@ -16,13 +16,18 @@
  * - Soft delete (exclusão lógica)
  */
 
-const Contact = require('../models/Contact');
-const Deal = require('../models/Deal');
-const { ApiError, asyncHandler, ValidationError, NotFoundError } = require('../utils/errors');
-const { successResponse, paginatedResponse } = require('../utils/response');
-const { tc } = require('../config/i18n');
-const { auditLogger } = require('../utils/logger');
-const Joi = require('joi');
+const Contact = require("../models/Contact");
+const Deal = require("../models/Deal");
+const {
+  ApiError,
+  asyncHandler,
+  ValidationError,
+  NotFoundError,
+} = require("../utils/errors");
+const { successResponse, paginatedResponse } = require("../utils/response");
+const { tc } = require("../config/i18n");
+const { auditLogger } = require("../utils/logger");
+const Joi = require("joi");
 
 class ContactController {
   /**
@@ -30,37 +35,37 @@ class ContactController {
    */
   static createContactSchema = Joi.object({
     nome: Joi.string().min(2).max(255).required(),
-    email: Joi.string().email().allow(null, ''),
-    phone: Joi.string().max(20).allow(null, ''),
-    document: Joi.string().max(20).allow(null, ''),
-    tipo: Joi.string().valid('lead', 'cliente').default('lead'),
+    email: Joi.string().email().allow(null, ""),
+    phone: Joi.string().max(20).allow(null, ""),
+    document: Joi.string().max(20).allow(null, ""),
+    tipo: Joi.string().valid("lead", "cliente").default("lead"),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()).default([]),
-    interests: Joi.array().items(Joi.string()).default([]),
+    interests: Joi.array().items(Joi.number().integer().positive()).default([]),
     metadata: Joi.object().default({}),
     address: Joi.string().allow(null),
     city: Joi.string().allow(null),
     state: Joi.string().allow(null),
     zip_code: Joi.string().allow(null),
-    owner_id: Joi.number().integer().allow(null)
-  }).or('email', 'phone', 'document');
+    owner_id: Joi.number().integer().allow(null),
+  }).or("email", "phone", "document");
 
   static updateContactSchema = Joi.object({
     nome: Joi.string().min(2).max(255),
-    email: Joi.string().email().allow(null, ''),
-    phone: Joi.string().max(20).allow(null, ''),
-    document: Joi.string().max(20).allow(null, ''),
-    tipo: Joi.string().valid('lead', 'cliente'),
+    email: Joi.string().email().allow(null, ""),
+    phone: Joi.string().max(20).allow(null, ""),
+    document: Joi.string().max(20).allow(null, ""),
+    tipo: Joi.string().valid("lead", "cliente"),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()),
-    interests: Joi.array().items(Joi.string()),
+    interests: Joi.array().items(Joi.number().integer().positive()),
     metadata: Joi.object(),
     address: Joi.string().allow(null),
     city: Joi.string().allow(null),
     state: Joi.string().allow(null),
     zip_code: Joi.string().allow(null),
     owner_id: Joi.number().integer().allow(null),
-    lifetime_value_cents: Joi.number().integer().min(0)
+    lifetime_value_cents: Joi.number().integer().min(0),
   });
 
   /**
@@ -78,7 +83,7 @@ class ContactController {
       sort_by,
       sort_order,
       limit = 50,
-      offset = 0
+      offset = 0,
     } = req.query;
 
     const filters = {
@@ -90,20 +95,30 @@ class ContactController {
       sort_by,
       sort_order,
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     };
 
     const contacts = await Contact.list(companyId, filters);
-    const total = await Contact.count(companyId, { tipo, origem, owner_id, search, tags });
+    const total = await Contact.count(companyId, {
+      tipo,
+      origem,
+      owner_id,
+      search,
+      tags,
+    });
 
-    res.json(
-      paginatedResponse(
-        contacts,
-        total,
-        parseInt(limit),
-        parseInt(offset),
-        tc(req, 'contactController', 'list.success')
-      )
+    return paginatedResponse(
+      res,
+      contacts,
+      {
+        page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalItems: total,
+        limit: parseInt(limit),
+        hasNextPage: parseInt(offset) + parseInt(limit) < total,
+        hasPreviousPage: parseInt(offset) > 0,
+      },
+      tc(req, "contactController", "list.success")
     );
   });
 
@@ -118,10 +133,14 @@ class ContactController {
     const contact = await Contact.findById(id, companyId);
 
     if (!contact) {
-      throw new NotFoundError(tc(req, 'contactController', 'show.not_found'));
+      throw new NotFoundError(tc(req, "contactController", "show.not_found"));
     }
 
-    res.json(successResponse(contact, tc(req, 'contactController', 'show.success')));
+    return successResponse(
+      res,
+      contact,
+      tc(req, "contactController", "show.success")
+    );
   });
 
   /**
@@ -133,12 +152,13 @@ class ContactController {
     const userId = req.user.id;
 
     // Validação
-    const { error, value } = ContactController.createContactSchema.validate(req.body, {
-      abortEarly: false
+    const { error, value } = ContactController.createContactSchema.va;
+    lidate(req.body, {
+      abortEarly: false,
     });
 
     if (error) {
-      const messages = error.details.map(d => d.message).join(', ');
+      const messages = error.details.map((d) => d.message).join(", ");
       throw new ValidationError(messages);
     }
 
@@ -151,17 +171,19 @@ class ContactController {
     const contact = await Contact.create(companyId, value);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'contactController', 'audit.contact_created'),
+    auditLogger("contact_created", {
       userId,
       companyId,
-      resourceType: 'contact',
+      resourceType: "contact",
       resourceId: contact.id,
-      changes: value
+      changes: value,
     });
 
-    res.status(201).json(
-      successResponse(contact, tc(req, 'contactController', 'create.success'))
+    return successResponse(
+      res,
+      contact,
+      tc(req, "contactController", "create.success"),
+      201
     );
   });
 
@@ -175,12 +197,15 @@ class ContactController {
     const { id } = req.params;
 
     // Validação
-    const { error, value } = ContactController.updateContactSchema.validate(req.body, {
-      abortEarly: false
-    });
+    const { error, value } = ContactController.updateContactSchema.validate(
+      req.body,
+      {
+        abortEarly: false,
+      }
+    );
 
     if (error) {
-      const messages = error.details.map(d => d.message).join(', ');
+      const messages = error.details.map((d) => d.message).join(", ");
       throw new ValidationError(messages);
     }
 
@@ -188,15 +213,19 @@ class ContactController {
 
     // Audit log
     auditLogger.log({
-      action: tc(req, 'contactController', 'audit.contact_updated'),
+      action: tc(req, "contactController", "audit.contact_updated"),
       userId,
       companyId,
-      resourceType: 'contact',
+      resourceType: "contact",
       resourceId: id,
-      changes: value
+      changes: value,
     });
 
-    res.json(successResponse(contact, tc(req, 'contactController', 'update.success')));
+    return successResponse(
+      res,
+      contact,
+      tc(req, "contactController", "update.success")
+    );
   });
 
   /**
@@ -212,14 +241,18 @@ class ContactController {
 
     // Audit log
     auditLogger.log({
-      action: tc(req, 'contactController', 'audit.contact_deleted'),
+      action: tc(req, "contactController", "audit.contact_deleted"),
       userId,
       companyId,
-      resourceType: 'contact',
-      resourceId: id
+      resourceType: "contact",
+      resourceId: id,
     });
 
-    res.json(successResponse(null, tc(req, 'contactController', 'delete.success')));
+    return successResponse(
+      res,
+      null,
+      tc(req, "contactController", "delete.success")
+    );
   });
 
   /**
@@ -235,11 +268,15 @@ class ContactController {
     const contact = await Contact.findById(id, companyId);
 
     if (!contact) {
-      throw new NotFoundError(tc(req, 'contactController', 'convert.not_found'));
+      throw new NotFoundError(
+        tc(req, "contactController", "convert.not_found")
+      );
     }
 
-    if (contact.tipo === 'cliente') {
-      throw new ValidationError(tc(req, 'contactController', 'convert.already_client'));
+    if (contact.tipo === "cliente") {
+      throw new ValidationError(
+        tc(req, "contactController", "convert.already_client")
+      );
     }
 
     // Converter
@@ -247,20 +284,24 @@ class ContactController {
 
     // Audit log
     auditLogger.log({
-      action: tc(req, 'contactController', 'audit.lead_converted'),
+      action: tc(req, "contactController", "audit.lead_converted"),
       userId,
       companyId,
-      resourceType: 'contact',
-      resourceId: id
+      resourceType: "contact",
+      resourceId: id,
     });
 
-    res.json(successResponse(updated, tc(req, 'contactController', 'convert.success')));
+    return successResponse(
+      res,
+      updated,
+      tc(req, "contactController", "convert.success")
+    );
   });
 
   /**
    * 🔎 Get-or-Create (WhatsApp Extension)
    * POST /api/contacts/get-or-create
-   * 
+   *
    * Find-or-Restore: busca por phone/email/document
    * - Se encontrar ativo: retorna
    * - Se encontrar deletado: restaura e retorna
@@ -273,64 +314,69 @@ class ContactController {
 
     if (!phone && !email && !document) {
       throw new ValidationError(
-        tc(req, 'contactController', 'validation.email_or_phone_required')
+        tc(req, "contactController", "validation.email_or_phone_required")
       );
     }
 
-    const result = await Contact.getOrCreate(companyId, { phone, email, document, nome });
+    const result = await Contact.getOrCreate(companyId, {
+      phone,
+      email,
+      document,
+      nome,
+    });
 
     // Audit log apenas se criou novo
     if (result.created) {
       auditLogger.log({
-        action: tc(req, 'contactController', 'audit.contact_created'),
+        action: tc(req, "contactController", "audit.contact_created"),
         userId,
         companyId,
-        resourceType: 'contact',
-        resourceId: result.contact.id
+        resourceType: "contact",
+        resourceId: result.contact.id,
       });
     } else if (result.restored) {
       auditLogger.log({
-        action: tc(req, 'contactController', 'audit.contact_restored'),
+        action: tc(req, "contactController", "audit.contact_restored"),
         userId,
         companyId,
-        resourceType: 'contact',
-        resourceId: result.contact.id
+        resourceType: "contact",
+        resourceId: result.contact.id,
       });
     }
 
     const messageKey = result.created
-      ? 'get_or_create.created'
+      ? "get_or_create.created"
       : result.restored
-      ? 'get_or_create.restored'
-      : 'get_or_create.found_existing';
+      ? "get_or_create.restored"
+      : "get_or_create.found_existing";
 
     res.json({
       success: true,
-      message: tc(req, 'contactController', messageKey),
+      message: tc(req, "contactController", messageKey),
       data: result.contact,
       created: result.created,
-      restored: result.restored
+      restored: result.restored,
     });
   });
 
   /**
    * � ENDPOINT CRÍTICO: Get-or-Create WITH NEGOTIATION
    * POST /api/contacts/get-or-create-with-negotiation
-   * 
+   *
    * ⭐ Este é o CORAÇÃO da solução para a Extensão WhatsApp + Landing Pages
-   * 
+   *
    * COMPORTAMENTO:
    * 1. Busca contato existente por phone/email/document (prioridade: phone)
    * 2. Se NÃO encontrar: Cria novo contato como 'lead'
    * 3. Se encontrar deletado: Restaura o contato (soft delete)
    * 4. SEMPRE cria uma NOVA negociação para esse contato
-   * 
+   *
    * RESOLVE O PROBLEMA:
    * - Cliente que virou lead de novo? ✅ Cria nova negociação
    * - Múltiplos deals por contato? ✅ Suportado nativamente
    * - Duplicidade? ✅ Constraints do banco impedem (Migration 036)
    * - Extensão WhatsApp? ✅ 1 telefone = 1 contato sempre
-   * 
+   *
    * REFERÊNCIA: docs/atividade/alteracao.md (Passo 2.3)
    */
   static getOrCreateWithNegotiation = asyncHandler(async (req, res) => {
@@ -338,18 +384,31 @@ class ContactController {
     const companyId = req.user.companyId;
 
     // Validação: phone OU email obrigatório
-    const { phone, email, document, nome, origem_lp, valor_estimado, deal_title, deal_stage } = req.body;
+    const {
+      phone,
+      email,
+      document,
+      nome,
+      origem_lp,
+      valor_estimado,
+      deal_title,
+      deal_stage,
+    } = req.body;
 
     if (!phone && !email && !document) {
       throw new ValidationError(
-        tc(req, 'contactController', 'get_or_create_with_deal.phone_or_email_required')
+        tc(
+          req,
+          "contactController",
+          "get_or_create_with_deal.phone_or_email_required"
+        )
       );
     }
 
     // Se for criar contato novo, nome é obrigatório
     if (!nome) {
       throw new ValidationError(
-        tc(req, 'contactController', 'get_or_create_with_deal.name_required')
+        tc(req, "contactController", "get_or_create_with_deal.name_required")
       );
     }
 
@@ -361,17 +420,17 @@ class ContactController {
       email,
       document,
       nome,
-      tipo: 'lead', // Sempre nasce como lead
-      origem: origem_lp || 'api',
-      owner_id: userId // O vendedor que criou/processou
+      tipo: "lead", // Sempre nasce como lead
+      origem: origem_lp || "api",
+      owner_id: userId, // O vendedor que criou/processou
     });
 
     const contact = contactResult.contact;
     const contactAction = contactResult.created
-      ? 'created'
+      ? "created"
       : contactResult.restored
-      ? 'restored'
-      : 'found';
+      ? "restored"
+      : "found";
 
     // ====================================================================
     // PASSO 2: CRIAR NOVA NEGOCIAÇÃO (SEMPRE)
@@ -385,11 +444,11 @@ class ContactController {
       company_id: companyId,
       contato_id: contact.id,
       owner_id: userId, // Quem criou a oportunidade
-      titulo: deal_title || `Negociação de ${nome} (${origem_lp || 'Novo'})`,
-      origem: origem_lp || 'api',
+      titulo: deal_title || `Negociação de ${nome} (${origem_lp || "Novo"})`,
+      origem: origem_lp || "api",
       valor_total_cents: valor_estimado ? parseInt(valor_estimado) : 0,
-      etapa_funil: deal_stage || 'novo',
-      probabilidade: 25 // 25% para novos leads
+      etapa_funil: deal_stage || "novo",
+      probabilidade: 25, // 25% para novos leads
     };
 
     const deal = await Deal.create(dealData);
@@ -399,34 +458,34 @@ class ContactController {
     // ====================================================================
     if (contactResult.created) {
       auditLogger.log({
-        action: tc(req, 'contactController', 'audit.contact_created'),
+        action: tc(req, "contactController", "audit.contact_created"),
         userId,
         companyId,
-        resourceType: 'contact',
+        resourceType: "contact",
         resourceId: contact.id,
-        metadata: { source: 'get-or-create-with-negotiation' }
+        metadata: { source: "get-or-create-with-negotiation" },
       });
     } else if (contactResult.restored) {
       auditLogger.log({
-        action: tc(req, 'contactController', 'audit.contact_restored'),
+        action: tc(req, "contactController", "audit.contact_restored"),
         userId,
         companyId,
-        resourceType: 'contact',
+        resourceType: "contact",
         resourceId: contact.id,
-        metadata: { source: 'get-or-create-with-negotiation' }
+        metadata: { source: "get-or-create-with-negotiation" },
       });
     }
 
     auditLogger.log({
-      action: tc(req, 'dealController', 'audit.deal_created'),
+      action: tc(req, "dealController", "audit.deal_created"),
       userId,
       companyId,
-      resourceType: 'deal',
+      resourceType: "deal",
       resourceId: deal.id,
-      metadata: { 
+      metadata: {
         contato_id: contact.id,
-        source: 'get-or-create-with-negotiation' 
-      }
+        source: "get-or-create-with-negotiation",
+      },
     });
 
     // ====================================================================
@@ -434,7 +493,7 @@ class ContactController {
     // ====================================================================
     res.status(contactResult.created ? 201 : 200).json({
       success: true,
-      message: tc(req, 'contactController', 'get_or_create_with_deal.success'),
+      message: tc(req, "contactController", "get_or_create_with_deal.success"),
       data: {
         contact: {
           id: contact.id,
@@ -442,28 +501,36 @@ class ContactController {
           phone: contact.phone,
           email: contact.email,
           tipo: contact.tipo,
-          action: contactAction // 'created', 'found', 'restored'
+          action: contactAction, // 'created', 'found', 'restored'
         },
         deal: {
           id: deal.id,
           titulo: deal.titulo,
           etapa_funil: deal.etapa_funil,
           valor_total_cents: deal.valor_total_cents,
-          origem: deal.origem
-        }
+          origem: deal.origem,
+        },
       },
       meta: {
         contact_action: contactAction,
-        contact_message: tc(req, 'contactController', `get_or_create_with_deal.contact_${contactAction}`),
-        deal_message: tc(req, 'contactController', 'get_or_create_with_deal.deal_created')
-      }
+        contact_message: tc(
+          req,
+          "contactController",
+          `get_or_create_with_deal.contact_${contactAction}`
+        ),
+        deal_message: tc(
+          req,
+          "contactController",
+          "get_or_create_with_deal.deal_created"
+        ),
+      },
     });
   });
 
   /**
    * � Buscar contato por phone/email/document
    * GET /api/contacts/search
-   * 
+   *
    * Para a Extensão WhatsApp buscar rapidamente um contato
    */
   static searchContact = asyncHandler(async (req, res) => {
@@ -472,7 +539,11 @@ class ContactController {
 
     if (!phone && !email && !document) {
       throw new ValidationError(
-        tc(req, 'contactController', 'get_or_create_with_deal.phone_or_email_required')
+        tc(
+          req,
+          "contactController",
+          "get_or_create_with_deal.phone_or_email_required"
+        )
       );
     }
 
@@ -480,23 +551,23 @@ class ContactController {
     const contact = await Contact.findByIdentifier(companyId, {
       phone,
       email,
-      document
+      document,
     });
 
     if (!contact) {
       return res.json({
         success: true,
         found: false,
-        message: tc(req, 'contactController', 'show.not_found'),
-        data: null
+        message: tc(req, "contactController", "show.not_found"),
+        data: null,
       });
     }
 
     res.json({
       success: true,
       found: true,
-      message: tc(req, 'contactController', 'get_or_create.found_existing'),
-      data: contact
+      message: tc(req, "contactController", "get_or_create.found_existing"),
+      data: contact,
     });
   });
 
@@ -510,10 +581,14 @@ class ContactController {
 
     const stats = await Contact.getStats(companyId, {
       owner_id: owner_id ? parseInt(owner_id) : undefined,
-      origem
+      origem,
     });
 
-    res.json(successResponse(stats, tc(req, 'contactController', 'stats.success')));
+    return successResponse(
+      res,
+      stats,
+      tc(req, "contactController", "stats.success")
+    );
   });
 }
 

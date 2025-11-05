@@ -3,6 +3,12 @@
     "name_required": "El nombre es obligatorio",
     "email_required": "El email es obligatorio",
     "name_and_email_required": "El nombre y el email son obligatorios",
+    "name_email_password_required": "El nombre, email y contraseña son obligatorios",
+    "password_min_length": "La contraseña debe tener al menos 6 caracteres",
+    "new_password_required": "La nueva contraseña es obligatoria",
+    "current_and_new_password_required": "La contraseña actual y nueva son obligatorias",
+    "invalid_current_password": "La contraseña actual es incorrecta",
+    "company_id_required": "ID de la empresa es obligatorio",
     "email_in_use": "El email ya está en uso",
     "user_not_found": "Usuario no encontrado"
   },
@@ -13,6 +19,15 @@
     "not_found": "Usuario no encontrado",
     "success": "Usuario devuelto con éxito"
   },
+  "create": {
+    "success": "Usuario creado con éxito"
+  },
+  "reset_password": {
+    "success": "Contraseña restablecida con éxito"
+  },
+  "change_password": {
+    "success": "Contraseña cambiada con éxito"
+  },
   "profile": {
     "get_success": "Perfil cargado con éxito",
     "update_success": "Perfil actualizado con éxito",
@@ -22,6 +37,9 @@
     "users_listed": "Usuarios listados",
     "user_viewed": "Usuario visualizado",
     "profile_viewed": "Perfil visualizado",
-    "profile_updated": "Perfil actualizado"
+    "profile_updated": "Perfil actualizado",
+    "user_created": "Usuario creado",
+    "password_reset": "Contraseña restablecida por administrador",
+    "password_changed": "Contraseña cambiada por el usuario"
   }
 }

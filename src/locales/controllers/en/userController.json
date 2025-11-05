@@ -3,6 +3,12 @@
     "name_required": "Name is required",
     "email_required": "Email is required",
     "name_and_email_required": "Name and email are required",
+    "name_email_password_required": "Name, email and password are required",
+    "password_min_length": "Password must be at least 6 characters",
+    "new_password_required": "New password is required",
+    "current_and_new_password_required": "Current and new password are required",
+    "invalid_current_password": "Current password is incorrect",
+    "company_id_required": "Company ID is required",
     "email_in_use": "Email is already in use",
     "user_not_found": "User not found"
   },
@@ -13,6 +19,15 @@
     "not_found": "User not found",
     "success": "User returned successfully"
   },
+  "create": {
+    "success": "User created successfully"
+  },
+  "reset_password": {
+    "success": "Password reset successfully"
+  },
+  "change_password": {
+    "success": "Password changed successfully"
+  },
   "profile": {
     "get_success": "Profile loaded successfully",
     "update_success": "Profile updated successfully",
@@ -22,6 +37,9 @@
     "users_listed": "Users listed",
     "user_viewed": "User viewed",
     "profile_viewed": "Profile viewed",
-    "profile_updated": "Profile updated"
+    "profile_updated": "Profile updated",
+    "user_created": "User created",
+    "password_reset": "Password reset by administrator",
+    "password_changed": "Password changed by user"
   }
 }

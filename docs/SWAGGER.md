@@ -157,20 +157,20 @@ Authorization: Bearer [SEU_JWT_TOKEN_AQUI]
 
 ### 🔗 **Postman:**
 
-1. Acesse: `http://localhost:3000/dev/api-docs.json`
+1. Acesse: `http://localhost:3000/api/v1/docs.json`
 2. Copie o JSON
 3. No Postman: **Import** → **Raw Text** → Cole o JSON
 
 ### 🔗 **Insomnia:**
 
-1. Acesse: `http://localhost:3000/dev/api-docs.json`
+1. Acesse: `http://localhost:3000/api/v1/docs.json`
 2. No Insomnia: **Import** → **From URL** → Cole a URL
 
 ### 🔗 **VS Code (REST Client):**
 
 ```http
 ### Registro
-POST http://localhost:3000/dev/api/auth/register
+POST http://localhost:3000/api/v1/auth/register
 Content-Type: application/json
 
 {

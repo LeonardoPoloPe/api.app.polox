@@ -1,11 +1,11 @@
-const express = require('express');
-const ScheduleController = require('../controllers/ScheduleController');
-const { authMiddleware } = require('../middleware/auth');
+const express = require("express");
+const ScheduleController = require("../controllers/ScheduleController");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 
 // Middleware de autenticação para todas as rotas
-router.use(authMiddleware);
+router.use(authenticateToken);
 
 /**
  * @swagger
@@ -15,8 +15,8 @@ router.use(authMiddleware);
  *       type: object
  *       required:
  *         - title
- *         - start_date
- *         - end_date
+ *         - start_datetime
+ *         - end_datetime
  *       properties:
  *         id:
  *           type: string
@@ -27,18 +27,18 @@ router.use(authMiddleware);
  *         description:
  *           type: string
  *           description: Descrição do evento
- *         start_date:
+ *         start_datetime:
  *           type: string
  *           format: date-time
  *           description: Data e hora de início
- *         end_date:
+ *         end_datetime:
  *           type: string
  *           format: date-time
  *           description: Data e hora de fim
  *         all_day:
  *           type: boolean
  *           description: Evento de dia inteiro
- *         type:
+ *         event_type:
  *           type: string
  *           enum: [meeting, call, task, reminder, event, appointment]
  *           description: Tipo do evento
@@ -57,12 +57,9 @@ router.use(authMiddleware);
  *           type: string
  *           format: uri
  *           description: URL da reunião virtual
- *         client_id:
- *           type: string
- *           description: ID do cliente relacionado
- *         lead_id:
- *           type: string
- *           description: ID do lead relacionado
+ *         contato_id:
+ *           type: integer
+ *           description: ID do contato relacionado (unificado)
  *         attendees:
  *           type: array
  *           items:
@@ -77,14 +74,20 @@ router.use(authMiddleware);
  *         recurring_until:
  *           type: string
  *           format: date
+ *         visibility:
+ *           type: string
+ *           enum: [public, private]
+ *           description: Visibilidade do evento
+ *         timezone:
+ *           type: string
+ *           description: Fuso horário do evento
+ *           default: America/Sao_Paulo
  *         reminder_minutes:
- *           type: array
- *           items:
- *             type: integer
+ *           type: integer
  *           description: Minutos antes do evento para lembrete
- *         is_private:
- *           type: boolean
- *           description: Evento privado
+ *         metadata:
+ *           type: object
+ *           description: Metadados adicionais
  *   tags:
  *     - name: Schedule
  *       description: Gestão de agenda e eventos
@@ -92,7 +95,7 @@ router.use(authMiddleware);
 
 /**
  * @swagger
- * /api/schedule/events:
+ * /schedule/events:
  *   get:
  *     summary: Listar eventos da agenda
  *     tags: [Schedule]
@@ -144,15 +147,10 @@ router.use(authMiddleware);
  *           format: date
  *         description: Data final
  *       - in: query
- *         name: client_id
+ *         name: contato_id
  *         schema:
- *           type: string
- *         description: Filtrar por cliente
- *       - in: query
- *         name: lead_id
- *         schema:
- *           type: string
- *         description: Filtrar por lead
+ *           type: integer
+ *         description: Filtrar por contato (unificado)
  *       - in: query
  *         name: search
  *         schema:
@@ -177,11 +175,11 @@ router.use(authMiddleware);
  *                 stats:
  *                   type: object
  */
-router.get('/events', ScheduleController.getEvents);
+router.get("/events", ScheduleController.getEvents);
 
 /**
  * @swagger
- * /api/schedule/events:
+ * /schedule/events:
  *   post:
  *     summary: Criar evento na agenda
  *     tags: [Schedule]
@@ -211,11 +209,11 @@ router.get('/events', ScheduleController.getEvents);
  *       409:
  *         description: Conflitos de horário detectados
  */
-router.post('/events', ScheduleController.createEvent);
+router.post("/events", ScheduleController.createEvent);
 
 /**
  * @swagger
- * /api/schedule/calendar:
+ * /schedule/calendar:
  *   get:
  *     summary: Visualização de calendário
  *     tags: [Schedule]
@@ -267,11 +265,11 @@ router.post('/events', ScheduleController.createEvent);
  *                     stats:
  *                       type: object
  */
-router.get('/calendar', ScheduleController.getCalendarView);
+// Rota de calendar view foi removida - use /events com filtros de data
 
 /**
  * @swagger
- * /api/schedule/events/{id}:
+ * /schedule/events/{id}:
  *   get:
  *     summary: Obter evento por ID
  *     tags: [Schedule]
@@ -291,11 +289,11 @@ router.get('/calendar', ScheduleController.getCalendarView);
  *       403:
  *         description: Sem permissão para visualizar evento privado
  */
-router.get('/events/:id', ScheduleController.show);
+router.get("/events/:id", ScheduleController.show);
 
 /**
  * @swagger
- * /api/schedule/events/{id}:
+ * /schedule/events/{id}:
  *   put:
  *     summary: Atualizar evento
  *     tags: [Schedule]
@@ -333,11 +331,11 @@ router.get('/events/:id', ScheduleController.show);
  *       409:
  *         description: Conflitos de horário detectados
  */
-router.put('/events/:id', ScheduleController.update);
+router.put("/events/:id", ScheduleController.update);
 
 /**
  * @swagger
- * /api/schedule/events/{id}:
+ * /schedule/events/{id}:
  *   delete:
  *     summary: Deletar evento
  *     tags: [Schedule]
@@ -356,11 +354,11 @@ router.put('/events/:id', ScheduleController.update);
  *       403:
  *         description: Sem permissão para deletar evento
  */
-router.delete('/events/:id', ScheduleController.destroy);
+router.delete("/events/:id", ScheduleController.delete);
 
 /**
  * @swagger
- * /api/schedule/events/{id}/status:
+ * /schedule/events/{id}/status:
  *   put:
  *     summary: Alterar status do evento
  *     tags: [Schedule]
@@ -395,6 +393,32 @@ router.delete('/events/:id', ScheduleController.destroy);
  *       404:
  *         description: Evento não encontrado
  */
-router.put('/events/:id/status', ScheduleController.updateStatus);
+router.put("/events/:id/status", ScheduleController.updateStatus);
+
+/**
+ * @swagger
+ * /schedule/stats:
+ *   get:
+ *     summary: Estatísticas de eventos
+ *     tags: [Schedule]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: query
+ *         name: date_from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data inicial para filtro
+ *       - in: query
+ *         name: date_to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data final para filtro
+ *     responses:
+ *       200:
+ *         description: Estatísticas dos eventos
+ */
+router.get("/stats", ScheduleController.getStats);
 
 module.exports = router;

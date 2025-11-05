@@ -1,14 +1,14 @@
-const { query, transaction } = require('../config/database');
-const { ApiError, ValidationError, NotFoundError } = require('../utils/errors');
+const { query, transaction } = require("../config/database");
+const { ApiError, ValidationError, NotFoundError } = require("../utils/errors");
 
 /**
  * Model para gerenciamento de contatos (identidade unificada de leads + clientes)
  * Tabela: polox.contacts
- * 
+ *
  * Arquitetura: "Identidade vs. Intenção"
  * - Identidade (Contact): Quem a pessoa é (nome, telefone, email, documento)
  * - Intenção (Deal): O que a pessoa quer comprar (negociações/pipeline)
- * 
+ *
  * Constraints implementadas (banco de dados):
  * 1. UNIQUE (company_id, phone) - Previne duplicação por telefone
  * 2. UNIQUE (company_id, email) - Previne duplicação por email
@@ -23,7 +23,7 @@ class Contact {
    */
   static normalizePhone(phone) {
     if (!phone) return null;
-    return phone.replace(/\D/g, '');
+    return phone.replace(/\D/g, "");
   }
 
   /**
@@ -43,7 +43,7 @@ class Contact {
    */
   static normalizeDocument(document) {
     if (!document) return null;
-    return document.replace(/\D/g, '');
+    return document.replace(/\D/g, "");
   }
 
   /**
@@ -60,8 +60,8 @@ class Contact {
     if (!normalizedPhone) return null;
 
     const whereClause = includeDeleted
-      ? 'company_id = $1 AND phone = $2'
-      : 'company_id = $1 AND phone = $2 AND deleted_at IS NULL';
+      ? "company_id = $1 AND phone = $2"
+      : "company_id = $1 AND phone = $2 AND deleted_at IS NULL";
 
     const sql = `
       SELECT 
@@ -95,8 +95,8 @@ class Contact {
     if (!normalizedEmail) return null;
 
     const whereClause = includeDeleted
-      ? 'company_id = $1 AND email = $2'
-      : 'company_id = $1 AND email = $2 AND deleted_at IS NULL';
+      ? "company_id = $1 AND email = $2"
+      : "company_id = $1 AND email = $2 AND deleted_at IS NULL";
 
     const sql = `
       SELECT 
@@ -130,8 +130,8 @@ class Contact {
     if (!normalizedDocument) return null;
 
     const whereClause = includeDeleted
-      ? 'company_id = $1 AND document_number = $2'
-      : 'company_id = $1 AND document_number = $2 AND deleted_at IS NULL';
+      ? "company_id = $1 AND document_number = $2"
+      : "company_id = $1 AND document_number = $2 AND deleted_at IS NULL";
 
     const sql = `
       SELECT 
@@ -172,7 +172,7 @@ class Contact {
 
     const result = await query(sql, [id, companyId]);
     if (result.rows.length === 0) {
-      throw new NotFoundError('Contact not found');
+      throw new NotFoundError("Contact not found");
     }
 
     return result.rows[0];
@@ -189,13 +189,13 @@ class Contact {
       tipo, // 'lead' | 'cliente'
       owner_id,
       search,
-      sort_by = 'created_at',
-      sort_order = 'DESC',
+      sort_by = "created_at",
+      sort_order = "DESC",
       limit = 50,
-      offset = 0
+      offset = 0,
     } = filters;
 
-    const conditions = ['company_id = $1', 'deleted_at IS NULL'];
+    const conditions = ["company_id = $1", "deleted_at IS NULL"];
     const params = [companyId];
     let paramIndex = 2;
 
@@ -224,9 +224,18 @@ class Contact {
     }
 
     // Validar sort_by para prevenir SQL injection
-    const allowedSortFields = ['created_at', 'updated_at', 'nome', 'score', 'temperature', 'lifetime_value_cents'];
-    const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
-    const sortDirection = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const allowedSortFields = [
+      "created_at",
+      "updated_at",
+      "nome",
+      "score",
+      "temperature",
+      "lifetime_value_cents",
+    ];
+    const sortField = allowedSortFields.includes(sort_by)
+      ? sort_by
+      : "created_at";
+    const sortDirection = sort_order.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     const sql = `
       SELECT 
@@ -234,7 +243,7 @@ class Contact {
         company_name, score, temperature, lifetime_value_cents,
         address_city, address_state, created_at, updated_at
       FROM polox.contacts
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
       ORDER BY ${sortField} ${sortDirection}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
@@ -269,7 +278,7 @@ class Contact {
 
     const result = await query(sql, [id, companyId]);
     if (result.rows.length === 0) {
-      throw new NotFoundError('Deleted contact not found');
+      throw new NotFoundError("Deleted contact not found");
     }
 
     return result.rows[0];
@@ -277,17 +286,17 @@ class Contact {
 
   /**
    * Lógica inteligente "Find-or-Restore-or-Create"
-   * 
+   *
    * Previne duplicatas lógicas (1 ativo + 1 deletado com mesmo identificador)
-   * 
+   *
    * Fluxo:
    * 1. Busca por phone/email/document (INCLUINDO deletados)
    * 2. Se encontrar DELETADO → RESTAURA + ATUALIZA
    * 3. Se encontrar ATIVO → RETORNA existente
    * 4. Se NÃO encontrar → CRIA novo
-   * 
+   *
    * Usado por: Landing Pages, Extensão WhatsApp, Integrações
-   * 
+   *
    * @param {number} companyId - ID da empresa
    * @param {Object} data - Dados do contato
    * @returns {Promise<Object>} Contato (existente, restaurado ou novo)
@@ -298,7 +307,7 @@ class Contact {
       email,
       document_number,
       nome,
-      tipo = 'lead',
+      tipo = "lead",
       owner_id = null,
       ...otherData
     } = data;
@@ -356,7 +365,7 @@ class Contact {
           normalizedPhone || null,
           normalizedDocument || null,
           owner_id || null,
-          tipo || null
+          tipo || null,
         ]);
 
         return result.rows[0];
@@ -376,7 +385,7 @@ class Contact {
       nome,
       tipo,
       owner_id,
-      ...otherData
+      ...otherData,
     });
   }
 
@@ -394,12 +403,12 @@ class Contact {
       document_number,
       document_type = null,
       company_name = null,
-      tipo = 'lead',
+      tipo = "lead",
       owner_id = null,
       lead_source = null,
       first_contact_at = null,
       score = 0,
-      temperature = 'frio',
+      temperature = "frio",
       last_purchase_date = null,
       lifetime_value_cents = 0,
       address_street = null,
@@ -408,19 +417,19 @@ class Contact {
       address_neighborhood = null,
       address_city = null,
       address_state = null,
-      address_country = 'BR',
+      address_country = "BR",
       address_postal_code = null,
       tags = [], // Array de nomes de tags
-      interests = [] // Array de IDs de interesses
+      interests = [], // Array de IDs de interesses
     } = data;
 
     // Validar dados obrigatórios
     if (!nome || nome.trim().length === 0) {
-      throw new ValidationError('Nome é obrigatório');
+      throw new ValidationError("Nome é obrigatório");
     }
 
     // Validar tipo
-    if (!['lead', 'cliente'].includes(tipo)) {
+    if (!["lead", "cliente"].includes(tipo)) {
       throw new ValidationError('Tipo deve ser "lead" ou "cliente"');
     }
 
@@ -431,28 +440,48 @@ class Contact {
 
     // Validar constraint anti-fantasma: pelo menos 1 identificador
     if (!normalizedPhone && !normalizedEmail && !normalizedDocument) {
-      throw new ValidationError('Pelo menos um identificador é obrigatório: phone, email ou document_number');
+      throw new ValidationError(
+        "Pelo menos um identificador é obrigatório: phone, email ou document_number"
+      );
     }
 
     // Verificar duplicatas (ATIVOS apenas - UNIQUE constraints do banco)
     if (normalizedPhone) {
-      const existing = await this.findByPhone(companyId, normalizedPhone, false);
+      const existing = await this.findByPhone(
+        companyId,
+        normalizedPhone,
+        false
+      );
       if (existing) {
-        throw new ValidationError(`Já existe um contato ativo com este telefone: ${normalizedPhone}`);
+        throw new ValidationError(
+          `Já existe um contato ativo com este telefone: ${normalizedPhone}`
+        );
       }
     }
 
     if (normalizedEmail) {
-      const existing = await this.findByEmail(companyId, normalizedEmail, false);
+      const existing = await this.findByEmail(
+        companyId,
+        normalizedEmail,
+        false
+      );
       if (existing) {
-        throw new ValidationError(`Já existe um contato ativo com este email: ${normalizedEmail}`);
+        throw new ValidationError(
+          `Já existe um contato ativo com este email: ${normalizedEmail}`
+        );
       }
     }
 
     if (normalizedDocument) {
-      const existing = await this.findByDocument(companyId, normalizedDocument, false);
+      const existing = await this.findByDocument(
+        companyId,
+        normalizedDocument,
+        false
+      );
       if (existing) {
-        throw new ValidationError(`Já existe um contato ativo com este documento: ${normalizedDocument}`);
+        throw new ValidationError(
+          `Já existe um contato ativo com este documento: ${normalizedDocument}`
+        );
       }
     }
 
@@ -507,7 +536,7 @@ class Contact {
         address_city,
         address_state,
         address_country,
-        address_postal_code
+        address_postal_code,
       ]);
 
       const contact = result.rows[0];
@@ -515,23 +544,39 @@ class Contact {
       // 2. Adicionar tags (via pivot table contact_tags)
       if (tags && tags.length > 0) {
         for (const tagName of tags) {
-          if (tagName && tagName.trim() !== '') {
+          if (tagName && tagName.trim() !== "") {
             const trimmedName = tagName.trim();
-            const slug = trimmedName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+            const slug = trimmedName
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^\w-]/g, "");
 
-            // Criar ou buscar tag (multi-tenant)
-            const tagResult = await client.query(
+            // Primeiro tenta buscar a tag existente
+            let tagResult = await client.query(
               `
-              INSERT INTO polox.tags (company_id, tag_name, slug, color, created_at, updated_at)
-              VALUES ($1, $2, $3, $4, NOW(), NOW())
-              ON CONFLICT ON CONSTRAINT idx_tags_company_name_slug_unique
-              DO UPDATE SET updated_at = NOW()
-              RETURNING id
+              SELECT id FROM polox.tags 
+              WHERE company_id = $1 AND tag_name = $2 AND slug = $3
+              LIMIT 1
             `,
-              [companyId, trimmedName, slug, '#808080']
+              [companyId, trimmedName, slug]
             );
 
-            const tagId = tagResult.rows[0].id;
+            let tagId;
+            if (tagResult.rows.length > 0) {
+              // Tag já existe, usar o ID existente
+              tagId = tagResult.rows[0].id;
+            } else {
+              // Tag não existe, criar nova
+              const insertResult = await client.query(
+                `
+                INSERT INTO polox.tags (company_id, tag_name, slug, color, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, NOW(), NOW())
+                RETURNING id
+              `,
+                [companyId, trimmedName, slug, "#808080"]
+              );
+              tagId = insertResult.rows[0].id;
+            }
 
             // Associar tag ao contato
             await client.query(
@@ -546,13 +591,13 @@ class Contact {
         }
       }
 
-      // 3. Adicionar interesses (via pivot table contato_interesses)
+      // 3. Adicionar interesses (via pivot table contact_interests)
       if (interests && interests.length > 0) {
         for (const interestId of interests) {
           if (interestId) {
             await client.query(
               `
-              INSERT INTO polox.contato_interesses (contato_id, interest_id, created_at)
+              INSERT INTO polox.contact_interests (contato_id, interest_id, created_at)
               VALUES ($1, $2, NOW())
               ON CONFLICT (contato_id, interest_id) DO NOTHING
             `,
@@ -594,13 +639,18 @@ class Contact {
       address_city,
       address_state,
       address_country,
-      address_postal_code
+      address_postal_code,
     } = data;
 
     // Normalizar identificadores se fornecidos
-    const normalizedEmail = email !== undefined ? this.normalizeEmail(email) : undefined;
-    const normalizedPhone = phone !== undefined ? this.normalizePhone(phone) : undefined;
-    const normalizedDocument = document_number !== undefined ? this.normalizeDocument(document_number) : undefined;
+    const normalizedEmail =
+      email !== undefined ? this.normalizeEmail(email) : undefined;
+    const normalizedPhone =
+      phone !== undefined ? this.normalizePhone(phone) : undefined;
+    const normalizedDocument =
+      document_number !== undefined
+        ? this.normalizeDocument(document_number)
+        : undefined;
 
     const updates = [];
     const params = [id, companyId];
@@ -608,7 +658,7 @@ class Contact {
 
     if (nome !== undefined) {
       if (!nome || nome.trim().length === 0) {
-        throw new ValidationError('Nome não pode ser vazio');
+        throw new ValidationError("Nome não pode ser vazio");
       }
       updates.push(`nome = $${paramIndex}`);
       params.push(nome);
@@ -730,14 +780,14 @@ class Contact {
     }
 
     if (updates.length === 0) {
-      throw new ValidationError('Nenhum campo para atualizar');
+      throw new ValidationError("Nenhum campo para atualizar");
     }
 
-    updates.push('updated_at = NOW()');
+    updates.push("updated_at = NOW()");
 
     const sql = `
       UPDATE polox.contacts
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
       RETURNING 
         id, company_id, owner_id, tipo, nome, email, phone, document_number, document_type,
@@ -750,7 +800,7 @@ class Contact {
 
     const result = await query(sql, params);
     if (result.rows.length === 0) {
-      throw new NotFoundError('Contact not found');
+      throw new NotFoundError("Contact not found");
     }
 
     return result.rows[0];
@@ -781,7 +831,7 @@ class Contact {
 
     const result = await query(sql, [id, companyId]);
     if (result.rows.length === 0) {
-      throw new NotFoundError('Lead not found or already converted to client');
+      throw new NotFoundError("Lead not found or already converted to client");
     }
 
     return result.rows[0];
@@ -807,7 +857,7 @@ class Contact {
 
     const result = await query(sql, [id, companyId]);
     if (result.rows.length === 0) {
-      throw new NotFoundError('Contact not found');
+      throw new NotFoundError("Contact not found");
     }
 
     return result.rows[0];
@@ -822,7 +872,7 @@ class Contact {
   static async count(companyId, filters = {}) {
     const { tipo, owner_id } = filters;
 
-    const conditions = ['company_id = $1', 'deleted_at IS NULL'];
+    const conditions = ["company_id = $1", "deleted_at IS NULL"];
     const params = [companyId];
     let paramIndex = 2;
 
@@ -841,7 +891,7 @@ class Contact {
     const sql = `
       SELECT COUNT(*) as total
       FROM polox.contacts
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
     `;
 
     const result = await query(sql, params);

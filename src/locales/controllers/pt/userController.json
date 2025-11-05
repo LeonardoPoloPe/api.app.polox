@@ -3,6 +3,12 @@
     "name_required": "Nome é obrigatório",
     "email_required": "Email é obrigatório",
     "name_and_email_required": "Nome e email são obrigatórios",
+    "name_email_password_required": "Nome, email e senha são obrigatórios",
+    "password_min_length": "Senha deve ter pelo menos 6 caracteres",
+    "new_password_required": "Nova senha é obrigatória",
+    "current_and_new_password_required": "Senha atual e nova senha são obrigatórias",
+    "invalid_current_password": "Senha atual incorreta",
+    "company_id_required": "ID da empresa é obrigatório",
     "email_in_use": "Email já está em uso",
     "user_not_found": "Usuário não encontrado"
   },
@@ -13,6 +19,15 @@
     "not_found": "Usuário não encontrado",
     "success": "Usuário retornado com sucesso"
   },
+  "create": {
+    "success": "Usuário criado com sucesso"
+  },
+  "reset_password": {
+    "success": "Senha resetada com sucesso"
+  },
+  "change_password": {
+    "success": "Senha alterada com sucesso"
+  },
   "profile": {
     "get_success": "Perfil carregado com sucesso",
     "update_success": "Perfil atualizado com sucesso",
@@ -22,6 +37,9 @@
     "users_listed": "Usuários listados",
     "user_viewed": "Usuário visualizado",
     "profile_viewed": "Perfil visualizado",
-    "profile_updated": "Perfil atualizado"
+    "profile_updated": "Perfil atualizado",
+    "user_created": "Usuário criado",
+    "password_reset": "Senha resetada por administrador",
+    "password_changed": "Senha alterada pelo próprio usuário"
   }
 }

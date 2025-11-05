@@ -321,9 +321,9 @@ JWT_SECRET=[CONFIGURADO VIA AWS SSM]
 
 ### **Desenvolvimento (Local)**
 
-- Base: `http://localhost:3000/dev`
-- Health: `http://localhost:3000/dev/health`
-- Docs: `http://localhost:3000/dev/api/docs`
+- Base: `http://localhost:3000/api/v1`
+- Health: `http://localhost:3000/api/v1/health`
+- Docs: `http://localhost:3000/api/v1/docs`
 
 ### **Desenvolvimento (AWS)**
 

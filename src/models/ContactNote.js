@@ -1,12 +1,12 @@
-const { query } = require('../config/database');
-const { ApiError, ValidationError, NotFoundError } = require('../utils/errors');
+const { query } = require("../config/database");
+const { ApiError, ValidationError, NotFoundError } = require("../utils/errors");
 
 /**
  * Model para gerenciamento de notas de contatos (histórico unificado)
  * Tabela: polox.contact_notes
- * 
+ *
  * Substitui: lead_notes + client_notes (tabelas antigas deletadas)
- * 
+ *
  * Características:
  * - Histórico UNIFICADO: leads e clientes compartilham mesma tabela
  * - Quando lead vira cliente: notas permanecem intactas (visão 360°)
@@ -21,33 +21,28 @@ class ContactNote {
    * @returns {Promise<Object>} Nota criada
    */
   static async create(data, companyId) {
-    const { 
-      contato_id, 
-      created_by_id, 
-      content, 
-      type = 'general' 
-    } = data;
+    const { contato_id, created_by_id, content, type = "general" } = data;
 
     // Validar dados obrigatórios
     if (!contato_id) {
-      throw new ValidationError('Contact ID is required');
+      throw new ValidationError("Contact ID is required");
     }
 
     if (!content || content.trim().length === 0) {
-      throw new ValidationError('Content is required');
+      throw new ValidationError("Content is required");
     }
 
     if (!created_by_id) {
-      throw new ValidationError('Creator user ID is required');
+      throw new ValidationError("Creator user ID is required");
     }
 
     const insertQuery = `
       INSERT INTO polox.contact_notes (
-        contato_id, created_by_id, content, type, company_id, created_at, updated_at
+        contato_id, created_by_id, note_content, note_type, company_id, created_at, updated_at
       )
       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
       RETURNING 
-        id, contato_id, created_by_id, content, type, company_id,
+        id, contato_id, created_by_id, note_content, note_type, company_id,
         created_at, updated_at, deleted_at
     `;
 
@@ -57,13 +52,13 @@ class ContactNote {
         created_by_id,
         content,
         type,
-        companyId
+        companyId,
       ]);
 
       return result.rows[0];
     } catch (error) {
-      if (error.code === '23503') {
-        throw new ValidationError('Contact or user not found');
+      if (error.code === "23503") {
+        throw new ValidationError("Contact or user not found");
       }
       throw new ApiError(500, `Error creating note: ${error.message}`);
     }
@@ -113,33 +108,35 @@ class ContactNote {
       page = 1,
       limit = 10,
       type = null,
-      sort_by = 'created_at',
-      sort_order = 'DESC'
+      sort_by = "created_at",
+      sort_order = "DESC",
     } = options;
 
     const offset = (page - 1) * limit;
     const conditions = [
-      'cn.contato_id = $1',
-      'cn.company_id = $2',
-      'cn.deleted_at IS NULL',
-      'c.deleted_at IS NULL'
+      "cn.contato_id = $1",
+      "cn.company_id = $2",
+      "cn.deleted_at IS NULL",
+      "c.deleted_at IS NULL",
     ];
     const values = [contactId, companyId];
     let paramCount = 3;
 
     // Adicionar filtro por tipo
     if (type) {
-      conditions.push(`cn.type = $${paramCount}`);
+      conditions.push(`cn.note_type = $${paramCount}`);
       values.push(type);
       paramCount++;
     }
 
-    const whereClause = conditions.join(' AND ');
+    const whereClause = conditions.join(" AND ");
 
     // Validar sort_by para prevenir SQL injection
-    const allowedSortFields = ['created_at', 'updated_at', 'type'];
-    const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
-    const sortDirection = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const allowedSortFields = ["created_at", "updated_at", "note_type"];
+    const sortField = allowedSortFields.includes(sort_by)
+      ? sort_by
+      : "created_at";
+    const sortDirection = sort_order.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     // Query para contar total
     const countQuery = `
@@ -152,7 +149,7 @@ class ContactNote {
     // Query para buscar dados
     const selectQuery = `
       SELECT 
-        cn.id, cn.contato_id, cn.created_by_id, cn.content, cn.type,
+        cn.id, cn.contato_id, cn.created_by_id, cn.note_content, cn.note_type,
         cn.created_at, cn.updated_at,
         u.full_name as created_by_name,
         u.email as created_by_email
@@ -167,7 +164,7 @@ class ContactNote {
     try {
       const [countResult, dataResult] = await Promise.all([
         query(countQuery, values),
-        query(selectQuery, [...values, limit, offset])
+        query(selectQuery, [...values, limit, offset]),
       ]);
 
       const total = parseInt(countResult.rows[0].count);
@@ -181,8 +178,8 @@ class ContactNote {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
       throw new ApiError(500, `Error listing notes: ${error.message}`);
@@ -203,15 +200,15 @@ class ContactNote {
       contato_id = null,
       created_by_id = null,
       search = null,
-      sort_by = 'created_at',
-      sort_order = 'DESC'
+      sort_by = "created_at",
+      sort_order = "DESC",
     } = options;
 
     const offset = (page - 1) * limit;
     const conditions = [
-      'c.company_id = $1',
-      'cn.deleted_at IS NULL',
-      'c.deleted_at IS NULL'
+      "c.company_id = $1",
+      "cn.deleted_at IS NULL",
+      "c.deleted_at IS NULL",
     ];
     const values = [companyId];
     let paramCount = 2;
@@ -243,12 +240,14 @@ class ContactNote {
       paramCount++;
     }
 
-    const whereClause = conditions.join(' AND ');
+    const whereClause = conditions.join(" AND ");
 
     // Validar sort_by
-    const allowedSortFields = ['created_at', 'updated_at', 'type'];
-    const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
-    const sortDirection = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const allowedSortFields = ["created_at", "updated_at", "type"];
+    const sortField = allowedSortFields.includes(sort_by)
+      ? sort_by
+      : "created_at";
+    const sortDirection = sort_order.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     // Query para contar total
     const countQuery = `
@@ -279,7 +278,7 @@ class ContactNote {
     try {
       const [countResult, dataResult] = await Promise.all([
         query(countQuery, values),
-        query(selectQuery, [...values, limit, offset])
+        query(selectQuery, [...values, limit, offset]),
       ]);
 
       const total = parseInt(countResult.rows[0].count);
@@ -293,8 +292,8 @@ class ContactNote {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
       throw new ApiError(500, `Error listing notes: ${error.message}`);
@@ -309,7 +308,7 @@ class ContactNote {
    * @returns {Promise<Object|null>} Nota atualizada ou null
    */
   static async update(id, updateData, companyId) {
-    const allowedFields = ['content', 'type'];
+    const allowedFields = ["content", "type"];
 
     const updates = [];
     const values = [];
@@ -318,8 +317,8 @@ class ContactNote {
     // Construir query dinamicamente
     for (const [key, value] of Object.entries(updateData)) {
       if (allowedFields.includes(key)) {
-        if (key === 'content' && (!value || value.trim().length === 0)) {
-          throw new ValidationError('Content cannot be empty');
+        if (key === "content" && (!value || value.trim().length === 0)) {
+          throw new ValidationError("Content cannot be empty");
         }
         updates.push(`${key} = $${paramCount}`);
         values.push(value);
@@ -328,15 +327,15 @@ class ContactNote {
     }
 
     if (updates.length === 0) {
-      throw new ValidationError('No valid fields to update');
+      throw new ValidationError("No valid fields to update");
     }
 
-    updates.push('updated_at = NOW()');
+    updates.push("updated_at = NOW()");
     values.push(id, companyId);
 
     const updateQuery = `
       UPDATE polox.contact_notes 
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramCount} 
         AND company_id = $${paramCount + 1} 
         AND deleted_at IS NULL

@@ -5,7 +5,7 @@
  *
  * Sistema unificado de histórico de interações
  * Substitui: lead_notes + client_notes → contact_notes
- * 
+ *
  * Features:
  * - Histórico completo de interações
  * - Tipos: nota, ligacao, email, reuniao, whatsapp
@@ -13,13 +13,18 @@
  * - Estatísticas de interações
  */
 
-const ContactNote = require('../models/ContactNote');
-const Contact = require('../models/Contact');
-const { ApiError, asyncHandler, ValidationError, NotFoundError } = require('../utils/errors');
-const { successResponse, paginatedResponse } = require('../utils/response');
-const { tc } = require('../config/i18n');
-const { auditLogger } = require('../utils/logger');
-const Joi = require('joi');
+const ContactNote = require("../models/ContactNote");
+const Contact = require("../models/Contact");
+const {
+  ApiError,
+  asyncHandler,
+  ValidationError,
+  NotFoundError,
+} = require("../utils/errors");
+const { successResponse, paginatedResponse } = require("../utils/response");
+const { tc } = require("../config/i18n");
+const { auditLogger } = require("../utils/logger");
+const Joi = require("joi");
 
 class ContactNoteController {
   /**
@@ -29,15 +34,15 @@ class ContactNoteController {
     contato_id: Joi.number().integer().required(),
     content: Joi.string().min(3).required(),
     tipo: Joi.string()
-      .valid('nota', 'ligacao', 'email', 'reuniao', 'whatsapp')
-      .default('nota'),
-    metadata: Joi.object().default({})
+      .valid("nota", "ligacao", "email", "reuniao", "whatsapp")
+      .default("nota"),
+    metadata: Joi.object().default({}),
   });
 
   static updateNoteSchema = Joi.object({
     content: Joi.string().min(3),
-    tipo: Joi.string().valid('nota', 'ligacao', 'email', 'reuniao', 'whatsapp'),
-    metadata: Joi.object()
+    tipo: Joi.string().valid("nota", "ligacao", "email", "reuniao", "whatsapp"),
+    metadata: Joi.object(),
   });
 
   /**
@@ -53,7 +58,7 @@ class ContactNoteController {
       sort_by,
       sort_order,
       limit = 50,
-      offset = 0
+      offset = 0,
     } = req.query;
 
     const filters = {
@@ -63,12 +68,16 @@ class ContactNoteController {
       sort_by,
       sort_order,
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     };
 
     const notes = await ContactNote.list(companyId, filters);
 
-    res.json(successResponse(notes, tc(req, 'contactNoteController', 'list.success')));
+    return successResponse(
+      res,
+      notes,
+      tc(req, "contactNoteController", "list.success")
+    );
   });
 
   /**
@@ -83,19 +92,27 @@ class ContactNoteController {
     // Verificar se contato existe
     const contact = await Contact.findById(contactId, companyId);
     if (!contact) {
-      throw new NotFoundError(tc(req, 'contactNoteController', 'validation.contact_not_found'));
+      throw new NotFoundError(
+        tc(req, "contactNoteController", "validation.contact_not_found")
+      );
     }
 
     const filters = {
       tipo,
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     };
 
-    const notes = await ContactNote.listByContact(contactId, companyId, filters);
+    const notes = await ContactNote.listByContact(
+      contactId,
+      filters,
+      companyId
+    );
 
-    res.json(
-      successResponse(notes, tc(req, 'contactNoteController', 'list_by_contact.success'))
+    return successResponse(
+      res,
+      notes,
+      tc(req, "contactNoteController", "list_by_contact.success")
     );
   });
 
@@ -110,10 +127,16 @@ class ContactNoteController {
     const note = await ContactNote.findById(id, companyId);
 
     if (!note) {
-      throw new NotFoundError(tc(req, 'contactNoteController', 'show.not_found'));
+      throw new NotFoundError(
+        tc(req, "contactNoteController", "show.not_found")
+      );
     }
 
-    res.json(successResponse(note, tc(req, 'contactNoteController', 'show.success')));
+    return successResponse(
+      res,
+      note,
+      tc(req, "contactNoteController", "show.success")
+    );
   });
 
   /**
@@ -121,44 +144,87 @@ class ContactNoteController {
    * POST /api/contacts/:contactId/notes
    */
   static create = asyncHandler(async (req, res) => {
+    console.log("=== ContactNoteController.create called ===");
+    console.log("URL:", req.url);
+    console.log("Method:", req.method);
+
     const companyId = req.user.companyId;
     const userId = req.user.id;
     const { contactId } = req.params;
 
+    // Debug logging
+    console.log("req.params:", req.params);
+    console.log("contactId extracted:", contactId);
+
+    // Validar se contactId está presente
+    if (!contactId) {
+      throw new ValidationError("Contact ID is required");
+    }
+
+    const contactIdInt = parseInt(contactId);
+    if (isNaN(contactIdInt)) {
+      throw new ValidationError("Contact ID must be a valid integer");
+    }
+
     // Adicionar contato_id ao body se veio por params
-    const data = { ...req.body, contato_id: parseInt(contactId) };
+    const data = { ...req.body, contato_id: contactIdInt };
+
+    console.log("Data before validation:", JSON.stringify(data, null, 2));
 
     // Validação
-    const { error, value } = ContactNoteController.createNoteSchema.validate(data, {
-      abortEarly: false
-    });
+    const { error, value } = ContactNoteController.createNoteSchema.validate(
+      data,
+      {
+        abortEarly: false,
+      }
+    );
+
+    console.log("Validation error:", error);
+    console.log("Validation value:", value);
 
     if (error) {
-      const messages = error.details.map(d => d.message).join(', ');
+      const messages = error.details.map((d) => d.message).join(", ");
+      console.log("Validation messages:", messages);
       throw new ValidationError(messages);
     }
 
     // Verificar se contato existe
     const contact = await Contact.findById(value.contato_id, companyId);
     if (!contact) {
-      throw new NotFoundError(tc(req, 'contactNoteController', 'validation.contact_not_found'));
+      throw new NotFoundError(
+        tc(req, "contactNoteController", "validation.contact_not_found")
+      );
     }
 
     // Criar anotação
-    const note = await ContactNote.create(companyId, userId, value);
+    const noteData = {
+      contato_id: value.contato_id,
+      created_by_id: userId,
+      content: value.content,
+      type: value.tipo, // Convert 'tipo' to 'type'
+    };
+
+    console.log(
+      "Calling ContactNote.create with:",
+      JSON.stringify(noteData, null, 2)
+    );
+    const note = await ContactNote.create(noteData, companyId);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'contactNoteController', 'audit.note_created'),
+    auditLogger({
+      action: tc(req, "contactNoteController", "audit.note_created"),
       userId,
       companyId,
-      resourceType: 'contact_note',
+      resourceType: "contact_note",
       resourceId: note.id,
-      changes: value
+      changes: value,
     });
 
-    res.status(201).json(
-      successResponse(note, tc(req, 'contactNoteController', 'create.success'))
+    return successResponse(
+      res,
+      note,
+      tc(req, "contactNoteController", "create.success"),
+      201
     );
   });
 
@@ -172,28 +238,35 @@ class ContactNoteController {
     const { id } = req.params;
 
     // Validação
-    const { error, value } = ContactNoteController.updateNoteSchema.validate(req.body, {
-      abortEarly: false
-    });
+    const { error, value } = ContactNoteController.updateNoteSchema.validate(
+      req.body,
+      {
+        abortEarly: false,
+      }
+    );
 
     if (error) {
-      const messages = error.details.map(d => d.message).join(', ');
+      const messages = error.details.map((d) => d.message).join(", ");
       throw new ValidationError(messages);
     }
 
     const note = await ContactNote.update(id, companyId, value);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'contactNoteController', 'audit.note_updated'),
+    auditLogger({
+      action: tc(req, "contactNoteController", "audit.note_updated"),
       userId,
       companyId,
-      resourceType: 'contact_note',
+      resourceType: "contact_note",
       resourceId: id,
-      changes: value
+      changes: value,
     });
 
-    res.json(successResponse(note, tc(req, 'contactNoteController', 'update.success')));
+    return successResponse(
+      res,
+      note,
+      tc(req, "contactNoteController", "update.success")
+    );
   });
 
   /**
@@ -208,15 +281,19 @@ class ContactNoteController {
     await ContactNote.softDelete(id, companyId);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'contactNoteController', 'audit.note_deleted'),
+    auditLogger({
+      action: tc(req, "contactNoteController", "audit.note_deleted"),
       userId,
       companyId,
-      resourceType: 'contact_note',
-      resourceId: id
+      resourceType: "contact_note",
+      resourceId: id,
     });
 
-    res.json(successResponse(null, tc(req, 'contactNoteController', 'delete.success')));
+    return successResponse(
+      res,
+      null,
+      tc(req, "contactNoteController", "delete.success")
+    );
   });
 
   /**
@@ -230,12 +307,18 @@ class ContactNoteController {
     // Verificar se contato existe
     const contact = await Contact.findById(contactId, companyId);
     if (!contact) {
-      throw new NotFoundError(tc(req, 'contactNoteController', 'validation.contact_not_found'));
+      throw new NotFoundError(
+        tc(req, "contactNoteController", "validation.contact_not_found")
+      );
     }
 
     const stats = await ContactNote.getContactStats(contactId, companyId);
 
-    res.json(successResponse(stats, tc(req, 'contactNoteController', 'stats.success')));
+    return successResponse(
+      res,
+      stats,
+      tc(req, "contactNoteController", "stats.success")
+    );
   });
 
   /**
@@ -247,7 +330,11 @@ class ContactNoteController {
 
     const stats = await ContactNote.getCompanyStats(companyId);
 
-    res.json(successResponse(stats, tc(req, 'contactNoteController', 'stats.success')));
+    return successResponse(
+      res,
+      stats,
+      tc(req, "contactNoteController", "stats.success")
+    );
   });
 
   /**
@@ -262,12 +349,22 @@ class ContactNoteController {
     // Verificar se contato existe
     const contact = await Contact.findById(contactId, companyId);
     if (!contact) {
-      throw new NotFoundError(tc(req, 'contactNoteController', 'validation.contact_not_found'));
+      throw new NotFoundError(
+        tc(req, "contactNoteController", "validation.contact_not_found")
+      );
     }
 
-    const notes = await ContactNote.getRecentByContact(contactId, companyId, parseInt(limit));
+    const notes = await ContactNote.getRecentByContact(
+      contactId,
+      companyId,
+      parseInt(limit)
+    );
 
-    res.json(successResponse(notes, tc(req, 'contactNoteController', 'list_by_contact.success')));
+    return successResponse(
+      res,
+      notes,
+      tc(req, "contactNoteController", "list_by_contact.success")
+    );
   });
 }
 

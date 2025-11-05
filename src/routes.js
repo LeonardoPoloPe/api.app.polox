@@ -51,8 +51,8 @@ if (process.env.NODE_ENV !== "production") {
         },
         servers: [
           {
-            url: "http://localhost:3000/dev/api/v1",
-            description: "Servidor Local (Node.js com serverless-offline)",
+            url: "http://localhost:3000/api/v1",
+            description: "Servidor Local (Node.js)",
           },
           {
             url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1",
@@ -149,7 +149,7 @@ if (process.env.NODE_ENV !== "production") {
       res.send(html);
     });
 
-  console.log("📚 Swagger configurado em /api/v1/docs");
+    console.log("📚 Swagger configurado em /api/v1/docs");
   } catch (error) {
     console.warn("⚠️  Swagger não pôde ser carregado:", error.message);
   }
@@ -198,11 +198,12 @@ router.get("/", (req, res) => {
       name: "Polox CRM API",
       version: "1.0.0",
       environment: process.env.NODE_ENV || "dev",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     },
     architecture: {
       type: "Identity vs. Intention",
-      description: "Identidade unificada (Contacts) + Pipeline de vendas (Deals)"
+      description:
+        "Identidade unificada (Contacts) + Pipeline de vendas (Deals)",
     },
     endpoints: {
       documentation: "/docs",
@@ -210,7 +211,7 @@ router.get("/", (req, res) => {
       authentication: "/auth/login",
       contacts: "/contacts",
       deals: "/deals",
-      notes: "/notes"
+      notes: "/notes",
     },
     features: [
       "🌐 Multi-idiomas (PT/EN/ES)",
@@ -218,9 +219,9 @@ router.get("/", (req, res) => {
       "💼 Pipeline de vendas",
       "📝 Histórico de interações",
       "🔐 Autenticação JWT",
-      "🏢 Multi-tenant"
+      "🏢 Multi-tenant",
     ],
-    status: "✅ Online"
+    status: "✅ Online",
   });
 });
 
