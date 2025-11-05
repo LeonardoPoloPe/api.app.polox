@@ -53,7 +53,7 @@ class ScheduleController {
     meeting_link: Joi.string().uri().allow("", null),
     contato_id: Joi.number().integer().allow(null),
     timezone: Joi.string().default("America/Sao_Paulo"),
-    reminder_minutes: Joi.number().integer().positive().default(15),
+    reminder_minutes: Joi.number().integer().min(0).default(15), // Permitir 0
     is_recurring: Joi.boolean().default(false),
     recurrence_pattern: Joi.object().allow(null),
   });
@@ -84,7 +84,7 @@ class ScheduleController {
     meeting_link: Joi.string().uri().allow("", null),
     contato_id: Joi.number().integer().allow(null),
     timezone: Joi.string(),
-    reminder_minutes: Joi.number().integer().positive(),
+    reminder_minutes: Joi.number().integer().min(0), // Permitir 0
     is_recurring: Joi.boolean(),
     recurrence_pattern: Joi.object().allow(null),
   }).custom((value, helpers) => {
