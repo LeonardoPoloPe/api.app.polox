@@ -242,8 +242,8 @@ function createApp() {
   app.use(
     "/api/v1/auth/login",
     createRateLimit(
-      15 * 60 * 1000, // 15 minutos
-      5, // 5 tentativas
+      5 * 60 * 1000, // 5 minutos
+      10, // 10 tentativas
       "rateLimit.login_attempts",
       false // Contar tentativas falhadas
     )
@@ -253,7 +253,7 @@ function createApp() {
     "/api/v1/auth/register",
     createRateLimit(
       60 * 60 * 1000, // 1 hora
-      3, // 3 registros
+      10, // 3 registros
       "rateLimit.register_attempts",
       false
     )
