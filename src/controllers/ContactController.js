@@ -152,8 +152,7 @@ class ContactController {
     const userId = req.user.id;
 
     // Validação
-    const { error, value } = ContactController.createContactSchema.va;
-    lidate(req.body, {
+    const { error, value } = ContactController.createContactSchema.validate(req.body, {
       abortEarly: false,
     });
 
@@ -212,8 +211,7 @@ class ContactController {
     const contact = await Contact.update(id, companyId, value);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, "contactController", "audit.contact_updated"),
+    auditLogger(tc(req, "contactController", "audit.contact_updated"), {
       userId,
       companyId,
       resourceType: "contact",
@@ -240,8 +238,7 @@ class ContactController {
     await Contact.softDelete(id, companyId);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, "contactController", "audit.contact_deleted"),
+    auditLogger(tc(req, "contactController", "audit.contact_deleted"), {
       userId,
       companyId,
       resourceType: "contact",
@@ -283,8 +280,7 @@ class ContactController {
     const updated = await Contact.convertToClient(id, companyId);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, "contactController", "audit.lead_converted"),
+    auditLogger(tc(req, "contactController", "audit.lead_converted"), {
       userId,
       companyId,
       resourceType: "contact",
@@ -327,16 +323,14 @@ class ContactController {
 
     // Audit log apenas se criou novo
     if (result.created) {
-      auditLogger.log({
-        action: tc(req, "contactController", "audit.contact_created"),
+      auditLogger(tc(req, "contactController", "audit.contact_created"), {
         userId,
         companyId,
         resourceType: "contact",
         resourceId: result.contact.id,
       });
     } else if (result.restored) {
-      auditLogger.log({
-        action: tc(req, "contactController", "audit.contact_restored"),
+      auditLogger(tc(req, "contactController", "audit.contact_restored"), {
         userId,
         companyId,
         resourceType: "contact",
@@ -441,7 +435,6 @@ class ContactController {
     // - Lead entrar em contato várias vezes
     // - Múltiplas oportunidades simultâneas
     const dealData = {
-      company_id: companyId,
       contato_id: contact.id,
       owner_id: userId, // Quem criou a oportunidade
       titulo: deal_title || `Negociação de ${nome} (${origem_lp || "Novo"})`,
@@ -451,14 +444,13 @@ class ContactController {
       probabilidade: 25, // 25% para novos leads
     };
 
-    const deal = await Deal.create(dealData);
+    const deal = await Deal.create(companyId, dealData);
 
     // ====================================================================
     // PASSO 3: AUDIT LOG
     // ====================================================================
     if (contactResult.created) {
-      auditLogger.log({
-        action: tc(req, "contactController", "audit.contact_created"),
+      auditLogger(tc(req, "contactController", "audit.contact_created"), {
         userId,
         companyId,
         resourceType: "contact",
@@ -466,8 +458,7 @@ class ContactController {
         metadata: { source: "get-or-create-with-negotiation" },
       });
     } else if (contactResult.restored) {
-      auditLogger.log({
-        action: tc(req, "contactController", "audit.contact_restored"),
+      auditLogger(tc(req, "contactController", "audit.contact_restored"), {
         userId,
         companyId,
         resourceType: "contact",
@@ -476,8 +467,7 @@ class ContactController {
       });
     }
 
-    auditLogger.log({
-      action: tc(req, "dealController", "audit.deal_created"),
+    auditLogger(tc(req, "dealController", "audit.deal_created"), {
       userId,
       companyId,
       resourceType: "deal",

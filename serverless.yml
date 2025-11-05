@@ -75,6 +75,8 @@ custom:
   serverless-offline:
     httpPort: 3000
     host: localhost
+    noPrependStageInUrl: true
+    ignoreJWTSignature: true
 
 plugins:
   - serverless-offline

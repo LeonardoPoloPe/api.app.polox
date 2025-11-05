@@ -152,6 +152,38 @@ class Contact {
   }
 
   /**
+   * Busca contato por qualquer identificador (phone, email ou document)
+   * Busca na ordem: phone -> email -> document
+   * @param {number} companyId - ID da empresa
+   * @param {Object} identifiers - Objeto com phone, email e/ou document
+   * @param {boolean} includeDeleted - Incluir registros deletados
+   * @returns {Promise<Object|null>} Contato ou null
+   */
+  static async findByIdentifier(companyId, identifiers = {}, includeDeleted = false) {
+    const { phone, email, document } = identifiers;
+
+    // Buscar por telefone primeiro
+    if (phone) {
+      const contact = await this.findByPhone(companyId, phone, includeDeleted);
+      if (contact) return contact;
+    }
+
+    // Buscar por email se não encontrou por telefone
+    if (email) {
+      const contact = await this.findByEmail(companyId, email, includeDeleted);
+      if (contact) return contact;
+    }
+
+    // Buscar por documento se não encontrou pelos anteriores
+    if (document) {
+      const contact = await this.findByDocument(companyId, document, includeDeleted);
+      if (contact) return contact;
+    }
+
+    return null;
+  }
+
+  /**
    * Busca contato por ID
    * @param {number} id - ID do contato
    * @param {number} companyId - ID da empresa
@@ -335,7 +367,7 @@ class Contact {
 
     // 4️⃣ Se encontrou DELETADO → RESTAURAR + ATUALIZAR
     if (contact && contact.deleted_at) {
-      return await transaction(async (client) => {
+      const restoredContact = await transaction(async (client) => {
         const restoreQuery = `
           UPDATE polox.contacts
           SET 
@@ -370,15 +402,17 @@ class Contact {
 
         return result.rows[0];
       });
+      
+      return { contact: restoredContact, created: false, restored: true };
     }
 
     // 5️⃣ Se encontrou ATIVO → RETORNAR existente
     if (contact) {
-      return contact;
+      return { contact, created: false, restored: false };
     }
 
     // 6️⃣ Se NÃO encontrou → CRIAR novo
-    return await this.create(companyId, {
+    const newContact = await this.create(companyId, {
       phone: normalizedPhone,
       email: normalizedEmail,
       document_number: normalizedDocument,
@@ -387,6 +421,8 @@ class Contact {
       owner_id,
       ...otherData,
     });
+    
+    return { contact: newContact, created: true, restored: false };
   }
 
   /**

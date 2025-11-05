@@ -22,9 +22,9 @@ class Deal {
     const sql = `
       SELECT 
         n.id, n.company_id, n.contato_id, n.owner_id,
-        n.titulo, n.descricao, n.etapa_funil, n.valor_total_cents,
-        n.probabilidade, n.origem, n.expected_close_date, n.closed_at,
-        n.closed_reason, n.metadata, n.created_at, n.updated_at, n.deleted_at,
+        n.titulo, n.etapa_funil, n.valor_total_cents,
+        n.origem, n.closed_at, n.motivo_perda,
+        n.created_at, n.updated_at, n.deleted_at,
         c.nome as contact_name,
         c.email as contact_email,
         c.phone as contact_phone,
@@ -97,16 +97,15 @@ class Deal {
       conditions.push('n.closed_at IS NULL');
     } else if (status === 'won') {
       conditions.push('n.closed_at IS NOT NULL');
-      conditions.push(`n.closed_reason = 'won'`);
+      conditions.push(`n.etapa_funil = 'ganhos'`);
     } else if (status === 'lost') {
       conditions.push('n.closed_at IS NOT NULL');
-      conditions.push(`n.closed_reason = 'lost'`);
+      conditions.push(`n.etapa_funil = 'perdido'`);
     }
 
     if (search) {
       conditions.push(`(
         n.titulo ILIKE $${paramIndex} OR 
-        n.descricao ILIKE $${paramIndex} OR 
         c.nome ILIKE $${paramIndex}
       )`);
       params.push(`%${search}%`);
@@ -120,9 +119,9 @@ class Deal {
     const sql = `
       SELECT 
         n.id, n.company_id, n.contato_id, n.owner_id,
-        n.titulo, n.descricao, n.etapa_funil, n.valor_total_cents,
-        n.probabilidade, n.origem, n.expected_close_date, n.closed_at,
-        n.closed_reason, n.created_at, n.updated_at,
+        n.titulo, n.etapa_funil, n.valor_total_cents,
+        n.origem, n.closed_at, n.motivo_perda,
+        n.created_at, n.updated_at,
         c.nome as contact_name,
         c.email as contact_email,
         c.phone as contact_phone,
@@ -151,13 +150,9 @@ class Deal {
       contato_id,
       owner_id = null,
       titulo,
-      descricao = null,
       etapa_funil = 'novo',
       valor_total_cents = 0,
-      probabilidade = 0,
-      origem = null,
-      expected_close_date = null,
-      metadata = {}
+      origem = null
     } = data;
 
     if (!contato_id) {
@@ -172,10 +167,6 @@ class Deal {
       throw new ValidationError('Total value must be a number >= 0');
     }
 
-    if (typeof probabilidade !== 'number' || probabilidade < 0 || probabilidade > 100) {
-      throw new ValidationError('Probability must be between 0 and 100');
-    }
-
     return await transaction(async (client) => {
       const contactCheck = await client.query(
         'SELECT id, tipo FROM polox.contacts WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
@@ -188,19 +179,19 @@ class Deal {
 
       const insertQuery = `
         INSERT INTO polox.deals (
-          company_id, contato_id, owner_id, titulo, descricao,
-          etapa_funil, valor_total_cents, probabilidade, origem,
-          expected_close_date, metadata, created_at, updated_at
+          company_id, contato_id, owner_id, titulo,
+          etapa_funil, valor_total_cents, origem,
+          created_at, updated_at
         )
         VALUES (
-          $1, $2, $3, $4, $5,
-          $6, $7, $8, $9,
-          $10, $11, NOW(), NOW()
+          $1, $2, $3, $4,
+          $5, $6, $7,
+          NOW(), NOW()
         )
         RETURNING 
-          id, company_id, contato_id, owner_id, titulo, descricao,
-          etapa_funil, valor_total_cents, probabilidade, origem,
-          expected_close_date, closed_at, closed_reason, metadata,
+          id, company_id, contato_id, owner_id, titulo,
+          etapa_funil, valor_total_cents, origem,
+          closed_at, motivo_perda,
           created_at, updated_at, deleted_at
       `;
 
@@ -209,13 +200,9 @@ class Deal {
         contato_id,
         owner_id,
         titulo,
-        descricao,
         etapa_funil,
         valor_total_cents,
-        probabilidade,
-        origem,
-        expected_close_date,
-        JSON.stringify(metadata)
+        origem
       ]);
 
       return result.rows[0];
@@ -225,14 +212,10 @@ class Deal {
   static async update(id, companyId, data) {
     const {
       titulo,
-      descricao,
       etapa_funil,
       valor_total_cents,
-      probabilidade,
       origem,
-      owner_id,
-      expected_close_date,
-      metadata
+      owner_id
     } = data;
 
     const updates = [];
@@ -245,12 +228,6 @@ class Deal {
       }
       updates.push(`titulo = $${paramIndex}`);
       params.push(titulo);
-      paramIndex++;
-    }
-
-    if (descricao !== undefined) {
-      updates.push(`descricao = $${paramIndex}`);
-      params.push(descricao);
       paramIndex++;
     }
 
@@ -269,15 +246,6 @@ class Deal {
       paramIndex++;
     }
 
-    if (probabilidade !== undefined) {
-      if (typeof probabilidade !== 'number' || probabilidade < 0 || probabilidade > 100) {
-        throw new ValidationError('Probability must be between 0 and 100');
-      }
-      updates.push(`probabilidade = $${paramIndex}`);
-      params.push(probabilidade);
-      paramIndex++;
-    }
-
     if (origem !== undefined) {
       updates.push(`origem = $${paramIndex}`);
       params.push(origem);
@@ -287,18 +255,6 @@ class Deal {
     if (owner_id !== undefined) {
       updates.push(`owner_id = $${paramIndex}`);
       params.push(owner_id);
-      paramIndex++;
-    }
-
-    if (expected_close_date !== undefined) {
-      updates.push(`expected_close_date = $${paramIndex}`);
-      params.push(expected_close_date);
-      paramIndex++;
-    }
-
-    if (metadata !== undefined) {
-      updates.push(`metadata = $${paramIndex}`);
-      params.push(JSON.stringify(metadata));
       paramIndex++;
     }
 
@@ -333,8 +289,8 @@ class Deal {
       const dealUpdateQuery = `
         UPDATE polox.deals
         SET 
+          etapa_funil = 'ganhos',
           closed_at = NOW(),
-          closed_reason = 'won',
           updated_at = NOW()
         WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
         RETURNING *
@@ -372,19 +328,15 @@ class Deal {
     const sql = `
       UPDATE polox.deals
       SET 
+        etapa_funil = 'perdido',
         closed_at = NOW(),
-        closed_reason = 'lost',
-        metadata = jsonb_set(
-          COALESCE(metadata, '{}'::jsonb),
-          '{lost_reason}',
-          to_jsonb($3::text)
-        ),
+        motivo_perda = $3,
         updated_at = NOW()
       WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
       RETURNING *
     `;
 
-    const result = await query(sql, [id, companyId, reason || 'Not specified']);
+    const result = await query(sql, [id, companyId, reason || 'Não especificado']);
 
     if (result.rows.length === 0) {
       throw new NotFoundError('Deal not found');
@@ -398,7 +350,8 @@ class Deal {
       UPDATE polox.deals
       SET 
         closed_at = NULL,
-        closed_reason = NULL,
+        motivo_perda = NULL,
+        etapa_funil = 'novo',
         updated_at = NOW()
       WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
       RETURNING *
