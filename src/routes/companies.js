@@ -1,9 +1,3 @@
-/**
- * ==========================================
- * 🏢 ROTAS DE EMPRESAS - SUPER ADMIN ONLY
- * ==========================================
- */
-
 const express = require("express");
 const CompanyController = require("../controllers/CompanyController");
 const { authenticateToken } = require("../middleware/auth");
@@ -16,6 +10,44 @@ router.use(authenticateToken);
 
 // 🔒 Middleware obrigatório: Super Admin
 router.use(CompanyController.requireSuperAdmin);
+
+/**
+ * @swagger
+ * /companies/my-tree:
+ *   get:
+ *     summary: Árvore das empresas vinculadas ao Super Admin
+ *     description: Retorna apenas empresas e usuários vinculados ao Super Admin logado (via partner_id)
+ *     tags: [Companies]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Árvore das empresas vinculadas
+ *       403:
+ *         description: Super Admin required
+ */
+router.get("/my-tree", rateLimiter.admin, CompanyController.getMyCompanyTree);
+
+/**
+ * @swagger
+ * /companies/full-tree:
+ *   get:
+ *     summary: Árvore completa de empresas e usuários
+ *     description: Retorna a hierarquia multi-nível de empresas e seus usuários (apenas Super Admin)
+ *     tags: [Companies]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Árvore de empresas e usuários
+ *       403:
+ *         description: Super Admin required
+ */
+router.get(
+  "/full-tree",
+  rateLimiter.admin,
+  CompanyController.getFullCompanyTree
+);
 
 /**
  * @swagger
@@ -46,28 +78,9 @@ router.use(CompanyController.requireSuperAdmin);
  *           type: string
  *           enum: [active, inactive, trial]
  *         description: Filtrar por status
- *       - in: query
- *         name: plan
- *         schema:
- *           type: string
- *           enum: [starter, professional, enterprise]
- *         description: Filtrar por plano
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Buscar por nome ou domínio
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *           enum: [name, created_at, users_count]
- *         description: Ordenar por campo
  *     responses:
  *       200:
  *         description: Lista de empresas
- *       403:
- *         description: Super Admin required
  */
 router.get("/", rateLimiter.admin, CompanyController.index);
 
@@ -75,8 +88,8 @@ router.get("/", rateLimiter.admin, CompanyController.index);
  * @swagger
  * /companies:
  *   post:
- *     summary: Criar nova empresa
- *     description: Cria empresa com admin automático (Super Admin only)
+ *     summary: Criar empresa
+ *     description: Criar nova empresa (Super Admin only)
  *     tags: [Companies]
  *     security:
  *       - bearerAuth: []
@@ -91,43 +104,98 @@ router.get("/", rateLimiter.admin, CompanyController.index);
  *             required:
  *               - name
  *               - domain
- *               - admin_name
- *               - admin_email
  *             properties:
  *               name:
  *                 type: string
- *                 example: TechCorp Solutions
+ *                 example: Agência Parceira XYZ
  *               domain:
  *                 type: string
- *                 example: bomelo.com.br
- *                 description: "Aceita letras, números, hífens e pontos (ex: bomelo.com.br, crm.polox.com.br)"
+ *                 example: agenciaxyz.com
  *               plan:
  *                 type: string
- *                 enum: [starter, professional, enterprise]
- *                 default: starter
+ *                 example: partner_pro
  *               industry:
  *                 type: string
- *                 example: Tecnologia
+ *                 example: Publicidade
  *               company_size:
  *                 type: string
- *                 example: 21-50 funcionários
+ *                 example: 1-10 funcionários
  *               admin_name:
  *                 type: string
- *                 example: João Silva
+ *                 example: Admin da Agência
  *               admin_email:
  *                 type: string
- *                 example: joao@techcorp.com
+ *                 example: admin@agenciaxyz.com
  *               admin_phone:
  *                 type: string
- *                 example: +55 11 99999-1234
+ *                 example: +55 11 98888-8888
+ *               company_type:
+ *                 type: string
+ *                 enum: [tenant, partner]
+ *                 example: partner
+ *               partner_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 example: null
+ *               custom_domain:
+ *                 type: string
+ *                 example: crm.agenciaxyz.com
+ *               logo_url:
+ *                 type: string
+ *                 example: https://cdn.agenciaxyz.com/logo.png
+ *               favicon_url:
+ *                 type: string
+ *                 example: https://cdn.agenciaxyz.com/favicon.ico
+ *               primary_color:
+ *                 type: string
+ *                 example: "#0A84FF"
+ *               secondary_color:
+ *                 type: string
+ *                 example: "#FFFFFF"
+ *               support_email:
+ *                 type: string
+ *                 example: suporte@agenciaxyz.com
+ *               support_phone:
+ *                 type: string
+ *                 example: +55 11 4004-1234
+ *               terms_url:
+ *                 type: string
+ *                 example: https://agenciaxyz.com/termos
+ *               privacy_url:
+ *                 type: string
+ *                 example: https://agenciaxyz.com/privacidade
+ *               tenant_plan:
+ *                 type: string
+ *                 nullable: true
+ *                 example: null
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive, trial]
+ *                 example: active
+ *               max_users:
+ *                 type: integer
+ *                 example: 50
+ *               max_storage_mb:
+ *                 type: integer
+ *                 example: 10000
+ *               trial_ends_at:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
+ *                 example: null
+ *               subscription_ends_at:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
+ *                 example: "2026-10-25T00:00:00Z"
  *               enabled_modules:
  *                 type: array
  *                 items:
  *                   type: string
- *                 example: ["dashboard", "users", "leads"]
+ *                 example: ["dashboard", "users", "leads", "sales"]
  *               settings:
  *                 type: object
- *                 example: {"maxUploadSize": "5MB"}
+ *                 example: {"maxUploadSize": "25MB"}
  *     responses:
  *       201:
  *         description: Empresa criada com sucesso
