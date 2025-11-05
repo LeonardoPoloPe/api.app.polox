@@ -20,26 +20,60 @@ NC='\033[0m' # No Color
 BASE_URL="http://localhost:3000/api/v1"
 TOKEN=""
 
+# Configuração de logs
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_DIR="tests-curl-sh/resultado"
+LOG_FILE="${LOG_DIR}/test-contact-controller_${TIMESTAMP}.log"
+SUMMARY_FILE="${LOG_DIR}/summary_${TIMESTAMP}.txt"
+
+# Criar diretório de logs se não existir
+mkdir -p "${LOG_DIR}"
+
+# Contadores
+TOTAL_TESTS=0
+PASSED_TESTS=0
+FAILED_TESTS=0
+
+# Função para log
+log() {
+    echo -e "$1" | tee -a "${LOG_FILE}"
+}
+
+# Função para log sem cores (para arquivo)
+log_plain() {
+    echo "$1" >> "${LOG_FILE}"
+}
+
 # Função para imprimir cabeçalhos
 print_header() {
-    echo -e "\n${BLUE}========================================${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}========================================${NC}\n"
+    log "\n${BLUE}========================================${NC}"
+    log "${BLUE}$1${NC}"
+    log "${BLUE}========================================${NC}\n"
+    log_plain ""
+    log_plain "========================================"
+    log_plain "$1"
+    log_plain "========================================"
+    log_plain ""
 }
 
 # Função para imprimir sucesso
 print_success() {
-    echo -e "${GREEN}✅ $1${NC}\n"
+    log "${GREEN}✅ $1${NC}\n"
+    log_plain "✅ $1"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
 }
 
 # Função para imprimir erro
 print_error() {
-    echo -e "${RED}❌ $1${NC}\n"
+    log "${RED}❌ $1${NC}\n"
+    log_plain "❌ $1"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
 }
 
 # Função para imprimir aviso
 print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}\n"
+    log "${YELLOW}⚠️  $1${NC}\n"
+    log_plain "⚠️  $1"
 }
 
 # Função para fazer requisição e mostrar resultado
@@ -50,12 +84,19 @@ make_request() {
     local description=$4
     local expected_status=$5  # Status esperado (opcional)
     
-    echo -e "${YELLOW}Testando: ${description}${NC}"
-    echo -e "Método: ${method}"
-    echo -e "Endpoint: ${BASE_URL}${endpoint}"
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    
+    log "${YELLOW}Testando: ${description}${NC}"
+    log "Método: ${method}"
+    log "Endpoint: ${BASE_URL}${endpoint}"
+    log_plain "Testando: ${description}"
+    log_plain "Método: ${method}"
+    log_plain "Endpoint: ${BASE_URL}${endpoint}"
     
     if [ -n "$data" ]; then
-        echo -e "Dados: ${data}\n"
+        log "Dados: ${data}\n"
+        log_plain "Dados: ${data}"
+        log_plain ""
         response=$(curl -s -w "\n%{http_code}" -X "${method}" \
             "${BASE_URL}${endpoint}" \
             -H "Authorization: Bearer ${TOKEN}" \
@@ -63,7 +104,8 @@ make_request() {
             -H "Content-Type: application/json" \
             -d "${data}")
     else
-        echo ""
+        log ""
+        log_plain ""
         response=$(curl -s -w "\n%{http_code}" -X "${method}" \
             "${BASE_URL}${endpoint}" \
             -H "Authorization: Bearer ${TOKEN}" \
@@ -73,9 +115,15 @@ make_request() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
     
-    echo -e "Status: ${http_code}"
-    echo -e "Response:"
-    echo "$body" | jq '.' 2>/dev/null || echo "$body"
+    log "Status: ${http_code}"
+    log "Response:"
+    log_plain "Status: ${http_code}"
+    log_plain "Response:"
+    
+    # Formatar JSON no log
+    formatted_body=$(echo "$body" | jq '.' 2>/dev/null || echo "$body")
+    log "$formatted_body"
+    log_plain "$formatted_body"
     
     # Se foi especificado um status esperado, verificar se corresponde
     if [ -n "$expected_status" ]; then
@@ -93,16 +141,30 @@ make_request() {
         fi
     fi
     
-    echo -e "${BLUE}----------------------------------------${NC}\n"
+    log "${BLUE}----------------------------------------${NC}\n"
+    log_plain "----------------------------------------"
+    log_plain ""
     sleep 1
 }
+
+# Iniciar log
+log "${GREEN}🧪 INICIANDO TESTES DO CONTACT CONTROLLER${NC}"
+log "Data: $(date '+%Y-%m-%d %H:%M:%S')"
+log "Base URL: ${BASE_URL}"
+log "Log: ${LOG_FILE}"
+log_plain "🧪 INICIANDO TESTES DO CONTACT CONTROLLER"
+log_plain "Data: $(date '+%Y-%m-%d %H:%M:%S')"
+log_plain "Base URL: ${BASE_URL}"
+log_plain "Log: ${LOG_FILE}"
+log_plain ""
 
 # ==========================================
 # PASSO 1: LOGIN
 # ==========================================
 print_header "PASSO 1: LOGIN"
 
-echo "Fazendo login para obter token..."
+log "Fazendo login para obter token..."
+log_plain "Fazendo login para obter token..."
 login_response=$(curl -s -X POST \
     "${BASE_URL}/auth/login" \
     -H "Content-Type: application/json" \
@@ -117,12 +179,14 @@ TOKEN=$(echo "$login_response" | jq -r '.data.token')
 
 if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
     print_error "Falha no login! Verifique as credenciais."
-    echo "$login_response" | jq '.'
+    log "$login_response" | jq '.'
+    log_plain "$(echo "$login_response" | jq '.')"
     exit 1
 fi
 
 print_success "Login realizado com sucesso!"
-echo "Token: ${TOKEN:0:50}..."
+log "Token: ${TOKEN:0:50}..."
+log_plain "Token: ${TOKEN:0:50}..."
 
 # ==========================================
 # PASSO 2: CRIAR CONTATO
@@ -150,10 +214,12 @@ CONTACT_ID=$(curl -s -X GET \
 
 if [ -z "$CONTACT_ID" ] || [ "$CONTACT_ID" = "null" ]; then
     print_error "Não foi possível obter o ID do contato criado"
+    log_plain "Não foi possível obter o ID do contato criado"
     exit 1
 fi
 
-print_success "Contato criado com ID: ${CONTACT_ID}"
+log "${GREEN}Contato criado com ID: ${CONTACT_ID}${NC}"
+log_plain "Contato criado com ID: ${CONTACT_ID}"
 
 # ==========================================
 # PASSO 3: LISTAR CONTATOS
@@ -365,19 +431,105 @@ make_request "GET" "/contacts/search" "" \
 # ==========================================
 print_header "RESUMO DOS TESTES"
 
-echo -e "${GREEN}✅ Testes concluídos!${NC}\n"
-echo "Endpoints testados:"
-echo "  ✓ POST   /api/v1/auth/login"
-echo "  ✓ POST   /api/v1/contacts"
-echo "  ✓ GET    /api/v1/contacts"
-echo "  ✓ GET    /api/v1/contacts/:id"
-echo "  ✓ GET    /api/v1/contacts/search"
-echo "  ✓ PUT    /api/v1/contacts/:id"
-echo "  ✓ POST   /api/v1/contacts/get-or-create"
-echo "  ✓ POST   /api/v1/contacts/get-or-create-with-negotiation"
-echo "  ✓ POST   /api/v1/contacts/:id/convert"
-echo "  ✓ GET    /api/v1/contacts/stats"
-echo "  ✓ DELETE /api/v1/contacts/:id"
+# Calcular porcentagem de sucesso
+SUCCESS_RATE=0
+if [ $TOTAL_TESTS -gt 0 ]; then
+    SUCCESS_RATE=$(awk "BEGIN {printf \"%.2f\", ($PASSED_TESTS/$TOTAL_TESTS)*100}")
+fi
+
+log "${GREEN}✅ Testes concluídos!${NC}\n"
+log_plain "✅ Testes concluídos!"
+log_plain ""
+
+log "📊 Estatísticas:"
+log "   Total de testes: ${TOTAL_TESTS}"
+log "   ✅ Passaram: ${PASSED_TESTS}"
+log "   ❌ Falharam: ${FAILED_TESTS}"
+log "   📈 Taxa de sucesso: ${SUCCESS_RATE}%"
+log ""
+
+log_plain "📊 Estatísticas:"
+log_plain "   Total de testes: ${TOTAL_TESTS}"
+log_plain "   ✅ Passaram: ${PASSED_TESTS}"
+log_plain "   ❌ Falharam: ${FAILED_TESTS}"
+log_plain "   📈 Taxa de sucesso: ${SUCCESS_RATE}%"
+log_plain ""
+
+log "Endpoints testados:"
+log "  ✓ POST   /api/v1/auth/login"
+log "  ✓ POST   /api/v1/contacts"
+log "  ✓ GET    /api/v1/contacts"
+log "  ✓ GET    /api/v1/contacts/:id"
+log "  ✓ GET    /api/v1/contacts/search"
+log "  ✓ PUT    /api/v1/contacts/:id"
+log "  ✓ POST   /api/v1/contacts/get-or-create"
+log "  ✓ POST   /api/v1/contacts/get-or-create-with-negotiation"
+log "  ✓ POST   /api/v1/contacts/:id/convert"
+log "  ✓ GET    /api/v1/contacts/stats"
+log "  ✓ DELETE /api/v1/contacts/:id"
+log ""
+
+log_plain "Endpoints testados:"
+log_plain "  ✓ POST   /api/v1/auth/login"
+log_plain "  ✓ POST   /api/v1/contacts"
+log_plain "  ✓ GET    /api/v1/contacts"
+log_plain "  ✓ GET    /api/v1/contacts/:id"
+log_plain "  ✓ GET    /api/v1/contacts/search"
+log_plain "  ✓ PUT    /api/v1/contacts/:id"
+log_plain "  ✓ POST   /api/v1/contacts/get-or-create"
+log_plain "  ✓ POST   /api/v1/contacts/get-or-create-with-negotiation"
+log_plain "  ✓ POST   /api/v1/contacts/:id/convert"
+log_plain "  ✓ GET    /api/v1/contacts/stats"
+log_plain "  ✓ DELETE /api/v1/contacts/:id"
+log_plain ""
+
+log "${BLUE}Verifique os resultados acima para validar cada endpoint.${NC}"
+log "${YELLOW}Contatos de teste criados podem ser limpos manualmente.${NC}\n"
+log_plain "Verifique os resultados acima para validar cada endpoint."
+log_plain "Contatos de teste criados podem ser limpos manualmente."
+log_plain ""
+
+# Gerar arquivo de resumo
+cat > "${SUMMARY_FILE}" << EOF
+==========================================
+RESUMO DOS TESTES - CONTACT CONTROLLER
+==========================================
+Data: $(date '+%Y-%m-%d %H:%M:%S')
+Base URL: ${BASE_URL}
+
+📊 ESTATÍSTICAS
+----------------
+Total de testes: ${TOTAL_TESTS}
+✅ Passaram: ${PASSED_TESTS}
+❌ Falharam: ${FAILED_TESTS}
+📈 Taxa de sucesso: ${SUCCESS_RATE}%
+
+STATUS FINAL
+------------
+EOF
+
+if [ $FAILED_TESTS -eq 0 ]; then
+    echo "🎉 TODOS OS TESTES PASSARAM!" >> "${SUMMARY_FILE}"
+    echo "✅ Sistema pronto para produção" >> "${SUMMARY_FILE}"
+else
+    echo "⚠️  ALGUNS TESTES FALHARAM" >> "${SUMMARY_FILE}"
+    echo "❌ Verifique o log detalhado: ${LOG_FILE}" >> "${SUMMARY_FILE}"
+fi
+
+echo "" >> "${SUMMARY_FILE}"
+echo "LOGS GERADOS" >> "${SUMMARY_FILE}"
+echo "-------------" >> "${SUMMARY_FILE}"
+echo "Log completo: ${LOG_FILE}" >> "${SUMMARY_FILE}"
+echo "Resumo: ${SUMMARY_FILE}" >> "${SUMMARY_FILE}"
+echo "===========================================" >> "${SUMMARY_FILE}"
+
+log "${GREEN}📁 Logs salvos em:${NC}"
+log "   📄 Log completo: ${LOG_FILE}"
+log "   📋 Resumo: ${SUMMARY_FILE}"
+log_plain "📁 Logs salvos em:"
+log_plain "   📄 Log completo: ${LOG_FILE}"
+log_plain "   📋 Resumo: ${SUMMARY_FILE}"
+
+# Mostrar resumo no terminal
 echo ""
-echo -e "${BLUE}Verifique os resultados acima para validar cada endpoint.${NC}"
-echo -e "${YELLOW}Contatos de teste criados podem ser limpos manualmente.${NC}\n"
+cat "${SUMMARY_FILE}"
