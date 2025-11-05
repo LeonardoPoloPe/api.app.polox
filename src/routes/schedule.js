@@ -23,71 +23,75 @@ router.use(authenticateToken);
  *           description: ID único do evento
  *         title:
  *           type: string
+ *           minLength: 2
+ *           maxLength: 255
  *           description: Título do evento
  *         description:
  *           type: string
+ *           maxLength: 1000
  *           description: Descrição do evento
  *         start_datetime:
  *           type: string
  *           format: date-time
- *           description: Data e hora de início
+ *           description: Data e hora de início (ISO 8601)
  *         end_datetime:
  *           type: string
  *           format: date-time
- *           description: Data e hora de fim
- *         all_day:
+ *           description: Data e hora de fim (ISO 8601, deve ser maior que start_datetime)
+ *         is_all_day:
  *           type: boolean
+ *           default: false
  *           description: Evento de dia inteiro
  *         event_type:
  *           type: string
  *           enum: [meeting, call, task, reminder, event, appointment]
+ *           default: meeting
  *           description: Tipo do evento
- *         priority:
- *           type: string
- *           enum: [low, medium, high, urgent]
- *           description: Prioridade do evento
  *         status:
  *           type: string
  *           enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
+ *           default: scheduled
  *           description: Status do evento
- *         location:
+ *         event_location:
  *           type: string
- *           description: Local do evento
- *         virtual_meeting_url:
+ *           maxLength: 255
+ *           description: Local físico do evento
+ *         meeting_link:
  *           type: string
  *           format: uri
- *           description: URL da reunião virtual
+ *           description: URL da reunião virtual (Google Meet, Zoom, Teams, etc)
  *         contato_id:
  *           type: integer
- *           description: ID do contato relacionado (unificado)
- *         attendees:
- *           type: array
- *           items:
- *             type: string
- *           description: IDs dos participantes
- *         recurring:
- *           type: boolean
- *           description: Evento recorrente
- *         recurring_frequency:
- *           type: string
- *           enum: [daily, weekly, monthly, yearly]
- *         recurring_until:
- *           type: string
- *           format: date
- *         visibility:
- *           type: string
- *           enum: [public, private]
- *           description: Visibilidade do evento
+ *           description: ID do contato relacionado (unificado - tabela contacts)
  *         timezone:
  *           type: string
- *           description: Fuso horário do evento
  *           default: America/Sao_Paulo
+ *           description: Fuso horário do evento
  *         reminder_minutes:
  *           type: integer
- *           description: Minutos antes do evento para lembrete
- *         metadata:
+ *           minimum: 0
+ *           default: 15
+ *           description: Minutos antes do evento para lembrete (0 = sem lembrete)
+ *         is_recurring:
+ *           type: boolean
+ *           default: false
+ *           description: Indica se o evento é recorrente
+ *         recurrence_pattern:
  *           type: object
- *           description: Metadados adicionais
+ *           nullable: true
+ *           description: Padrão de recorrência (objeto JSON livre)
+ *           properties:
+ *             frequency:
+ *               type: string
+ *               enum: [daily, weekly, monthly, yearly]
+ *               description: Frequência da recorrência
+ *             until:
+ *               type: string
+ *               format: date
+ *               description: Data limite para recorrência
+ *             interval:
+ *               type: integer
+ *               description: Intervalo (ex - a cada 2 semanas)
  *   tags:
  *     - name: Schedule
  *       description: Gestão de agenda e eventos
@@ -201,13 +205,149 @@ router.get("/events", ScheduleController.getEvents);
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/ScheduleEvent'
+ *           examples:
+ *             reuniao_simples:
+ *               summary: Reunião Simples
+ *               description: Exemplo básico de reunião com campos obrigatórios
+ *               value:
+ *                 title: "Reunião com Cliente"
+ *                 description: "Discussão sobre o projeto Q4 2025"
+ *                 start_datetime: "2025-11-05T14:00:00Z"
+ *                 end_datetime: "2025-11-05T15:00:00Z"
+ *                 event_type: "meeting"
+ *                 contato_id: 16
+ *             reuniao_virtual:
+ *               summary: Reunião Virtual Completa
+ *               description: Reunião online com link e lembretes
+ *               value:
+ *                 title: "Daily Standup - Time Dev"
+ *                 description: "Reunião diária da equipe de desenvolvimento"
+ *                 start_datetime: "2025-11-05T09:00:00Z"
+ *                 end_datetime: "2025-11-05T09:30:00Z"
+ *                 is_all_day: false
+ *                 event_type: "meeting"
+ *                 status: "scheduled"
+ *                 event_location: "Online"
+ *                 meeting_link: "https://meet.google.com/abc-defg-hij"
+ *                 timezone: "America/Sao_Paulo"
+ *                 reminder_minutes: 15
+ *             ligacao:
+ *               summary: Ligação Telefônica
+ *               description: Exemplo de evento tipo ligação
+ *               value:
+ *                 title: "Ligação - Follow up Proposta"
+ *                 description: "Ligar para cliente sobre proposta comercial"
+ *                 start_datetime: "2025-11-06T10:00:00Z"
+ *                 end_datetime: "2025-11-06T10:30:00Z"
+ *                 event_type: "call"
+ *                 status: "scheduled"
+ *                 contato_id: 16
+ *                 reminder_minutes: 30
+ *             tarefa:
+ *               summary: Tarefa/To-do
+ *               description: Exemplo de tarefa a ser realizada
+ *               value:
+ *                 title: "Revisar contrato"
+ *                 description: "Revisar e aprovar contrato do fornecedor XYZ"
+ *                 start_datetime: "2025-11-07T08:00:00Z"
+ *                 end_datetime: "2025-11-07T12:00:00Z"
+ *                 event_type: "task"
+ *                 status: "scheduled"
+ *                 reminder_minutes: 60
+ *             evento_dia_inteiro:
+ *               summary: Evento Dia Inteiro
+ *               description: Exemplo de evento que dura o dia todo
+ *               value:
+ *                 title: "Conferência Tech Summit 2025"
+ *                 description: "Participação na conferência anual de tecnologia"
+ *                 start_datetime: "2025-11-10T00:00:00Z"
+ *                 end_datetime: "2025-11-10T23:59:59Z"
+ *                 is_all_day: true
+ *                 event_type: "event"
+ *                 event_location: "Centro de Convenções SP"
+ *                 reminder_minutes: 1440
+ *             evento_recorrente:
+ *               summary: Evento Recorrente
+ *               description: Exemplo de evento que se repete (reunião semanal)
+ *               value:
+ *                 title: "Reunião Semanal - Planejamento"
+ *                 description: "Reunião de planejamento toda segunda-feira"
+ *                 start_datetime: "2025-11-11T09:00:00Z"
+ *                 end_datetime: "2025-11-11T10:00:00Z"
+ *                 event_type: "meeting"
+ *                 status: "scheduled"
+ *                 meeting_link: "https://zoom.us/j/123456789"
+ *                 is_recurring: true
+ *                 recurrence_pattern:
+ *                   frequency: "weekly"
+ *                   until: "2025-12-31"
+ *                   interval: 1
+ *                 reminder_minutes: 15
+ *             sem_lembrete:
+ *               summary: Evento Sem Lembrete
+ *               description: Exemplo de evento sem notificação prévia
+ *               value:
+ *                 title: "Almoço Executivo"
+ *                 start_datetime: "2025-11-08T12:00:00Z"
+ *                 end_datetime: "2025-11-08T13:30:00Z"
+ *                 event_type: "appointment"
+ *                 event_location: "Restaurante Braz - Faria Lima"
+ *                 reminder_minutes: 0
  *     responses:
  *       201:
  *         description: Evento criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/ScheduleEvent'
+ *                 message:
+ *                   type: string
+ *                   example: "Evento criado com sucesso"
  *       400:
  *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "errors.validation_error"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "VALIDATION_ERROR"
+ *                     message:
+ *                       type: string
+ *                       example: "\"end_datetime\" must be greater than \"ref:start_datetime\""
  *       409:
  *         description: Conflitos de horário detectados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Conflitos de horário detectados"
+ *                 conflicts:
+ *                   type: array
+ *                   items:
+ *                     type: object
  */
 router.post("/events", ScheduleController.createEvent);
 
