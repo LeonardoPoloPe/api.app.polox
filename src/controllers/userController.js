@@ -200,6 +200,137 @@ class UserController {
   });
 
   /**
+   * ✏️ UPDATE USER - Atualizar usuário por ID (Admin)
+   */
+  static updateUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name, email, role, company_id, status } = req.body;
+
+    try {
+      // Verificar se usuário existe
+      const existingUser = await query(
+        `
+        SELECT id, email, user_role 
+        FROM users 
+        WHERE id = $1 AND deleted_at IS NULL
+      `,
+        [id]
+      );
+
+      if (existingUser.rows.length === 0) {
+        throw new ApiError(
+          404,
+          tc(req, "userController", "validation.user_not_found")
+        );
+      }
+
+      const currentUser = existingUser.rows[0];
+
+      // Verificar se email já está em uso por outro usuário
+      if (email && email !== currentUser.email) {
+        const emailCheck = await query(
+          `
+          SELECT id FROM users 
+          WHERE email = $1 AND id != $2 AND deleted_at IS NULL
+        `,
+          [email.toLowerCase(), id]
+        );
+
+        if (emailCheck.rows.length > 0) {
+          throw new ApiError(
+            409,
+            tc(req, "userController", "validation.email_in_use")
+          );
+        }
+      }
+
+      // Construir query de atualização dinamicamente
+      const updates = [];
+      const values = [];
+      let paramIndex = 1;
+
+      if (name !== undefined) {
+        updates.push(`full_name = $${paramIndex}`);
+        values.push(name.trim());
+        paramIndex++;
+      }
+
+      if (email !== undefined) {
+        updates.push(`email = $${paramIndex}`);
+        values.push(email.toLowerCase());
+        paramIndex++;
+      }
+
+      if (role !== undefined) {
+        updates.push(`user_role = $${paramIndex}`);
+        values.push(role);
+        paramIndex++;
+      }
+
+      if (company_id !== undefined) {
+        updates.push(`company_id = $${paramIndex}`);
+        values.push(company_id);
+        paramIndex++;
+      }
+
+      if (status !== undefined) {
+        updates.push(`status = $${paramIndex}`);
+        values.push(status);
+        paramIndex++;
+      }
+
+      if (updates.length === 0) {
+        throw new ApiError(
+          400,
+          tc(req, "userController", "validation.no_fields_to_update")
+        );
+      }
+
+      updates.push("updated_at = NOW()");
+      values.push(id);
+
+      // Atualizar usuário
+      const userResult = await query(
+        `
+        UPDATE users 
+        SET ${updates.join(", ")}
+        WHERE id = $${paramIndex} AND deleted_at IS NULL
+        RETURNING id, full_name, email, user_role, company_id, created_at, updated_at
+      `,
+        values
+      );
+
+      const user = userResult.rows[0];
+
+      // Log de auditoria
+      auditLogger(tc(req, "userController", "audit.user_updated"), {
+        adminId: req.user.id,
+        updatedUserId: id,
+        changes: { name, email, role, company_id, status },
+        ip: req.ip,
+      });
+
+      res.json({
+        success: true,
+        message: tc(req, "userController", "update.success"),
+        data: {
+          user: {
+            id: user.id,
+            name: user.full_name,
+            email: user.email,
+            role: user.user_role,
+            companyId: user.company_id,
+            createdAt: user.created_at,
+            updatedAt: user.updated_at,
+          },
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
+  });
+
+  /**
    * ✏️ UPDATE USER PROFILE - Atualizar perfil do usuário
    */
   static updateProfile = asyncHandler(async (req, res) => {

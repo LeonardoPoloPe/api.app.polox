@@ -45,6 +45,14 @@ const changePasswordValidation = Joi.object({
   newPassword: Joi.string().min(6).required(),
 });
 
+const updateUserValidation = Joi.object({
+  name: Joi.string().min(2).max(255),
+  email: Joi.string().email(),
+  role: Joi.string().valid("super_admin", "company_admin", "manager", "user"),
+  company_id: Joi.number().integer(),
+  status: Joi.string().valid("active", "inactive", "suspended"),
+});
+
 /**
  * @swagger
  * /users:
@@ -210,6 +218,82 @@ router.put(
  *         description: Usuário não encontrado
  */
 router.get("/:id", rateLimiter.general, UserController.getUserById);
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     summary: Atualizar usuário
+ *     description: Atualiza os dados de um usuário específico (requer permissões de admin)
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do usuário
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 255
+ *                 example: "Maria Silva"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "maria.silva@exemplo.com"
+ *               role:
+ *                 type: string
+ *                 enum: ["super_admin", "company_admin", "manager", "user"]
+ *                 example: "user"
+ *               company_id:
+ *                 type: integer
+ *                 example: 1
+ *               status:
+ *                 type: string
+ *                 enum: ["active", "inactive", "suspended"]
+ *                 example: "active"
+ *     responses:
+ *       200:
+ *         description: Usuário atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Dados inválidos
+ *       404:
+ *         description: Usuário não encontrado
+ *       409:
+ *         description: Email já está em uso
+ */
+router.put(
+  "/:id",
+  requireCompanyAdmin,
+  rateLimiter.general,
+  validateRequest(updateUserValidation),
+  UserController.updateUser
+);
 
 /**
  * @swagger

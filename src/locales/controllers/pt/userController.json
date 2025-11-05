@@ -10,7 +10,8 @@
     "invalid_current_password": "Senha atual incorreta",
     "company_id_required": "ID da empresa é obrigatório",
     "email_in_use": "Email já está em uso",
-    "user_not_found": "Usuário não encontrado"
+    "user_not_found": "Usuário não encontrado",
+    "no_fields_to_update": "Nenhum campo para atualizar"
   },
   "list": {
     "success": "Usuários retornados com sucesso"
@@ -21,6 +22,9 @@
   },
   "create": {
     "success": "Usuário criado com sucesso"
+  },
+  "update": {
+    "success": "Usuário atualizado com sucesso"
   },
   "reset_password": {
     "success": "Senha resetada com sucesso"
@@ -36,6 +40,7 @@
   "audit": {
     "users_listed": "Usuários listados",
     "user_viewed": "Usuário visualizado",
+    "user_updated": "Usuário atualizado por administrador",
     "profile_viewed": "Perfil visualizado",
     "profile_updated": "Perfil atualizado",
     "user_created": "Usuário criado",
