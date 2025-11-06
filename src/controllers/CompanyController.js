@@ -193,7 +193,7 @@ class CompanyController {
       supportEmail: "",
     }),
     // Hierarquia e White-Label
-    company_type: Joi.string().valid("tenant", "partner").required(),
+    company_type: Joi.string().valid("tenant", "partner", "license").required(),
     partner_id: Joi.number().integer().allow(null),
     custom_domain: Joi.string().max(100).allow("").optional(),
     logo_url: Joi.string().uri().allow("").optional(),
@@ -232,7 +232,7 @@ class CompanyController {
     enabled_modules: Joi.array().items(Joi.string()),
     settings: Joi.object(),
     // Campos de hierarquia e whitelabel
-    company_type: Joi.string().valid("tenant", "partner"),
+    company_type: Joi.string().valid("tenant", "partner", "license"),
     partner_id: Joi.number().integer().allow(null),
     logo_url: Joi.string().uri().allow("", null).optional(),
     favicon_url: Joi.string().uri().allow("", null).optional(),
@@ -308,6 +308,21 @@ class CompanyController {
       queryParams.push(req.query.plan);
     }
 
+    if (req.query.subscription_plan) {
+      whereClause += ` AND c.subscription_plan = $${++paramCount}`;
+      queryParams.push(req.query.subscription_plan);
+    }
+
+    if (req.query.company_type) {
+      whereClause += ` AND c.company_type = $${++paramCount}`;
+      queryParams.push(req.query.company_type);
+    }
+
+    if (req.query.partner_id) {
+      whereClause += ` AND c.partner_id = $${++paramCount}`;
+      queryParams.push(parseInt(req.query.partner_id));
+    }
+
     if (req.query.search) {
       whereClause += ` AND (c.company_name ILIKE $${++paramCount} OR c.company_domain ILIKE $${++paramCount})`;
       queryParams.push(`%${req.query.search}%`, `%${req.query.search}%`);
@@ -371,6 +386,9 @@ class CompanyController {
       filters: {
         status: req.query.status,
         plan: req.query.plan,
+        subscription_plan: req.query.subscription_plan,
+        company_type: req.query.company_type,
+        partner_id: req.query.partner_id,
         search: req.query.search,
       },
     });
@@ -696,240 +714,6 @@ class CompanyController {
     });
 
     return successResponse(res, company);
-  });
-
-  /**
-   * 📊 ESTATÍSTICAS GLOBAIS
-   * GET /api/companies/stats
-   */
-  static create = asyncHandler(async (req, res) => {
-    let companyData = CompanyController.validateWithTranslation(
-      req,
-      CompanyController.createCompanySchema,
-      req.body
-    );
-
-    // Lógica de hierarquia e whitelabel
-    // Se Super Admin, pode definir company_type e partner_id manualmente
-    // Se Partner, força company_type = 'tenant' e partner_id = id da empresa do usuário logado
-    if (req.user.role === "partner") {
-      companyData.company_type = "tenant";
-      companyData.partner_id = req.user.companyId;
-    } else if (!companyData.company_type) {
-      companyData.company_type = "tenant"; // padrão
-    }
-
-    // 🔍 VERIFICAR SE DOMÍNIO JÁ EXISTE
-    const domainCheck = await query(
-      "SELECT id, company_name FROM polox.companies WHERE company_domain = $1 AND deleted_at IS NULL",
-      [companyData.domain]
-    );
-
-    if (domainCheck.rows.length > 0) {
-      throw new ApiError(
-        400,
-        tc(req, "companyController", "create.domain_in_use", {
-          domain: companyData.domain,
-          companyName: domainCheck.rows[0].company_name,
-        })
-      );
-    }
-
-    // 🔍 VERIFICAR SE EMAIL DO ADMIN JÁ EXISTE
-    const emailCheck = await query(
-      "SELECT id, full_name FROM polox.users WHERE email = $1 AND deleted_at IS NULL",
-      [companyData.admin_email]
-    );
-
-    if (emailCheck.rows.length > 0) {
-      throw new ApiError(
-        400,
-        tc(req, "companyController", "create.email_in_use", {
-          email: companyData.admin_email,
-        })
-      );
-    }
-
-    // 🔐 INICIAR TRANSAÇÃO
-    const client = await beginTransaction();
-    let committed = false;
-
-    try {
-      // 1️⃣ CRIAR EMPRESA
-      const companySlug = companyData.domain
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "");
-
-      // Adicionar campos de hierarquia e branding ao insert
-      const createCompanyQuery = `
-        INSERT INTO polox.companies (
-          company_name, company_domain, slug, subscription_plan, industry, company_size,
-          admin_name, admin_email, admin_phone,
-          enabled_modules, settings, status, created_at, updated_at,
-          company_type, partner_id, logo_url, favicon_url, primary_color, secondary_color,
-          custom_domain, support_email, support_phone, terms_url, privacy_url, tenant_plan
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', NOW(), NOW(),
-          $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
-        )
-        RETURNING *
-      `;
-
-      const companyResult = await client.query(createCompanyQuery, [
-        companyData.name,
-        companyData.domain,
-        companySlug,
-        companyData.plan,
-        companyData.industry,
-        companyData.company_size,
-        companyData.admin_name,
-        companyData.admin_email,
-        companyData.admin_phone,
-        JSON.stringify(companyData.enabled_modules),
-        JSON.stringify(companyData.settings),
-        companyData.company_type,
-        companyData.partner_id || null,
-        companyData.logo_url || null,
-        companyData.favicon_url || null,
-        companyData.primary_color || null,
-        companyData.secondary_color || null,
-        companyData.custom_domain || null,
-        companyData.support_email || null,
-        companyData.support_phone || null,
-        companyData.terms_url || null,
-        companyData.privacy_url || null,
-        companyData.tenant_plan || null,
-      ]);
-
-      const newCompany = companyResult.rows[0];
-
-      // 2️⃣ CRIAR USUÁRIO ADMIN DA EMPRESA
-      const hashedPassword = await bcrypt.hash("admin123", 12); // Senha temporária
-
-      const createAdminQuery = `
-        INSERT INTO polox.users (
-          company_id, full_name, email, password_hash, user_role, 
-          phone, status, permissions, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, 'company_admin', $5, 'active', $6, NOW(), NOW())
-        RETURNING id, full_name, email, user_role, status
-      `;
-
-      const adminResult = await client.query(createAdminQuery, [
-        newCompany.id,
-        companyData.admin_name,
-        companyData.admin_email,
-        hashedPassword,
-        companyData.admin_phone,
-        JSON.stringify(["*"]) /* ...existing code... */,
-      ]);
-
-      const newAdmin = adminResult.rows[0];
-
-      // ...existing code...
-      // 3️⃣ CRIAR PERFIL DE GAMIFICAÇÃO PARA O ADMIN
-      await client.query(
-        `
-        INSERT INTO polox.user_gamification_profiles (
-          user_id, company_id, current_level, total_xp, total_coins, 
-          available_coins, created_at, updated_at
-        ) VALUES ($1, $2, 1, 0, 100, 100, NOW(), NOW())
-      `,
-        [newAdmin.id, newCompany.id]
-      );
-
-      // ...existing code...
-      // 4️⃣ CRIAR CONQUISTAS PADRÃO DA EMPRESA
-      const defaultAchievements = [
-        {
-          name: "Primeiro Login",
-          description: "Fez login pela primeira vez no sistema",
-          category: "onboarding",
-          unlock_criteria: JSON.stringify({ action: "first_login" }),
-          xp_reward: 10,
-          coin_reward: 5,
-        },
-        {
-          name: "Primeiro Cliente",
-          description: "Cadastrou o primeiro cliente",
-          category: "business",
-          unlock_criteria: JSON.stringify({ action: "first_client" }),
-          xp_reward: 50,
-          coin_reward: 25,
-        },
-        {
-          name: "Vendedor Iniciante",
-          description: "Realizou sua primeira venda",
-          category: "sales",
-          unlock_criteria: JSON.stringify({ action: "first_sale" }),
-          xp_reward: 75,
-          coin_reward: 50,
-        },
-      ];
-
-      for (const achievement of defaultAchievements) {
-        /* ...existing code... */
-      }
-
-      await commitTransaction(client);
-      committed = true;
-
-      // 📝 LOG DE AUDITORIA
-      auditLogger(tc(req, "companyController", "audit.company_created"), {
-        superAdminId: req.user.id,
-        companyId: newCompany.id,
-        companyName: newCompany.name,
-        adminEmail: newAdmin.email,
-        plan: newCompany.subscription_plan,
-        modules: companyData.enabled_modules,
-        ip: req.ip,
-        company_type: companyData.company_type,
-        partner_id: companyData.partner_id,
-      });
-
-      logger.info(
-        tc(req, "companyController", "info.company_created_success"),
-        {
-          superAdminId: req.user.id,
-          companyId: newCompany.id,
-          companyName: newCompany.name,
-          domain: newCompany.domain,
-          adminEmail: newAdmin.email,
-          company_type: companyData.company_type,
-          partner_id: companyData.partner_id,
-        }
-      );
-
-      return successResponse(
-        res,
-        {
-          company: {
-            ...newCompany,
-            enabled_modules:
-              typeof newCompany.enabled_modules === "string"
-                ? JSON.parse(newCompany.enabled_modules)
-                : newCompany.enabled_modules,
-            settings:
-              typeof newCompany.settings === "string"
-                ? JSON.parse(newCompany.settings)
-                : newCompany.settings,
-          },
-          admin: newAdmin,
-          temp_password:
-            process.env.DEFAULT_ADMIN_PASSWORD ||
-            Math.random().toString(36).slice(-8) +
-              Math.random().toString(36).slice(-8).toUpperCase() +
-              "123!",
-          login_url: `https://${newCompany.domain}.crm.ze9.com.br`,
-        },
-        tc(req, "companyController", "create.success"),
-        201
-      );
-    } catch (error) {
-      if (!committed) {
-        /* ...existing code... */
-      }
-      throw error;
-    }
   });
 
   /**

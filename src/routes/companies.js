@@ -78,6 +78,35 @@ router.get(
  *           type: string
  *           enum: [active, inactive, trial]
  *         description: Filtrar por status
+ *       - in: query
+ *         name: subscription_plan
+ *         schema:
+ *           type: string
+ *           enum: [starter, professional, enterprise, partner_pro]
+ *         description: Filtrar por plano de assinatura
+ *       - in: query
+ *         name: company_type
+ *         schema:
+ *           type: string
+ *           enum: [tenant, partner, license]
+ *         description: Filtrar por tipo de empresa
+ *       - in: query
+ *         name: partner_id
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por ID do parceiro
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar por nome ou domínio da empresa
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [name, created_at, users_count]
+ *           default: name
+ *         description: Ordenar resultados
  *     responses:
  *       200:
  *         description: Lista de empresas
@@ -131,7 +160,7 @@ router.get("/", rateLimiter.admin, CompanyController.index);
  *                 example: +55 11 98888-8888
  *               company_type:
  *                 type: string
- *                 enum: [tenant, partner]
+ *                 enum: [tenant, partner, license]
  *                 example: partner
  *               partner_id:
  *                 type: integer
@@ -289,6 +318,48 @@ router.get("/:id", rateLimiter.admin, CompanyController.show);
  *                 type: string
  *               admin_phone:
  *                 type: string
+ *               company_type:
+ *                 type: string
+ *                 enum: [tenant, partner, license]
+ *               partner_id:
+ *                 type: integer
+ *                 nullable: true
+ *               logo_url:
+ *                 type: string
+ *               favicon_url:
+ *                 type: string
+ *               primary_color:
+ *                 type: string
+ *               secondary_color:
+ *                 type: string
+ *               custom_domain:
+ *                 type: string
+ *               support_email:
+ *                 type: string
+ *               support_phone:
+ *                 type: string
+ *               terms_url:
+ *                 type: string
+ *               privacy_url:
+ *                 type: string
+ *               tenant_plan:
+ *                 type: string
+ *                 nullable: true
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive, trial]
+ *               max_users:
+ *                 type: integer
+ *               max_storage_mb:
+ *                 type: integer
+ *               trial_ends_at:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
+ *               subscription_ends_at:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
  *               enabled_modules:
  *                 type: array
  *                 items:
