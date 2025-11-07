@@ -146,7 +146,24 @@ const errorHandler = (error, req, res, next) => {
   let messageKey = "errors.internal_server_error";
   let errorCode = "INTERNAL_ERROR";
 
-  if (error.name === "ValidationError") {
+  // Priorizar statusCode se existir (para ApiError e similares)
+  if (error.statusCode) {
+    statusCode = error.statusCode;
+    errorCode = error.code || "ERROR";
+
+    // Mapear statusCode para messageKey padrão
+    if (statusCode === 400) {
+      messageKey = "errors.validation_error";
+    } else if (statusCode === 401) {
+      messageKey = "errors.unauthorized";
+    } else if (statusCode === 403) {
+      messageKey = "errors.forbidden";
+    } else if (statusCode === 404) {
+      messageKey = "errors.not_found";
+    } else if (statusCode >= 500) {
+      messageKey = "errors.internal_server_error";
+    }
+  } else if (error.name === "ValidationError") {
     statusCode = 400;
     messageKey = "errors.validation_error";
     errorCode = "VALIDATION_ERROR";
