@@ -177,7 +177,8 @@ class CompanyController {
       .min(2)
       .max(100)
       .pattern(/^[a-zA-Z0-9.-]+$/)
-      .required(),
+      .optional()
+      .allow(null, ""),
     plan: Joi.string().max(50).required(),
     industry: Joi.string().max(100).allow("").default(""),
     company_size: Joi.string().max(50).allow("").default(""),
@@ -411,20 +412,22 @@ class CompanyController {
       req.body
     );
 
-    // 🔍 VERIFICAR SE DOMÍNIO JÁ EXISTE
-    const domainCheck = await query(
-      "SELECT id, company_name FROM polox.companies WHERE company_domain = $1 AND deleted_at IS NULL",
-      [companyData.domain]
-    );
-
-    if (domainCheck.rows.length > 0) {
-      throw new ApiError(
-        400,
-        tc(req, "companyController", "create.domain_in_use", {
-          domain: companyData.domain,
-          companyName: domainCheck.rows[0].company_name,
-        })
+    // 🔍 VERIFICAR SE DOMÍNIO JÁ EXISTE (apenas se domain foi fornecido)
+    if (companyData.domain) {
+      const domainCheck = await query(
+        "SELECT id, company_name FROM polox.companies WHERE company_domain = $1 AND deleted_at IS NULL",
+        [companyData.domain]
       );
+
+      if (domainCheck.rows.length > 0) {
+        throw new ApiError(
+          400,
+          tc(req, "companyController", "create.domain_in_use", {
+            domain: companyData.domain,
+            companyName: domainCheck.rows[0].company_name,
+          })
+        );
+      }
     }
 
     // 🔍 VERIFICAR SE EMAIL DO ADMIN JÁ EXISTE
@@ -448,9 +451,11 @@ class CompanyController {
 
     try {
       // 1️⃣ CRIAR EMPRESA
+      // Gerar slug apenas se houver domain
       const companySlug = companyData.domain
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "");
+        ? companyData.domain.toLowerCase().replace(/[^a-z0-9-]/g, "")
+        : null;
+
       const createCompanyQuery = `
         INSERT INTO polox.companies (
           company_name, company_domain, slug, subscription_plan, industry, company_size,
@@ -469,7 +474,7 @@ class CompanyController {
       `;
       const companyResult = await client.query(createCompanyQuery, [
         companyData.name,
-        companyData.domain,
+        companyData.domain || null,
         companySlug,
         companyData.plan,
         companyData.industry,
