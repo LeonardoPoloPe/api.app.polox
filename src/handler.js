@@ -1,3 +1,40 @@
+/**
+ * ============================================================================
+ * POLO X - Proprietary System / Sistema Proprietário
+ * ============================================================================
+ * 
+ * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
+ * CNPJ: 55.419.946/0001-89
+ * 
+ * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
+ * Trade Name / Nome Fantasia: Polo X
+ * 
+ * Developer / Desenvolvedor: Leonardo Polo Pereira
+ * 
+ * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
+ * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
+ * 
+ * This code is proprietary and confidential. It is strictly prohibited to:
+ * Este código é proprietário e confidencial. É estritamente proibido:
+ * - Copy, modify or distribute without express authorization
+ * - Copiar, modificar ou distribuir sem autorização expressa
+ * - Use or integrate in any other project
+ * - Usar ou integrar em outros projetos
+ * - Share with unauthorized third parties
+ * - Compartilhar com terceiros não autorizados
+ * 
+ * Violations will be prosecuted under Brazilian Law:
+ * Violações serão processadas conforme Lei Brasileira:
+ * - Law 9.609/98 (Software Law / Lei do Software)
+ * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
+ * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
+ * 
+ * INPI Registration: In progress / Em andamento
+ * 
+ * For licensing / Para licenciamento: contato@polox.com.br
+ * ============================================================================
+ */
+
 // Sentry será carregado automaticamente via Layer e NODE_OPTIONS
 
 const serverless = require("serverless-http");
@@ -12,6 +49,31 @@ const {
   errorHandler,
   notFoundHandler,
 } = require("./utils/response-helpers");
+
+// ============================================================================
+// COPYRIGHT PROTECTION - Validação de Propriedade Intelectual
+// ============================================================================
+const {
+  initializeCopyrightValidator,
+  copyrightMiddleware,
+} = require("./middleware/copyright-validator");
+
+// Executa validação ao iniciar (apenas em produção/sandbox)
+if (
+  process.env.NODE_ENV === "production" ||
+  process.env.NODE_ENV === "sandbox"
+) {
+  try {
+    initializeCopyrightValidator();
+  } catch (error) {
+    logger.error("Copyright validation failed:", error);
+    // Em modo estrito, não permite inicialização
+    if (process.env.COPYRIGHT_STRICT_MODE === "true") {
+      throw error;
+    }
+  }
+}
+// ============================================================================
 
 // Configuração do Express
 const app = express();
@@ -38,67 +100,67 @@ app.use(
  * ============================================================================
  * 🌐 CONFIGURAÇÃO CORS (Cross-Origin Resource Sharing)
  * ============================================================================
- * 
+ *
  * Define as origens (domínios) permitidas para acessar a API.
- * 
+ *
  * 📖 DOCUMENTAÇÃO COMPLETA: docs/CONFIGURACAO_CORS.md
- * 
+ *
  * ⚠️  IMPORTANTE:
  * - URLs devem ser EXATAS (http/https, com/sem www)
  * - Separadas por ambiente (dev, sandbox, prod)
  * - Após adicionar nova origem, fazer DEPLOY no ambiente
  * - Testar com: curl -H "Origin: https://nova-url.com" [endpoint] -v
- * 
+ *
  * 🔍 TROUBLESHOOTING:
  * - Se CORS bloquear, verificar logs: "CORS bloqueou origem: [url]"
  * - Verificar se NODE_ENV está correto no Lambda
  * - Confirmar que a URL é exatamente como o navegador envia
- * 
+ *
  * ============================================================================
  */
 const getAllowedOrigins = () => {
-  const env = process.env.NODE_ENV || 'dev';
-  
+  const env = process.env.NODE_ENV || "dev";
+
   // 🌐 URLs das APIs (para Swagger UI poder testar os endpoints)
   const apiUrls = [
-    'https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com', // DEV API
-    'https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com', // SANDBOX API
-    'https://18yioqws85.execute-api.sa-east-1.amazonaws.com'  // PROD API
+    "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com", // DEV API
+    "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com", // SANDBOX API
+    "https://18yioqws85.execute-api.sa-east-1.amazonaws.com", // PROD API
   ];
-  
+
   const origins = {
     // 🔴 PRODUÇÃO - Domínios oficiais e white-labels
     prod: [
-      'https://app.polox.com',        // App principal
-      'https://app.polox.com.br',     // App principal (.br)
-      'https://polox.com',            // Site institucional
-      'https://polox.com.br',         // Site institucional (.br)
-      'https://bomelo.com.br',        // White-label: Bomelo (parceiro)
-      ...apiUrls                       // URLs da API (Swagger)
+      "https://app.polox.com", // App principal
+      "https://app.polox.com.br", // App principal (.br)
+      "https://polox.com", // Site institucional
+      "https://polox.com.br", // Site institucional (.br)
+      "https://bomelo.com.br", // White-label: Bomelo (parceiro)
+      ...apiUrls, // URLs da API (Swagger)
       // 📝 Para adicionar novo white-label, adicione aqui e faça deploy
     ],
-    
+
     // 🟡 SANDBOX - Ambiente de homologação/testes
     sandbox: [
-      'https://app-sandbox.polox.com',      // App de testes
-      'https://app-sandbox.polox.com.br',   // App de testes (.br)
-      'https://sandbox.polox.com',          // Sandbox alternativo
-      'https://sandbox.polox.com.br',       // Sandbox alternativo (.br)
-      'http://localhost:3000',              // Dev local (React padrão)
-      'http://localhost:3001',              // Dev local (porta alternativa)
-      ...apiUrls                             // URLs da API (Swagger)
+      "https://app-sandbox.polox.com", // App de testes
+      "https://app-sandbox.polox.com.br", // App de testes (.br)
+      "https://sandbox.polox.com", // Sandbox alternativo
+      "https://sandbox.polox.com.br", // Sandbox alternativo (.br)
+      "http://localhost:3000", // Dev local (React padrão)
+      "http://localhost:3001", // Dev local (porta alternativa)
+      ...apiUrls, // URLs da API (Swagger)
     ],
-    
+
     // 🟢 DESENVOLVIMENTO - Apenas localhost
     dev: [
-      'http://localhost:3000',   // React/Next.js padrão
-      'http://localhost:3001',   // Porta alternativa
-      'http://localhost:5173',   // Vite padrão
-      'http://localhost:5174',   // Vite alternativa
-      ...apiUrls                  // URLs da API (Swagger)
-    ]
+      "http://localhost:3000", // React/Next.js padrão
+      "http://localhost:3001", // Porta alternativa
+      "http://localhost:5173", // Vite padrão
+      "http://localhost:5174", // Vite alternativa
+      ...apiUrls, // URLs da API (Swagger)
+    ],
   };
-  
+
   // Retorna origens do ambiente ou dev como fallback
   return origins[env] || origins.dev;
 };
@@ -107,41 +169,41 @@ const getAllowedOrigins = () => {
  * ============================================================================
  * 🔧 MIDDLEWARE CORS - Configuração do Express
  * ============================================================================
- * 
+ *
  * Valida e permite requisições de diferentes origens (cross-origin).
- * 
+ *
  * 📋 CONFIGURAÇÕES:
- * 
+ *
  * • origin: Função que valida se a origem é permitida
  *   - Permite requisições sem origin (mobile apps, Postman, curl)
  *   - Valida contra a lista getAllowedOrigins()
  *   - Loga tentativas bloqueadas para debugging
- * 
+ *
  * • credentials: true
  *   - Permite envio de cookies e headers de autenticação
  *   - Necessário para JWT em headers Authorization
- * 
+ *
  * • methods: Métodos HTTP permitidos
  *   - GET, POST, PUT, DELETE, PATCH: Operações normais
  *   - OPTIONS: Obrigatório para preflight requests do navegador
- * 
+ *
  * • allowedHeaders: Headers que o cliente pode enviar
  *   - Content-Type: Tipo de conteúdo (application/json)
  *   - Authorization: Token JWT (Bearer token)
  *   - Accept-Language: Idioma preferido (pt, en, es)
  *   - X-Requested-With: Identificação de requisições AJAX
- * 
+ *
  * • exposedHeaders: Headers que o cliente pode ler na resposta
  *   - Content-Language: Idioma da resposta
- * 
+ *
  * • maxAge: 86400 (24 horas)
  *   - Cache da resposta de preflight no navegador
  *   - Reduz número de requests OPTIONS
- * 
+ *
  * 🔍 PREFLIGHT REQUEST:
  * Navegadores fazem um request OPTIONS antes de POST/PUT/DELETE para verificar
  * se a origem é permitida. Esta configuração responde automaticamente.
- * 
+ *
  * 📖 Docs completas: docs/CONFIGURACAO_CORS.md
  * ============================================================================
  */
@@ -149,17 +211,17 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = getAllowedOrigins();
-      
+
       // Permitir requisições sem origin (como mobile apps, Postman, etc)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
         logger.warn(`CORS bloqueou origem: ${origin}`, {
           origin,
           allowedOrigins,
-          env: process.env.NODE_ENV
+          env: process.env.NODE_ENV,
         });
         callback(new Error(`Origem ${origin} não permitida por CORS`));
       }
@@ -167,15 +229,15 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
-      "Content-Type", 
-      "Authorization", 
+      "Content-Type",
+      "Authorization",
       "X-Requested-With",
       "Accept",
       "Accept-Language",
-      "Origin"
+      "Origin",
     ],
     exposedHeaders: ["Content-Language"],
-    maxAge: 86400 // 24 horas
+    maxAge: 86400, // 24 horas
   })
 );
 
@@ -185,6 +247,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Middleware de internacionalização
 app.use(i18nMiddleware);
+
+// Middleware de copyright (adiciona headers de propriedade)
+app.use(copyrightMiddleware);
 
 // Middleware para helpers de resposta
 app.use(responseHelpers);
@@ -349,12 +414,12 @@ app.get("/", (req, res) => {
         current: req.language || "pt",
         supported: ["pt", "en", "es"],
       },
-          endpoints: {
-            health: "/health",
-            api: "/api/v1",
-            docs: "/api/v1/docs",
-            languages: "/languages",
-          },
+      endpoints: {
+        health: "/health",
+        api: "/api/v1",
+        docs: "/api/v1/docs",
+        languages: "/languages",
+      },
     },
     "api.welcome"
   );

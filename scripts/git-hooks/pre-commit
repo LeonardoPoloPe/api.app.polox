@@ -1,0 +1,137 @@
+#!/usr/bin/env node
+
+/**
+ * GIT PRE-COMMIT HOOK - Validador de Copyright
+ * 
+ * Este hook valida que todos os arquivos .js modificados
+ * possuem o header de copyright antes de permitir o commit
+ * 
+ * Instalação:
+ * 1. Torne executável: chmod +x scripts/git-hooks/pre-commit
+ * 2. Copie para: cp scripts/git-hooks/pre-commit .git/hooks/
+ * 
+ * Ou use: npm run setup:git-hooks
+ */
+
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// Cores para terminal
+const colors = {
+  reset: '\x1b[0m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m'
+};
+
+/**
+ * Verifica se arquivo tem header de copyright
+ */
+function hasCopyrightHeader(filePath) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    
+    return (
+      content.includes('POLO X - Proprietary System') &&
+      content.includes('Copyright (c) 2025 Polo X') &&
+      content.includes('Leonardo Polo Pereira')
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Obtém lista de arquivos .js modificados (staged)
+ */
+function getStagedJsFiles() {
+  try {
+    const output = execSync('git diff --cached --name-only --diff-filter=ACM', {
+      encoding: 'utf8'
+    });
+    
+    return output
+      .split('\n')
+      .filter(file => file.endsWith('.js') && file.trim() !== '')
+      .filter(file => {
+        // Ignora alguns arquivos
+        const ignore = [
+          'node_modules',
+          'coverage',
+          'dist',
+          'build',
+          '.git'
+        ];
+        return !ignore.some(pattern => file.includes(pattern));
+      });
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * Executa validação
+ */
+function validate() {
+  console.log(`${colors.cyan}╔════════════════════════════════════════════════════════════════╗${colors.reset}`);
+  console.log(`${colors.cyan}║          POLO X - Copyright Pre-Commit Validator              ║${colors.reset}`);
+  console.log(`${colors.cyan}╚════════════════════════════════════════════════════════════════╝${colors.reset}`);
+  console.log('');
+
+  const stagedFiles = getStagedJsFiles();
+
+  if (stagedFiles.length === 0) {
+    console.log(`${colors.green}✓ No JavaScript files to validate${colors.reset}`);
+    return true;
+  }
+
+  console.log(`${colors.blue}📝 Validating ${stagedFiles.length} JavaScript file(s)...${colors.reset}`);
+  console.log('');
+
+  const violations = [];
+
+  for (const file of stagedFiles) {
+    if (!hasCopyrightHeader(file)) {
+      violations.push(file);
+      console.log(`${colors.red}✗ Missing copyright: ${file}${colors.reset}`);
+    } else {
+      console.log(`${colors.green}✓ Valid copyright: ${file}${colors.reset}`);
+    }
+  }
+
+  console.log('');
+
+  if (violations.length > 0) {
+    console.log(`${colors.red}═══════════════════════════════════════════════════════════════${colors.reset}`);
+    console.log(`${colors.red}❌ COMMIT BLOCKED - Copyright headers missing${colors.reset}`);
+    console.log(`${colors.red}═══════════════════════════════════════════════════════════════${colors.reset}`);
+    console.log('');
+    console.log(`${colors.yellow}Found ${violations.length} file(s) without copyright header:${colors.reset}`);
+    violations.forEach(file => {
+      console.log(`  ${colors.yellow}• ${file}${colors.reset}`);
+    });
+    console.log('');
+    console.log(`${colors.cyan}💡 Solution: Run this command to add headers:${colors.reset}`);
+    console.log(`   ${colors.green}node scripts/add-copyright-headers.js${colors.reset}`);
+    console.log('');
+    console.log(`${colors.cyan}Or bypass this check (NOT RECOMMENDED):${colors.reset}`);
+    console.log(`   ${colors.yellow}git commit --no-verify${colors.reset}`);
+    console.log('');
+    
+    return false;
+  }
+
+  console.log(`${colors.green}═══════════════════════════════════════════════════════════════${colors.reset}`);
+  console.log(`${colors.green}✅ All files have valid copyright headers${colors.reset}`);
+  console.log(`${colors.green}═══════════════════════════════════════════════════════════════${colors.reset}`);
+  console.log('');
+
+  return true;
+}
+
+// Executa validação
+const isValid = validate();
+process.exit(isValid ? 0 : 1);

@@ -51,7 +51,10 @@
     "lint:fix": "eslint src/ --fix",
     "security:audit": "npm audit",
     "security:check": "node scripts/security-check.js",
-    "postinstall": "npm run setup:ssl"
+    "copyright:add": "node scripts/add-copyright-headers.js",
+    "copyright:validate": "node src/middleware/copyright-validator.js",
+    "git-hooks:setup": "node scripts/setup-git-hooks.js",
+    "postinstall": "npm run setup:ssl && npm run git-hooks:setup"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.914.0",
