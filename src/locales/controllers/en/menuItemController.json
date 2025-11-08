@@ -63,6 +63,11 @@
     "updated_count": "{{count}} menus reordered",
     "super_admin_required": "Only super_admin can reorder menus"
   },
+  "batchReorder": {
+    "success": "Menus batch reordered successfully",
+    "updated_groups": "{{count}} menu groups updated",
+    "super_admin_required": "Only super_admin can batch reorder menus"
+  },
   "hierarchy": {
     "success": "Menu hierarchy obtained successfully",
     "no_menus_found": "No menus found"

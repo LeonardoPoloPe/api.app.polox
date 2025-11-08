@@ -63,6 +63,11 @@
     "updated_count": "{{count}} menus reordenados",
     "super_admin_required": "Apenas super_admin pode reordenar menus"
   },
+  "batchReorder": {
+    "success": "Menus reordenados em lote com sucesso",
+    "updated_groups": "{{count}} grupos de menus atualizados",
+    "super_admin_required": "Apenas super_admin pode reordenar menus em lote"
+  },
   "hierarchy": {
     "success": "Hierarquia de menus obtida com sucesso",
     "no_menus_found": "Nenhum menu encontrado"

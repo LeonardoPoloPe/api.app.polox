@@ -160,6 +160,125 @@ router.post("/reorder", MenuItemController.reorder);
 
 /**
  * @swagger
+ * /menu-items/batch-reorder:
+ *   post:
+ *     summary: Reordena múltiplos grupos de menus em lote (RECOMENDADO)
+ *     description: |
+ *       Reordena múltiplos grupos de menus em uma transação atômica.
+ *
+ *       **Vantagens sobre /reorder:**
+ *       - ✅ Execução atômica (tudo ou nada)
+ *       - ✅ Evita conflitos de constraint unique
+ *       - ✅ Permite reordenar múltiplos níveis hierárquicos de uma vez
+ *       - ✅ Mais performático para grandes volumes
+ *
+ *       **Apenas super_admin**
+ *     tags: [Menu Items]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - updates
+ *             properties:
+ *               updates:
+ *                 type: array
+ *                 description: Array de grupos de menus a reordenar
+ *                 minItems: 1
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - menus
+ *                   properties:
+ *                     parent_id:
+ *                       type: integer
+ *                       nullable: true
+ *                       description: ID do menu pai (null para menus raiz)
+ *                     menus:
+ *                       type: array
+ *                       description: Lista de menus com suas novas posições
+ *                       minItems: 1
+ *                       items:
+ *                         type: object
+ *                         required:
+ *                           - id
+ *                           - order_position
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             description: ID do menu
+ *                           order_position:
+ *                             type: integer
+ *                             minimum: 0
+ *                             description: Nova posição do menu
+ *           examples:
+ *             menus_raiz_e_submenus:
+ *               summary: Reordenar menus raiz e submenus
+ *               value:
+ *                 updates:
+ *                   - parent_id: null
+ *                     menus:
+ *                       - id: 1
+ *                         order_position: 1
+ *                       - id: 2
+ *                         order_position: 2
+ *                       - id: 3
+ *                         order_position: 3
+ *                   - parent_id: 2
+ *                     menus:
+ *                       - id: 5
+ *                         order_position: 1
+ *                       - id: 6
+ *                         order_position: 2
+ *             apenas_menus_raiz:
+ *               summary: Reordenar apenas menus raiz
+ *               value:
+ *                 updates:
+ *                   - parent_id: null
+ *                     menus:
+ *                       - id: 1
+ *                         order_position: 3
+ *                       - id: 2
+ *                         order_position: 1
+ *                       - id: 3
+ *                         order_position: 2
+ *     responses:
+ *       200:
+ *         description: Menus reordenados com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   description: Menus atualizados agrupados por parent_id
+ *                   additionalProperties:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *       400:
+ *         description: Dados inválidos
+ *       403:
+ *         description: Apenas super_admin pode reordenar menus
+ *       404:
+ *         description: Um ou mais menus não encontrados
+ */
+router.post("/batch-reorder", MenuItemController.batchReorder);
+
+/**
+ * @swagger
  * /menu-items/{id}:
  *   get:
  *     summary: Busca menu por ID
@@ -246,6 +365,24 @@ router.get("/:id", MenuItemController.getById);
  *                 type: boolean
  *                 default: true
  *                 example: true
+ *               svg_color:
+ *                 type: string
+ *                 pattern: '^#[0-9A-F]{6}$'
+ *                 nullable: true
+ *                 example: "#3B82F6"
+ *                 description: "Cor do ícone SVG em formato hexadecimal (#RRGGBB)"
+ *               background_color:
+ *                 type: string
+ *                 pattern: '^#[0-9A-F]{6}$'
+ *                 nullable: true
+ *                 example: "#EFF6FF"
+ *                 description: "Cor de fundo no hover em formato hexadecimal (#RRGGBB)"
+ *               text_color:
+ *                 type: string
+ *                 pattern: '^#[0-9A-F]{6}$'
+ *                 nullable: true
+ *                 example: "#1E40AF"
+ *                 description: "Cor do texto em formato hexadecimal (#RRGGBB)"
  *           examples:
  *             menu_principal:
  *               summary: Menu Principal
@@ -261,6 +398,9 @@ router.get("/:id", MenuItemController.getById);
  *                 order_position: 100
  *                 visible_to_all: true
  *                 is_active: true
+ *                 svg_color: "#10B981"
+ *                 background_color: "#D1FAE5"
+ *                 text_color: "#065F46"
  *             submenu:
  *               summary: Submenu (filho do menu Configurações - ID 1)
  *               value:
@@ -275,6 +415,9 @@ router.get("/:id", MenuItemController.getById);
  *                 order_position: 50
  *                 visible_to_all: false
  *                 is_active: true
+ *                 svg_color: "#F59E0B"
+ *                 background_color: "#FEF3C7"
+ *                 text_color: "#92400E"
  *     responses:
  *       201:
  *         description: Menu criado com sucesso
@@ -363,6 +506,24 @@ router.post("/", MenuItemController.create);
  *                 type: boolean
  *                 description: Menu ativo/visível no sistema
  *                 example: true
+ *               svg_color:
+ *                 type: string
+ *                 pattern: '^#[0-9A-F]{6}$'
+ *                 nullable: true
+ *                 description: "Cor do ícone SVG em formato hexadecimal (#RRGGBB)"
+ *                 example: "#3B82F6"
+ *               background_color:
+ *                 type: string
+ *                 pattern: '^#[0-9A-F]{6}$'
+ *                 nullable: true
+ *                 description: "Cor de fundo no hover em formato hexadecimal (#RRGGBB)"
+ *                 example: "#EFF6FF"
+ *               text_color:
+ *                 type: string
+ *                 pattern: '^#[0-9A-F]{6}$'
+ *                 nullable: true
+ *                 description: "Cor do texto em formato hexadecimal (#RRGGBB)"
+ *                 example: "#1E40AF"
  *           examples:
  *             atualizar_traducoes:
  *               summary: Atualizar apenas traduções
@@ -408,6 +569,16 @@ router.post("/", MenuItemController.create);
  *                 order_position: 1
  *                 visible_to_all: true
  *                 is_active: true
+ *                 svg_color: "#8B5CF6"
+ *                 background_color: "#EDE9FE"
+ *                 text_color: "#5B21B6"
+ *             atualizar_cores:
+ *               summary: Atualizar cores do menu
+ *               description: Personalizar cores de ícone, fundo e texto
+ *               value:
+ *                 svg_color: "#EF4444"
+ *                 background_color: "#FEE2E2"
+ *                 text_color: "#991B1B"
  *     responses:
  *       200:
  *         description: Menu atualizado com sucesso

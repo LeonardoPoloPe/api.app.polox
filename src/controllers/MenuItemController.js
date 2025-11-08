@@ -78,6 +78,30 @@ class MenuItemController {
     admin_only: Joi.boolean().optional(),
     visible_to_all: Joi.boolean().optional(),
     link_type: Joi.string().valid("internal", "external").optional(),
+    svg_color: Joi.string()
+      .pattern(/^#[0-9A-F]{6}$/i)
+      .allow(null)
+      .optional()
+      .messages({
+        "string.pattern.base":
+          "svg_color deve estar no formato #RRGGBB (ex: #3B82F6)",
+      }),
+    background_color: Joi.string()
+      .pattern(/^#[0-9A-F]{6}$/i)
+      .allow(null)
+      .optional()
+      .messages({
+        "string.pattern.base":
+          "background_color deve estar no formato #RRGGBB (ex: #EFF6FF)",
+      }),
+    text_color: Joi.string()
+      .pattern(/^#[0-9A-F]{6}$/i)
+      .allow(null)
+      .optional()
+      .messages({
+        "string.pattern.base":
+          "text_color deve estar no formato #RRGGBB (ex: #1E40AF)",
+      }),
   });
 
   /**
@@ -98,6 +122,30 @@ class MenuItemController {
     is_active: Joi.boolean().optional(),
     is_special: Joi.boolean().optional(),
     admin_only: Joi.boolean().optional(),
+    svg_color: Joi.string()
+      .pattern(/^#[0-9A-F]{6}$/i)
+      .allow(null)
+      .optional()
+      .messages({
+        "string.pattern.base":
+          "svg_color deve estar no formato #RRGGBB (ex: #3B82F6)",
+      }),
+    background_color: Joi.string()
+      .pattern(/^#[0-9A-F]{6}$/i)
+      .allow(null)
+      .optional()
+      .messages({
+        "string.pattern.base":
+          "background_color deve estar no formato #RRGGBB (ex: #EFF6FF)",
+      }),
+    text_color: Joi.string()
+      .pattern(/^#[0-9A-F]{6}$/i)
+      .allow(null)
+      .optional()
+      .messages({
+        "string.pattern.base":
+          "text_color deve estar no formato #RRGGBB (ex: #1E40AF)",
+      }),
     visible_to_all: Joi.boolean().optional(),
     link_type: Joi.string().valid("internal", "external").optional(),
   }).min(1);
@@ -116,6 +164,33 @@ class MenuItemController {
       .min(1)
       .required(),
     parent_id: Joi.number().integer().allow(null).optional(),
+  });
+
+  /**
+   * Schema de validação para batch reorder (múltiplos grupos)
+   */
+  static batchReorderSchema = Joi.object({
+    updates: Joi.array()
+      .items(
+        Joi.object({
+          parent_id: Joi.number().integer().allow(null).optional(),
+          menus: Joi.array()
+            .items(
+              Joi.object({
+                id: Joi.number().integer().required(),
+                order_position: Joi.number().integer().min(0).required(),
+              })
+            )
+            .min(1)
+            .required(),
+        })
+      )
+      .min(1)
+      .required()
+      .messages({
+        "array.min": "Deve conter pelo menos um grupo de menus para reordenar",
+        "any.required": "Campo updates é obrigatório",
+      }),
   });
 
   /**
@@ -326,6 +401,52 @@ class MenuItemController {
       res,
       reorderedMenus,
       tc(req, "menuItemController", "reorder.success")
+    );
+  });
+
+  /**
+   * Reordena múltiplos grupos de menus em lote (batch)
+   * POST /api/menu-items/batch-reorder
+   * APENAS SUPER_ADMIN
+   *
+   * Esta é a forma recomendada para reordenar menus, pois:
+   * - Executa tudo em uma transação atômica
+   * - Evita conflitos de constraint unique
+   * - Permite reordenar múltiplos níveis de hierarquia de uma vez
+   */
+  static batchReorder = asyncHandler(async (req, res) => {
+    // Verificar se é super_admin
+    this.checkSuperAdmin(req);
+
+    // Normalizar dados: converter strings para números (compatibilidade com frontend)
+    const normalizedBody = {
+      ...req.body,
+      updates: req.body.updates?.map((group) => ({
+        ...group,
+        parent_id:
+          group.parent_id === null || group.parent_id === "null"
+            ? null
+            : parseInt(group.parent_id, 10),
+        menus: group.menus?.map((menu) => ({
+          id: parseInt(menu.id, 10),
+          order_position: parseInt(menu.order_position, 10),
+        })),
+      })),
+    };
+
+    // Validar dados
+    const validatedData = this.validateWithTranslation(
+      req,
+      this.batchReorderSchema,
+      normalizedBody
+    );
+
+    const result = await MenuItemModel.batchReorder(validatedData.updates);
+
+    return successResponse(
+      res,
+      result,
+      tc(req, "menuItemController", "batchReorder.success")
     );
   });
 

@@ -96,6 +96,7 @@ class MenuItemModel {
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
         visible_to_all,
+        svg_color, background_color, text_color,
         created_at, updated_at
       FROM polox.menu_items
       ${whereClause}
@@ -117,6 +118,7 @@ class MenuItemModel {
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
         visible_to_all,
+        svg_color, background_color, text_color,
         created_at, updated_at
       FROM polox.menu_items
       WHERE id = $1 AND deleted_at IS NULL
@@ -137,6 +139,7 @@ class MenuItemModel {
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
         visible_to_all,
+        svg_color, background_color, text_color,
         created_at, updated_at
       FROM polox.menu_items
       WHERE route = $1 AND deleted_at IS NULL
@@ -161,11 +164,28 @@ class MenuItemModel {
       parent_id = null,
       is_active = true,
       visible_to_all = true,
+      svg_color = null,
+      background_color = null,
+      text_color = null,
     } = menuData;
 
     // Validações básicas
     if (!label || !icon || !route) {
       throw new ValidationError("Label, ícone e rota são obrigatórios");
+    }
+
+    // Validar formato hexadecimal das cores (se fornecidas)
+    const hexColorRegex = /^#[0-9A-F]{6}$/i;
+    if (svg_color && !hexColorRegex.test(svg_color)) {
+      throw new ValidationError("svg_color deve estar no formato #RRGGBB");
+    }
+    if (background_color && !hexColorRegex.test(background_color)) {
+      throw new ValidationError(
+        "background_color deve estar no formato #RRGGBB"
+      );
+    }
+    if (text_color && !hexColorRegex.test(text_color)) {
+      throw new ValidationError("text_color deve estar no formato #RRGGBB");
     }
 
     // Verificar se rota já existe
@@ -194,13 +214,15 @@ class MenuItemModel {
       INSERT INTO polox.menu_items (
         label, icon, route, translations, order_position,
         parent_id, is_active, visible_to_all,
+        svg_color, background_color, text_color,
         created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
       RETURNING 
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
         visible_to_all,
+        svg_color, background_color, text_color,
         created_at, updated_at
     `;
 
@@ -213,6 +235,9 @@ class MenuItemModel {
       parent_id,
       is_active,
       visible_to_all,
+      svg_color,
+      background_color,
+      text_color,
     ]);
 
     return result.rows[0];
@@ -231,6 +256,32 @@ class MenuItemModel {
       throw new NotFoundError("Menu não encontrado");
     }
 
+    // Validar formato hexadecimal das cores (se fornecidas)
+    const hexColorRegex = /^#[0-9A-F]{6}$/i;
+    if (
+      updateData.svg_color !== undefined &&
+      updateData.svg_color !== null &&
+      !hexColorRegex.test(updateData.svg_color)
+    ) {
+      throw new ValidationError("svg_color deve estar no formato #RRGGBB");
+    }
+    if (
+      updateData.background_color !== undefined &&
+      updateData.background_color !== null &&
+      !hexColorRegex.test(updateData.background_color)
+    ) {
+      throw new ValidationError(
+        "background_color deve estar no formato #RRGGBB"
+      );
+    }
+    if (
+      updateData.text_color !== undefined &&
+      updateData.text_color !== null &&
+      !hexColorRegex.test(updateData.text_color)
+    ) {
+      throw new ValidationError("text_color deve estar no formato #RRGGBB");
+    }
+
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -245,6 +296,9 @@ class MenuItemModel {
       parent_id: "parent_id",
       is_active: "is_active",
       visible_to_all: "visible_to_all",
+      svg_color: "svg_color",
+      background_color: "background_color",
+      text_color: "text_color",
     };
 
     for (const [key, dbField] of Object.entries(allowedFields)) {
@@ -319,6 +373,7 @@ class MenuItemModel {
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
         visible_to_all,
+        svg_color, background_color, text_color,
         created_at, updated_at
     `;
 
@@ -495,6 +550,134 @@ class MenuItemModel {
 
     // Retornar menus atualizados
     return this.findAll({ parentId });
+  }
+
+  /**
+   * Reordena múltiplos grupos de menus em uma transação atômica
+   * Evita conflitos de constraint unique ao atualizar tudo de uma vez
+   * @param {Array<Object>} updates - Array de { parent_id, menus: [{ id, order_position }] }
+   * @returns {Promise<Object>} Resultado com menus atualizados por parent_id
+   */
+  static async batchReorder(updates) {
+    if (!Array.isArray(updates) || updates.length === 0) {
+      throw new ValidationError("updates deve ser um array não vazio");
+    }
+
+    // Validar estrutura de dados
+    for (const group of updates) {
+      if (!Array.isArray(group.menus) || group.menus.length === 0) {
+        throw new ValidationError("Cada grupo deve ter um array de menus");
+      }
+
+      for (const menu of group.menus) {
+        if (!menu.id || menu.order_position === undefined) {
+          throw new ValidationError("Cada menu deve ter id e order_position");
+        }
+
+        if (!Number.isInteger(menu.order_position) || menu.order_position < 0) {
+          throw new ValidationError(
+            "order_position deve ser um número inteiro >= 0"
+          );
+        }
+      }
+    }
+
+    // Coletar todos os IDs para verificar existência
+    const allIds = updates.flatMap((group) => group.menus.map((m) => m.id));
+
+    const checkQuery = `
+      SELECT id, parent_id FROM polox.menu_items 
+      WHERE id = ANY($1) AND deleted_at IS NULL
+    `;
+    const existingMenus = await query(checkQuery, [allIds]);
+
+    if (existingMenus.rows.length !== allIds.length) {
+      throw new NotFoundError(
+        `Esperado ${allIds.length} menus, mas encontrado ${existingMenus.rows.length}`
+      );
+    }
+
+    // Validar que cada menu está no parent_id correto
+    const menuParentMap = {};
+    existingMenus.rows.forEach((row) => {
+      menuParentMap[row.id] = row.parent_id;
+    });
+
+    for (const group of updates) {
+      const expectedParentId =
+        group.parent_id !== undefined ? group.parent_id : null;
+
+      for (const menu of group.menus) {
+        const actualParentId = menuParentMap[menu.id];
+
+        // Normalizar ambos para comparação (null vs null, number vs number)
+        const normalizedActual =
+          actualParentId === null ? null : parseInt(actualParentId, 10);
+        const normalizedExpected =
+          expectedParentId === null ? null : parseInt(expectedParentId, 10);
+
+        if (normalizedActual !== normalizedExpected) {
+          throw new ValidationError(
+            `Menu ${menu.id} pertence a parent_id ${actualParentId}, mas foi enviado no grupo com parent_id ${expectedParentId}`
+          );
+        }
+      }
+    }
+
+    // Executar todas as atualizações em uma única transação
+    const db = require("../config/database");
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // ETAPA 1: Mover todos para posições temporárias (negativas)
+      // Isso evita conflitos de constraint unique durante a reordenação
+      for (const group of updates) {
+        for (let i = 0; i < group.menus.length; i++) {
+          const menu = group.menus[i];
+          const tempPosition = -(i + 1); // -1, -2, -3, etc.
+
+          const tempQuery = `
+            UPDATE polox.menu_items
+            SET order_position = $1, updated_at = NOW()
+            WHERE id = $2 AND deleted_at IS NULL
+          `;
+          await client.query(tempQuery, [tempPosition, menu.id]);
+        }
+      }
+
+      // ETAPA 2: Aplicar posições finais
+      for (const group of updates) {
+        for (const menu of group.menus) {
+          const finalQuery = `
+            UPDATE polox.menu_items
+            SET order_position = $1, updated_at = NOW()
+            WHERE id = $2 AND deleted_at IS NULL
+          `;
+          await client.query(finalQuery, [menu.order_position, menu.id]);
+        }
+      }
+
+      await client.query("COMMIT");
+
+      // Buscar menus atualizados agrupados por parent_id
+      const result = {};
+      for (const group of updates) {
+        const parentId = group.parent_id !== undefined ? group.parent_id : null;
+        result[parentId === null ? "root" : parentId] = await this.findAll({
+          parentId,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   /**
