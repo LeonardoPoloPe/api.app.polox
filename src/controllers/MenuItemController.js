@@ -102,6 +102,7 @@ class MenuItemController {
         "string.pattern.base":
           "text_color deve estar no formato #RRGGBB (ex: #1E40AF)",
       }),
+    root_only_access: Joi.boolean().optional(),
   });
 
   /**
@@ -147,6 +148,7 @@ class MenuItemController {
           "text_color deve estar no formato #RRGGBB (ex: #1E40AF)",
       }),
     visible_to_all: Joi.boolean().optional(),
+    root_only_access: Joi.boolean().optional(),
     link_type: Joi.string().valid("internal", "external").optional(),
   }).min(1);
 

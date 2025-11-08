@@ -170,7 +170,13 @@ router.post("/reorder", MenuItemController.reorder);
  *       - ✅ Execução atômica (tudo ou nada)
  *       - ✅ Evita conflitos de constraint unique
  *       - ✅ Permite reordenar múltiplos níveis hierárquicos de uma vez
+ *       - ✅ Permite mover menus entre diferentes parent_ids
  *       - ✅ Mais performático para grandes volumes
+ *
+ *       **Funcionalidades:**
+ *       - Reordena menus dentro do mesmo nível
+ *       - Move menus entre diferentes parent_ids (reorganização completa)
+ *       - Atualiza automaticamente parent_id conforme o grupo
  *
  *       **Apenas super_admin**
  *     tags: [Menu Items]
@@ -383,6 +389,11 @@ router.get("/:id", MenuItemController.getById);
  *                 nullable: true
  *                 example: "#1E40AF"
  *                 description: "Cor do texto em formato hexadecimal (#RRGGBB)"
+ *               root_only_access:
+ *                 type: boolean
+ *                 default: false
+ *                 example: false
+ *                 description: "Define se o menu é visível apenas para usuários root/administradores"
  *           examples:
  *             menu_principal:
  *               summary: Menu Principal
@@ -398,6 +409,7 @@ router.get("/:id", MenuItemController.getById);
  *                 order_position: 100
  *                 visible_to_all: true
  *                 is_active: true
+ *                 root_only_access: false
  *                 svg_color: "#10B981"
  *                 background_color: "#D1FAE5"
  *                 text_color: "#065F46"
@@ -415,6 +427,7 @@ router.get("/:id", MenuItemController.getById);
  *                 order_position: 50
  *                 visible_to_all: false
  *                 is_active: true
+ *                 root_only_access: true
  *                 svg_color: "#F59E0B"
  *                 background_color: "#FEF3C7"
  *                 text_color: "#92400E"
@@ -524,6 +537,10 @@ router.post("/", MenuItemController.create);
  *                 nullable: true
  *                 description: "Cor do texto em formato hexadecimal (#RRGGBB)"
  *                 example: "#1E40AF"
+ *               root_only_access:
+ *                 type: boolean
+ *                 description: "Define se o menu é visível apenas para usuários root/administradores"
+ *                 example: false
  *           examples:
  *             atualizar_traducoes:
  *               summary: Atualizar apenas traduções
@@ -548,6 +565,11 @@ router.post("/", MenuItemController.create);
  *               description: Restringir menu a empresas específicas
  *               value:
  *                 visible_to_all: false
+ *             tornar_root_only:
+ *               summary: Tornar menu exclusivo para root
+ *               description: Restringir menu apenas para usuários root/administradores
+ *               value:
+ *                 root_only_access: true
  *             mover_para_submenu:
  *               summary: Transformar em submenu
  *               description: Mover menu para dentro de outro (tornar filho de ID 1)
@@ -569,6 +591,7 @@ router.post("/", MenuItemController.create);
  *                 order_position: 1
  *                 visible_to_all: true
  *                 is_active: true
+ *                 root_only_access: false
  *                 svg_color: "#8B5CF6"
  *                 background_color: "#EDE9FE"
  *                 text_color: "#5B21B6"

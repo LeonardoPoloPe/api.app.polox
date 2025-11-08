@@ -95,7 +95,7 @@ class MenuItemModel {
       SELECT 
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
-        visible_to_all,
+        visible_to_all, root_only_access,
         svg_color, background_color, text_color,
         created_at, updated_at
       FROM polox.menu_items
@@ -117,7 +117,7 @@ class MenuItemModel {
       SELECT 
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
-        visible_to_all,
+        visible_to_all, root_only_access,
         svg_color, background_color, text_color,
         created_at, updated_at
       FROM polox.menu_items
@@ -138,7 +138,7 @@ class MenuItemModel {
       SELECT 
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
-        visible_to_all,
+        visible_to_all, root_only_access,
         svg_color, background_color, text_color,
         created_at, updated_at
       FROM polox.menu_items
@@ -213,15 +213,15 @@ class MenuItemModel {
     const insertQuery = `
       INSERT INTO polox.menu_items (
         label, icon, route, translations, order_position,
-        parent_id, is_active, visible_to_all,
+        parent_id, is_active, visible_to_all, root_only_access,
         svg_color, background_color, text_color,
         created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
       RETURNING 
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
-        visible_to_all,
+        visible_to_all, root_only_access,
         svg_color, background_color, text_color,
         created_at, updated_at
     `;
@@ -235,6 +235,7 @@ class MenuItemModel {
       parent_id,
       is_active,
       visible_to_all,
+      menuData.root_only_access ?? false,
       svg_color,
       background_color,
       text_color,
@@ -296,6 +297,7 @@ class MenuItemModel {
       parent_id: "parent_id",
       is_active: "is_active",
       visible_to_all: "visible_to_all",
+      root_only_access: "root_only_access",
       svg_color: "svg_color",
       background_color: "background_color",
       text_color: "text_color",
@@ -372,7 +374,7 @@ class MenuItemModel {
       RETURNING 
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
-        visible_to_all,
+        visible_to_all, root_only_access,
         svg_color, background_color, text_color,
         created_at, updated_at
     `;
@@ -597,32 +599,8 @@ class MenuItemModel {
       );
     }
 
-    // Validar que cada menu está no parent_id correto
-    const menuParentMap = {};
-    existingMenus.rows.forEach((row) => {
-      menuParentMap[row.id] = row.parent_id;
-    });
-
-    for (const group of updates) {
-      const expectedParentId =
-        group.parent_id !== undefined ? group.parent_id : null;
-
-      for (const menu of group.menus) {
-        const actualParentId = menuParentMap[menu.id];
-
-        // Normalizar ambos para comparação (null vs null, number vs number)
-        const normalizedActual =
-          actualParentId === null ? null : parseInt(actualParentId, 10);
-        const normalizedExpected =
-          expectedParentId === null ? null : parseInt(expectedParentId, 10);
-
-        if (normalizedActual !== normalizedExpected) {
-          throw new ValidationError(
-            `Menu ${menu.id} pertence a parent_id ${actualParentId}, mas foi enviado no grupo com parent_id ${expectedParentId}`
-          );
-        }
-      }
-    }
+    // Não validamos parent_id aqui para permitir mover menus entre níveis
+    // O batch-reorder agora suporta reorganizar a estrutura completa do menu
 
     // Executar todas as atualizações em uma única transação
     const db = require("../config/database");
@@ -632,12 +610,14 @@ class MenuItemModel {
     try {
       await client.query("BEGIN");
 
-      // ETAPA 1: Mover todos para posições temporárias (negativas)
+      // ETAPA 1: Mover todos para posições temporárias únicas (muito altas)
       // Isso evita conflitos de constraint unique durante a reordenação
+      // Usamos base 1000000 + índice único para garantir unicidade
+      let uniqueCounter = 1000000;
+
       for (const group of updates) {
-        for (let i = 0; i < group.menus.length; i++) {
-          const menu = group.menus[i];
-          const tempPosition = -(i + 1); // -1, -2, -3, etc.
+        for (const menu of group.menus) {
+          const tempPosition = uniqueCounter++;
 
           const tempQuery = `
             UPDATE polox.menu_items
@@ -648,15 +628,22 @@ class MenuItemModel {
         }
       }
 
-      // ETAPA 2: Aplicar posições finais
+      // ETAPA 2: Aplicar posições finais e parent_id
       for (const group of updates) {
+        const targetParentId =
+          group.parent_id !== undefined ? group.parent_id : null;
+
         for (const menu of group.menus) {
           const finalQuery = `
             UPDATE polox.menu_items
-            SET order_position = $1, updated_at = NOW()
-            WHERE id = $2 AND deleted_at IS NULL
+            SET order_position = $1, parent_id = $2, updated_at = NOW()
+            WHERE id = $3 AND deleted_at IS NULL
           `;
-          await client.query(finalQuery, [menu.order_position, menu.id]);
+          await client.query(finalQuery, [
+            menu.order_position,
+            targetParentId,
+            menu.id,
+          ]);
         }
       }
 
@@ -690,7 +677,7 @@ class MenuItemModel {
       SELECT 
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
-        visible_to_all
+        visible_to_all, root_only_access
       FROM polox.menu_items
       WHERE deleted_at IS NULL AND is_active = true
       ORDER BY order_position ASC
@@ -751,7 +738,7 @@ class MenuItemModel {
       SELECT 
         id, label, icon, route, translations,
         order_position, parent_id, is_active,
-        visible_to_all
+        visible_to_all, root_only_access
       FROM polox.menu_items
       WHERE ${whereClause}
       ORDER BY order_position ASC
