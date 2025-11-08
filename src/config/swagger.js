@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -100,6 +100,40 @@ const swaggerOptions = {
               description: "Produção AWS Lambda",
             },
           ],
+    tags: [
+      {
+        name: "Auth",
+        description: "Autenticação e gerenciamento de usuários",
+      },
+      {
+        name: "Companies",
+        description: "Gerenciamento de empresas (multi-tenant)",
+      },
+      {
+        name: "Clients",
+        description: "Gerenciamento de clientes (CRM)",
+      },
+      {
+        name: "Leads",
+        description: "Gerenciamento de leads e oportunidades",
+      },
+      {
+        name: "Schedule",
+        description: "Agendamentos e eventos",
+      },
+      {
+        name: "Profiles",
+        description: "Perfis de acesso e permissões",
+      },
+      {
+        name: "Menu Items",
+        description: "Gerenciamento de menus hierárquicos",
+      },
+      {
+        name: "Health",
+        description: "Verificação de saúde da aplicação",
+      },
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -778,6 +812,201 @@ const swaggerOptions = {
               type: "boolean",
               description: "Tem página anterior",
               example: false,
+            },
+          },
+        },
+        Profile: {
+          type: "object",
+          required: ["name", "translations", "screen_ids"],
+          properties: {
+            id: {
+              type: "integer",
+              description: "ID único do perfil",
+              example: 1,
+            },
+            name: {
+              type: "string",
+              description: "Nome do perfil",
+              example: "Gerente Comercial",
+            },
+            company_id: {
+              type: "integer",
+              nullable: true,
+              description:
+                "ID da empresa (NULL = perfil do sistema, número = perfil customizado da empresa)",
+              example: 1,
+            },
+            translations: {
+              type: "object",
+              description: "Traduções do nome do perfil em múltiplos idiomas",
+              properties: {
+                "pt-BR": {
+                  type: "string",
+                  example: "Gerente Comercial",
+                },
+                "en-US": {
+                  type: "string",
+                  example: "Sales Manager",
+                },
+                "es-ES": {
+                  type: "string",
+                  example: "Gerente Comercial",
+                },
+              },
+              example: {
+                "pt-BR": "Gerente Comercial",
+                "en-US": "Sales Manager",
+                "es-ES": "Gerente Comercial",
+              },
+            },
+            screen_ids: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              description:
+                "Array de IDs de telas (menu_items) que o perfil pode acessar",
+              example: ["2", "3", "4", "5", "7", "8"],
+            },
+            is_system_default: {
+              type: "boolean",
+              description:
+                "Indica se é um perfil padrão do sistema (não pode ser editado por admins)",
+              example: false,
+            },
+            is_active: {
+              type: "boolean",
+              description: "Status do perfil (ativo/inativo)",
+              example: true,
+            },
+            deleted_at: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "Data de exclusão (soft delete)",
+              example: null,
+            },
+            created_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação",
+              example: "2025-11-07T10:00:00Z",
+            },
+            updated_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de atualização",
+              example: "2025-11-07T10:00:00Z",
+            },
+            company_name: {
+              type: "string",
+              nullable: true,
+              description: "Nome da empresa (retornado nas listagens)",
+              example: "TechCorp Solutions",
+            },
+            users_count: {
+              type: "integer",
+              description: "Quantidade de usuários com este perfil",
+              example: 5,
+            },
+          },
+        },
+        MenuItem: {
+          type: "object",
+          required: ["label", "translations"],
+          properties: {
+            id: {
+              type: "integer",
+              description: "ID único do menu",
+              example: 1,
+            },
+            label: {
+              type: "string",
+              description: "Label do menu",
+              example: "Configurações",
+            },
+            translations: {
+              type: "object",
+              description: "Traduções do label em múltiplos idiomas",
+              properties: {
+                "pt-BR": {
+                  type: "string",
+                  example: "Configurações",
+                },
+                "en-US": {
+                  type: "string",
+                  example: "Settings",
+                },
+                "es-ES": {
+                  type: "string",
+                  example: "Configuraciones",
+                },
+              },
+              example: {
+                "pt-BR": "Configurações",
+                "en-US": "Settings",
+                "es-ES": "Configuraciones",
+              },
+            },
+            icon: {
+              type: "string",
+              nullable: true,
+              description: "Ícone do menu (ex: lucide-react)",
+              example: "settings",
+            },
+            route: {
+              type: "string",
+              nullable: true,
+              description: "Rota do menu (NULL para menus pai)",
+              example: "/settings",
+            },
+            parent_id: {
+              type: "integer",
+              nullable: true,
+              description: "ID do menu pai (NULL para menus raiz)",
+              example: null,
+            },
+            order_position: {
+              type: "integer",
+              description: "Ordem de exibição",
+              example: 1,
+            },
+            visible_to_all: {
+              type: "boolean",
+              description:
+                "Se TRUE, visível para todas empresas. Se FALSE, apenas para empresas com permissão",
+              example: true,
+            },
+            is_active: {
+              type: "boolean",
+              description: "Status do menu",
+              example: true,
+            },
+            deleted_at: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description: "Data de exclusão (soft delete)",
+              example: null,
+            },
+            created_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação",
+              example: "2025-11-07T10:00:00Z",
+            },
+            updated_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de atualização",
+              example: "2025-11-07T10:00:00Z",
+            },
+            children: {
+              type: "array",
+              items: {
+                $ref: "#/components/schemas/MenuItem",
+              },
+              description: "Submenus (retornado em /hierarchy)",
             },
           },
         },

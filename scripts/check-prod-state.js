@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,21 +22,21 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
 
-const { Pool } = require('pg');
-require('dotenv').config();
+const { Pool } = require("pg");
+require("dotenv").config();
 
 let SecretsManagerClient, GetSecretValueCommand;
 try {
@@ -75,19 +75,19 @@ async function loadSecretsFromAWS(secretName) {
 
 async function checkProdState() {
   const secretsConfig = await loadSecretsFromAWS("prd-mysql");
-  
+
   const pool = new Pool({
     host: secretsConfig?.DB_HOST,
     port: secretsConfig?.DB_PORT || 5432,
     database: secretsConfig?.DB_NAME,
     user: secretsConfig?.DB_USER,
     password: secretsConfig?.DB_PASSWORD,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
   });
 
   try {
-    console.log('📋 Verificando estado do PROD...\n');
-    
+    console.log("📋 Verificando estado do PROD...\n");
+
     const result = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
@@ -95,18 +95,17 @@ async function checkProdState() {
       AND table_name IN ('contacts', 'contatos', 'deals', 'negociacoes')
       ORDER BY table_name;
     `);
-    
-    console.log('Tabelas encontradas:');
-    result.rows.forEach(r => console.log(`  - ${r.table_name}`));
-    
-    console.log('\n📝 Migration 035 registrada?');
+
+    console.log("Tabelas encontradas:");
+    result.rows.forEach((r) => console.log(`  - ${r.table_name}`));
+
+    console.log("\n📝 Migration 035 registrada?");
     const migCheck = await pool.query(
       "SELECT * FROM migrations WHERE migration_name = '035_rename_tables_to_english'"
     );
-    console.log(migCheck.rows.length > 0 ? '  ✅ Sim' : '  ❌ Não');
-    
+    console.log(migCheck.rows.length > 0 ? "  ✅ Sim" : "  ❌ Não");
   } catch (err) {
-    console.error('❌ Erro:', err.message);
+    console.error("❌ Erro:", err.message);
   } finally {
     await pool.end();
   }

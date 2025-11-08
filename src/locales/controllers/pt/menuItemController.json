@@ -1,0 +1,95 @@
+{
+  "validation": {
+    "label_min_length": "Label do menu deve ter pelo menos 2 caracteres",
+    "label_max_length": "Label do menu deve ter no máximo 255 caracteres",
+    "label_required": "Label do menu é obrigatório",
+    "translations_required": "Traduções são obrigatórias",
+    "translations_must_be_object": "Traduções devem ser um objeto",
+    "translation_pt_required": "Tradução em português (pt-BR) é obrigatória",
+    "translation_en_required": "Tradução em inglês (en-US) é obrigatória",
+    "translation_es_required": "Tradução em espanhol (es-ES) é obrigatória",
+    "icon_max_length": "Ícone deve ter no máximo 100 caracteres",
+    "route_max_length": "Rota deve ter no máximo 255 caracteres",
+    "parent_id_must_be_number": "parent_id deve ser um número",
+    "order_position_must_be_number": "order_position deve ser um número",
+    "visible_to_all_must_be_boolean": "visible_to_all deve ser um booleano",
+    "is_active_must_be_boolean": "is_active deve ser um booleano",
+    "reorder_data_required": "Dados de reordenação são obrigatórios",
+    "reorder_data_must_be_array": "Dados de reordenação devem ser um array",
+    "reorder_item_invalid": "Item de reordenação inválido: deve conter id e order_position",
+    "no_fields_to_update": "Nenhum campo para atualizar"
+  },
+  "list": {
+    "success": "Menus listados com sucesso",
+    "no_menus_found": "Nenhum menu encontrado"
+  },
+  "create": {
+    "success": "Menu criado com sucesso",
+    "route_already_exists": "Já existe um menu com a rota '{{route}}'",
+    "order_position_exists": "Já existe um menu com a posição {{position}} no mesmo nível",
+    "parent_not_found": "Menu pai não encontrado",
+    "super_admin_required": "Apenas super_admin pode criar menus"
+  },
+  "update": {
+    "success": "Menu atualizado com sucesso",
+    "not_found": "Menu não encontrado",
+    "route_already_exists": "Já existe outro menu com a rota '{{route}}'",
+    "order_position_exists": "Já existe outro menu com a posição {{position}} no mesmo nível",
+    "parent_not_found": "Menu pai não encontrado",
+    "cannot_set_self_as_parent": "Um menu não pode ser pai de si mesmo",
+    "super_admin_required": "Apenas super_admin pode editar menus"
+  },
+  "delete": {
+    "success": "Menu deletado com sucesso",
+    "not_found": "Menu não encontrado",
+    "has_submenus": "Não é possível deletar. Este menu possui {{count}} submenus. Delete-os primeiro.",
+    "has_dependent_profiles": "Não é possível deletar. Existem {{count}} perfis que dependem deste menu.",
+    "super_admin_required": "Apenas super_admin pode deletar menus"
+  },
+  "show": {
+    "success": "Menu encontrado com sucesso",
+    "not_found": "Menu não encontrado"
+  },
+  "toggle_status": {
+    "success": "Status do menu alterado com sucesso",
+    "activated": "Menu ativado com sucesso",
+    "deactivated": "Menu desativado com sucesso",
+    "not_found": "Menu não encontrado",
+    "has_dependent_profiles": "Aviso: {{count}} perfis dependem deste menu. Use force=true para desativar mesmo assim.",
+    "super_admin_required": "Apenas super_admin pode alterar status de menus"
+  },
+  "reorder": {
+    "success": "Menus reordenados com sucesso",
+    "updated_count": "{{count}} menus reordenados",
+    "super_admin_required": "Apenas super_admin pode reordenar menus"
+  },
+  "hierarchy": {
+    "success": "Hierarquia de menus obtida com sucesso",
+    "no_menus_found": "Nenhum menu encontrado"
+  },
+  "for_company": {
+    "success": "Menus da empresa obtidos com sucesso",
+    "no_menus_available": "Nenhum menu disponível para esta empresa"
+  },
+  "security": {
+    "super_admin_required": "Acesso de Super Admin necessário",
+    "unauthorized_access_attempt": "Tentativa de acesso não autorizado ao MenuItemController",
+    "only_super_admin_can_manage": "Apenas Super Admin pode gerenciar menus"
+  },
+  "audit": {
+    "menu_created": "Menu criado",
+    "menu_updated": "Menu atualizado",
+    "menu_deleted": "Menu deletado",
+    "menu_status_changed": "Status do menu alterado",
+    "menus_reordered": "Menus reordenados",
+    "menu_hierarchy_viewed": "Hierarquia de menus visualizada",
+    "company_menus_viewed": "Menus da empresa visualizados"
+  },
+  "info": {
+    "menus_listed": "Menus listados",
+    "menu_details_viewed": "Detalhes do menu visualizados",
+    "menu_created_success": "Novo menu criado com sucesso",
+    "menu_updated_success": "Menu atualizado com sucesso",
+    "menu_deleted_success": "Menu deletado com sucesso"
+  }
+}

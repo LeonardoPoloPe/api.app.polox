@@ -1,0 +1,92 @@
+{
+  "validation": {
+    "name_min_length": "Nome do perfil deve ter pelo menos 2 caracteres",
+    "name_max_length": "Nome do perfil deve ter no máximo 255 caracteres",
+    "name_required": "Nome do perfil é obrigatório",
+    "translations_required": "Traduções são obrigatórias",
+    "translations_must_be_object": "Traduções devem ser um objeto",
+    "translation_pt_required": "Tradução em português (pt-BR) é obrigatória",
+    "translation_en_required": "Tradução em inglês (en-US) é obrigatória",
+    "translation_es_required": "Tradução em espanhol (es-ES) é obrigatória",
+    "screen_ids_required": "IDs de telas (screen_ids) são obrigatórios",
+    "screen_ids_must_be_array": "screen_ids deve ser um array",
+    "company_id_must_be_number": "company_id deve ser um número",
+    "is_active_must_be_boolean": "is_active deve ser um booleano",
+    "target_profile_id_required": "ID do perfil de destino é obrigatório",
+    "target_profile_id_must_be_number": "ID do perfil de destino deve ser um número",
+    "no_fields_to_update": "Nenhum campo para atualizar"
+  },
+  "list": {
+    "success": "Perfis listados com sucesso",
+    "no_profiles_found": "Nenhum perfil encontrado"
+  },
+  "create": {
+    "success": "Perfil criado com sucesso",
+    "name_already_exists": "Já existe um perfil com o nome '{{name}}' nesta empresa",
+    "invalid_screen_ids": "IDs de telas inválidos: {{ids}}",
+    "system_profile_requires_super_admin": "Apenas super_admin pode criar perfis do sistema (company_id NULL)"
+  },
+  "update": {
+    "success": "Perfil atualizado com sucesso",
+    "not_found": "Perfil não encontrado",
+    "cannot_edit_system_profile": "Apenas super_admin pode editar perfis padrão do sistema",
+    "name_already_exists": "Já existe outro perfil com o nome '{{name}}' nesta empresa",
+    "invalid_screen_ids": "IDs de telas inválidos: {{ids}}",
+    "unauthorized_company_access": "Você não tem permissão para editar perfis de outras empresas"
+  },
+  "delete": {
+    "success": "Perfil deletado com sucesso",
+    "not_found": "Perfil não encontrado",
+    "cannot_delete_system_profile": "Apenas super_admin pode deletar perfis padrão do sistema",
+    "profile_has_active_users": "Não é possível deletar o perfil. Existem {{count}} usuários ativos com este perfil. Reatribua-os primeiro.",
+    "unauthorized_company_access": "Você não tem permissão para deletar perfis de outras empresas"
+  },
+  "show": {
+    "success": "Perfil encontrado com sucesso",
+    "not_found": "Perfil não encontrado",
+    "unauthorized_company_access": "Você não tem permissão para visualizar perfis de outras empresas"
+  },
+  "toggle_status": {
+    "success": "Status do perfil alterado com sucesso",
+    "activated": "Perfil ativado com sucesso",
+    "deactivated": "Perfil desativado com sucesso",
+    "not_found": "Perfil não encontrado",
+    "unauthorized_company_access": "Você não tem permissão para alterar status de perfis de outras empresas"
+  },
+  "reassign": {
+    "success": "{{count}} usuários reatribuídos com sucesso",
+    "no_users_to_reassign": "Nenhum usuário para reatribuir",
+    "profiles_same_id": "Os perfis de origem e destino não podem ser o mesmo",
+    "source_not_found": "Perfil de origem não encontrado",
+    "target_not_found": "Perfil de destino não encontrado",
+    "different_companies": "Os perfis devem ser da mesma empresa",
+    "unauthorized_company_access": "Você não tem permissão para reatribuir usuários entre perfis de outras empresas"
+  },
+  "system_defaults": {
+    "success": "Perfis do sistema listados com sucesso",
+    "no_system_profiles": "Nenhum perfil do sistema encontrado"
+  },
+  "security": {
+    "admin_required": "Acesso de Admin necessário",
+    "super_admin_required": "Acesso de Super Admin necessário",
+    "unauthorized_access_attempt": "Tentativa de acesso não autorizado ao ProfileController"
+  },
+  "audit": {
+    "profile_created": "Perfil criado",
+    "profile_updated": "Perfil atualizado",
+    "profile_deleted": "Perfil deletado",
+    "profile_status_changed": "Status do perfil alterado",
+    "users_reassigned": "Usuários reatribuídos entre perfis",
+    "system_profile_created": "Perfil do sistema criado pelo Super Admin",
+    "system_profile_updated": "Perfil do sistema atualizado pelo Super Admin",
+    "system_profile_deleted": "Perfil do sistema deletado pelo Super Admin"
+  },
+  "info": {
+    "profiles_listed": "Perfis listados",
+    "system_profiles_listed": "Perfis do sistema listados",
+    "profile_details_viewed": "Detalhes do perfil visualizados",
+    "profile_created_success": "Novo perfil criado com sucesso",
+    "profile_updated_success": "Perfil atualizado com sucesso",
+    "profile_deleted_success": "Perfil deletado com sucesso"
+  }
+}
