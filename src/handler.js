@@ -43,7 +43,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const routes = require("./routes");
 const { initializePool, closePool, logger, healthCheck } = require("./models");
-const { i18nMiddleware } = require("./config/i18n");
+const { i18nMiddleware, i18next } = require("./config/i18n");
 const {
   responseHelpers,
   errorHandler,
@@ -247,6 +247,17 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Middleware de internacionalização
 app.use(i18nMiddleware);
+
+// Middleware de fallback para req.t (caso o i18n middleware falhe)
+app.use((req, res, next) => {
+  if (!req.t || typeof req.t !== 'function') {
+    req.t = (key, options = {}) => {
+      const language = req.language || req.headers['accept-language'] || 'pt';
+      return i18next.t(key, { ...options, lng: language });
+    };
+  }
+  next();
+});
 
 // Middleware de copyright (adiciona headers de propriedade)
 app.use(copyrightMiddleware);

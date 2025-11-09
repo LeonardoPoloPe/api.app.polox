@@ -85,10 +85,10 @@ i18next
     // Configurações do backend (arquivos de tradução)
     backend: {
       loadPath: [
-        path.join(__dirname, "locales/{{lng}}/{{ns}}.json"),
+        path.join(__dirname, "../locales/{{lng}}/{{ns}}.json"),
         path.join(__dirname, "../locales/controllers/{{lng}}/{{ns}}.json"),
       ],
-      addPath: path.join(__dirname, "locales/{{lng}}/{{ns}}.missing.json"),
+      addPath: path.join(__dirname, "../locales/{{lng}}/{{ns}}.missing.json"),
     },
 
     // Configurações de interpolação
