@@ -300,6 +300,7 @@ class ProfileModel {
       translations: "translations",
       screen_ids: "screen_ids",
       is_active: "is_active",
+      is_system_default: "is_system_default",
     };
 
     for (const [key, dbField] of Object.entries(allowedFields)) {

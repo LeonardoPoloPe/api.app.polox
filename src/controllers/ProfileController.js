@@ -78,7 +78,8 @@ class ProfileController {
       "any.required": "screen_ids é obrigatório",
     }),
     is_active: Joi.boolean().optional(),
-  });
+    is_system_default: Joi.boolean().optional(),
+  }).options({ stripUnknown: true });
 
   /**
    * Schema de validação para atualização de perfil
@@ -93,7 +94,10 @@ class ProfileController {
     }).optional(),
     screen_ids: Joi.array().items(Joi.string()).min(1).optional(),
     is_active: Joi.boolean().optional(),
-  }).min(1);
+    is_system_default: Joi.boolean().optional(),
+  })
+    .min(1)
+    .options({ stripUnknown: true });
 
   /**
    * Validação com suporte a internacionalização
@@ -230,21 +234,29 @@ class ProfileController {
       throw new ApiError(400, validation.message);
     }
 
-    // Regra de negócio: company_id baseado no role
+    // Regra de negócio: company_id e is_system_default baseado no role
     let company_id;
+    let is_system_default = false;
+
     if (userRole === "super_admin") {
       // Super admin pode criar perfil do sistema (company_id=null) ou de empresa
       company_id =
-        req.body.company_id !== undefined ? req.body.company_id : null;
+        validatedData.company_id !== undefined
+          ? validatedData.company_id
+          : null;
+
+      // Super admin pode definir is_system_default
+      is_system_default = validatedData.is_system_default || false;
     } else {
       // Admin só pode criar para sua empresa
       company_id = userCompanyId;
+      is_system_default = false; // Admin não pode criar perfis do sistema
     }
 
     const profileData = {
       ...validatedData,
       company_id,
-      is_system_default: false, // Apenas seed cria perfis do sistema
+      is_system_default,
     };
 
     const profile = await ProfileModel.create(profileData);
@@ -318,6 +330,14 @@ class ProfileController {
       if (!validation.valid) {
         throw new ApiError(400, validation.message);
       }
+    }
+
+    // Apenas super_admin pode alterar is_system_default
+    if (
+      validatedData.is_system_default !== undefined &&
+      userRole !== "super_admin"
+    ) {
+      delete validatedData.is_system_default;
     }
 
     const updatedProfile = await ProfileModel.update(id, validatedData);

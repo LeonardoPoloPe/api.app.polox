@@ -252,6 +252,11 @@ router.get("/:id", ProfileController.getById);
  *                 type: boolean
  *                 default: true
  *                 example: true
+ *               is_system_default:
+ *                 type: boolean
+ *                 default: false
+ *                 description: "Define se é um perfil padrão do sistema (apenas super_admin pode criar/editar)"
+ *                 example: false
  *           examples:
  *             perfil_empresa:
  *               summary: Perfil de Empresa
@@ -264,6 +269,7 @@ router.get("/:id", ProfileController.getById);
  *                   es-ES: "Gerente Comercial"
  *                 screen_ids: ["2", "3", "4", "5", "7", "8"]
  *                 is_active: true
+ *                 is_system_default: false
  *             perfil_sistema:
  *               summary: Perfil do Sistema (super_admin apenas)
  *               value:
@@ -275,6 +281,7 @@ router.get("/:id", ProfileController.getById);
  *                   es-ES: "Agente de Soporte"
  *                 screen_ids: ["2", "3", "6"]
  *                 is_active: true
+ *                 is_system_default: true
  *     responses:
  *       201:
  *         description: Perfil criado com sucesso
@@ -347,6 +354,10 @@ router.post("/", ProfileController.create);
  *               is_active:
  *                 type: boolean
  *                 example: true
+ *               is_system_default:
+ *                 type: boolean
+ *                 description: "Define se é um perfil padrão do sistema (apenas super_admin pode alterar)"
+ *                 example: false
  *           example:
  *             name: "Gerente Comercial Sênior"
  *             translations:
@@ -354,6 +365,7 @@ router.post("/", ProfileController.create);
  *               en-US: "Senior Sales Manager"
  *               es-ES: "Gerente Comercial Senior"
  *             screen_ids: ["2", "3", "4", "5", "6", "7", "8", "9"]
+ *             is_system_default: false
  *     responses:
  *       200:
  *         description: Perfil atualizado com sucesso
