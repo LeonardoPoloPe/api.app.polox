@@ -11,7 +11,8 @@
     "company_id_required": "Company ID is required",
     "email_in_use": "Email is already in use",
     "user_not_found": "User not found",
-    "no_fields_to_update": "No fields to update"
+    "no_fields_to_update": "No fields to update",
+    "invalid_id": "Invalid ID"
   },
   "list": {
     "success": "Users returned successfully"
@@ -36,6 +37,12 @@
     "get_success": "Profile loaded successfully",
     "update_success": "Profile updated successfully",
     "not_found": "User not found"
+  },
+  "get_profile_menu": {
+    "success": "Profile and menus loaded successfully",
+    "user_not_found": "User not found",
+    "no_profile": "User has no linked profile",
+    "no_permissions": "Profile has no menu permissions configured"
   },
   "audit": {
     "users_listed": "Users listed",

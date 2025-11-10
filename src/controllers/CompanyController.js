@@ -77,11 +77,32 @@ class CompanyController {
    */
   static update = asyncHandler(async (req, res) => {
     const companyId = req.params.id;
+    
+    // Log de debug da requisição
+    logger.info("🔍 PUT /companies/:id - Dados recebidos:", {
+      companyId,
+      body: req.body
+    });
+
+    // Pré-processar dados: converter strings numéricas para números
+    const preprocessedData = { ...req.body };
+    if (preprocessedData.partner_id && typeof preprocessedData.partner_id === 'string') {
+      preprocessedData.partner_id = preprocessedData.partner_id.trim() === '' 
+        ? null 
+        : parseInt(preprocessedData.partner_id);
+    }
+    if (preprocessedData.max_users && typeof preprocessedData.max_users === 'string') {
+      preprocessedData.max_users = parseInt(preprocessedData.max_users);
+    }
+    if (preprocessedData.max_storage_mb && typeof preprocessedData.max_storage_mb === 'string') {
+      preprocessedData.max_storage_mb = parseInt(preprocessedData.max_storage_mb);
+    }
+
     // Validação dos dados
     const data = CompanyController.validateWithTranslation(
       req,
       CompanyController.updateCompanySchema,
-      req.body
+      preprocessedData
     );
 
     // Monta o SET dinâmico para atualização
@@ -155,10 +176,18 @@ class CompanyController {
     auditLogger(tc(req, "companyController", "audit.company_updated"), {
       superAdminId: req.user.id,
       companyId: updatedCompany.id,
-      companyName: updatedCompany.name,
+      companyName: updatedCompany.company_name,
       updatedFields: Object.keys(data),
       ip: req.ip,
     });
+
+    // Log de sucesso
+    logger.info("✅ PUT /companies/:id - Empresa atualizada com sucesso:", {
+      companyId: updatedCompany.id,
+      companyName: updatedCompany.company_name,
+      updatedFields: Object.keys(data)
+    });
+
     return successResponse(
       res,
       updatedCompany,
@@ -255,13 +284,10 @@ class CompanyController {
     name: Joi.string().min(2).max(255),
     domain: Joi.string()
       .pattern(/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
-      .max(100),
-    plan: Joi.string().valid(
-      "starter",
-      "professional",
-      "enterprise",
-      "partner_pro"
-    ),
+      .max(100)
+      .allow("", null)
+      .optional(),
+    plan: Joi.string().max(50).optional(), // Aceita qualquer plano
     industry: Joi.string().max(100),
     company_size: Joi.string().max(50),
     admin_name: Joi.string().min(2).max(255),
@@ -271,7 +297,13 @@ class CompanyController {
     settings: Joi.object(),
     // Campos de hierarquia e whitelabel
     company_type: Joi.string().valid("tenant", "partner", "license"),
-    partner_id: Joi.number().integer().allow(null),
+    partner_id: Joi.alternatives()
+      .try(
+        Joi.number().integer(),
+        Joi.string().pattern(/^\d+$/).custom((value) => parseInt(value))
+      )
+      .allow(null)
+      .optional(), // Aceita string ou number
     logo_url: Joi.string().uri().allow("", null).optional(),
     favicon_url: Joi.string().uri().allow("", null).optional(),
     primary_color: Joi.string().max(20).allow("", null).optional(),
@@ -294,10 +326,28 @@ class CompanyController {
    * 🌐 Valida dados com mensagens traduzidas
    */
   static validateWithTranslation(req, schema, data) {
-    const { error, value } = schema.validate(data);
+    const { error, value } = schema.validate(data, { 
+      abortEarly: false,
+      stripUnknown: true 
+    });
+    
     if (error) {
       const field = error.details[0].path[0];
       const type = error.details[0].type;
+      const errorMessage = error.details[0].message;
+
+      // Log de debug para ajudar no troubleshooting
+      logger.error("❌ Erro de validação em CompanyController:", {
+        field,
+        type,
+        message: errorMessage,
+        value: data[field],
+        allErrors: error.details.map(d => ({
+          field: d.path[0],
+          type: d.type,
+          message: d.message
+        }))
+      });
 
       // Mapear erros Joi para chaves de tradução
       const errorKeyMap = {
@@ -314,10 +364,15 @@ class CompanyController {
             : "validation.field_required",
         "string.pattern.base": "validation.domain_pattern",
         "string.email": "validation.admin_email_valid",
+        "number.base": "validation.must_be_number",
+        "number.integer": "validation.must_be_integer",
       };
 
       const messageKey = errorKeyMap[type] || "validation.invalid_field";
-      throw new ApiError(400, tc(req, "companyController", messageKey));
+      
+      // Incluir campo e tipo de erro para ajudar no debug
+      const translatedMessage = tc(req, "companyController", messageKey);
+      throw new ApiError(400, `${translatedMessage} (${field}: ${type})`);
     }
     return value;
   }

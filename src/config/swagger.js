@@ -190,6 +190,18 @@ const swaggerOptions = {
               description: "ID da empresa do usuário",
               example: "550e8400-e29b-41d4-a716-446655440000",
             },
+            profileId: {
+              type: "integer",
+              nullable: true,
+              description: "ID do perfil de acesso do usuário",
+              example: 5,
+            },
+            profileName: {
+              type: "string",
+              nullable: true,
+              description: "Nome do perfil de acesso do usuário",
+              example: "Gerente Comercial",
+            },
             created_at: {
               type: "string",
               format: "date-time",
@@ -224,6 +236,12 @@ const swaggerOptions = {
               type: "string",
               description: "Nome completo do usuário",
               example: "João Silva",
+            },
+            profile_id: {
+              type: "integer",
+              nullable: true,
+              description: "ID do perfil de acesso a ser atribuído ao usuário",
+              example: 5,
             },
           },
         },

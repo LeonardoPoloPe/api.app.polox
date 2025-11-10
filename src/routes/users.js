@@ -61,6 +61,7 @@ router.use(authenticateToken);
 const updateProfileValidation = Joi.object({
   name: Joi.string().min(2).max(255),
   email: Joi.string().email(),
+  profile_id: Joi.number().integer().allow(null).optional(),
 });
 
 const createUserValidation = Joi.object({
@@ -68,6 +69,7 @@ const createUserValidation = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
   company_id: Joi.number().integer().optional(),
+  profile_id: Joi.number().integer().allow(null).optional(),
   role: Joi.string()
     .valid("super_admin", "company_admin", "manager", "user")
     .default("user"),
@@ -87,6 +89,7 @@ const updateUserValidation = Joi.object({
   email: Joi.string().email(),
   role: Joi.string().valid("super_admin", "company_admin", "manager", "user"),
   company_id: Joi.number().integer(),
+  profile_id: Joi.number().integer().allow(null).optional(),
   status: Joi.string().valid("active", "inactive", "suspended"),
 });
 
@@ -204,6 +207,11 @@ router.get("/me", rateLimiter.general, UserController.getProfile);
  *                 type: string
  *                 format: email
  *                 example: "joao@exemplo.com"
+ *               profile_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: "ID do perfil de acesso do usuário"
+ *                 example: 5
  *     responses:
  *       200:
  *         description: Perfil atualizado com sucesso
@@ -218,6 +226,43 @@ router.put(
   validateRequest(updateProfileValidation),
   UserController.updateProfile
 );
+
+/**
+ * @swagger
+ * /users/profile-menu:
+ *   get:
+ *     summary: Busca perfil do usuário autenticado com menus vinculados
+ *     description: |
+ *       Retorna o perfil do usuário autenticado (via token JWT) e os menus que ele tem permissão de acessar.
+ *       Usado no login para carregar o menu dinâmico baseado no perfil.
+ *       
+ *       **SEGURANÇA:** Usa automaticamente o ID do usuário do token JWT (req.user.id),
+ *       não permitindo que um usuário acesse dados de outro.
+ *       
+ *       Lógica de permissões:
+ *       1. Identifica usuário pelo token JWT
+ *       2. Busca o perfil do usuário (profiles.id via users.profile_id)
+ *       3. Obtém os menus permitidos (profiles.screen_ids)
+ *       4. Filtra por permissões da empresa (menu_company_permissions)
+ *       5. Filtra por root_only_access (apenas super_admin)
+ *       6. Constrói hierarquia de menus (parent_id)
+ *       7. Traduz labels baseado no Accept-Language
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *     responses:
+ *       200:
+ *         description: Perfil e menus retornados com sucesso
+ *       401:
+ *         description: Não autenticado ou token inválido
+ *       404:
+ *         description: Usuário não encontrado ou perfil não configurado
+ *       500:
+ *         description: Erro no servidor
+ */
+router.get("/profile-menu", rateLimiter.general, UserController.getUserProfileWithMenus);
 
 /**
  * @swagger
@@ -296,6 +341,11 @@ router.get("/:id", rateLimiter.general, UserController.getUserById);
  *               company_id:
  *                 type: integer
  *                 example: 1
+ *               profile_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: "ID do perfil de acesso do usuário"
+ *                 example: 5
  *               status:
  *                 type: string
  *                 enum: ["active", "inactive", "suspended"]
@@ -372,6 +422,11 @@ router.put(
  *                 enum: ["super_admin", "company_admin", "manager", "user"]
  *                 default: "user"
  *                 example: "user"
+ *               profile_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: "ID do perfil de acesso a ser atribuído ao usuário"
+ *                 example: 5
  *     responses:
  *       201:
  *         description: Usuário criado com sucesso

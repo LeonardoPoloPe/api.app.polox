@@ -344,7 +344,8 @@ router.get("/:id", rateLimiter.admin, CompanyController.show);
  *                 type: string
  *               plan:
  *                 type: string
- *                 enum: [starter, professional, enterprise]
+ *                 description: "Plano da empresa (aceita qualquer valor)"
+ *                 example: "plus"
  *               industry:
  *                 type: string
  *               company_size:
@@ -359,8 +360,12 @@ router.get("/:id", rateLimiter.admin, CompanyController.show);
  *                 type: string
  *                 enum: [tenant, partner, license]
  *               partner_id:
- *                 type: integer
+ *                 oneOf:
+ *                   - type: integer
+ *                   - type: string
  *                 nullable: true
+ *                 description: "ID do parceiro (aceita string ou número, será convertido automaticamente)"
+ *                 example: "28"
  *               logo_url:
  *                 type: string
  *               favicon_url:

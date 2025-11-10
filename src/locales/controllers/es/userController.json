@@ -11,7 +11,8 @@
     "company_id_required": "ID de la empresa es obligatorio",
     "email_in_use": "El email ya está en uso",
     "user_not_found": "Usuario no encontrado",
-    "no_fields_to_update": "No hay campos para actualizar"
+    "no_fields_to_update": "No hay campos para actualizar",
+    "invalid_id": "ID inválido"
   },
   "list": {
     "success": "Usuarios devueltos con éxito"
@@ -36,6 +37,12 @@
     "get_success": "Perfil cargado con éxito",
     "update_success": "Perfil actualizado con éxito",
     "not_found": "Usuario no encontrado"
+  },
+  "get_profile_menu": {
+    "success": "Perfil y menús cargados con éxito",
+    "user_not_found": "Usuario no encontrado",
+    "no_profile": "Usuario sin perfil vinculado",
+    "no_permissions": "Perfil sin permisos de menú configurados"
   },
   "audit": {
     "users_listed": "Usuarios listados",
