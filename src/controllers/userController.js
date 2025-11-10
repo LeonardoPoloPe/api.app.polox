@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -59,7 +59,12 @@ class UserController {
 
     try {
       // Log para debug
-      logger.info("🔍 GET /users - Parâmetros:", { page, limit, search, companyId });
+      logger.info("🔍 GET /users - Parâmetros:", {
+        page,
+        limit,
+        search,
+        companyId,
+      });
 
       let whereClause = "WHERE u.deleted_at IS NULL";
       let queryParams = [];
@@ -97,6 +102,7 @@ class UserController {
         `
         SELECT 
           u.id, u.full_name, u.email, u.user_role, u.company_id, u.profile_id, u.created_at,
+          u.view_own_leads_only,
           p.name as profile_name
         FROM users u
         LEFT JOIN profiles p ON u.profile_id = p.id AND p.deleted_at IS NULL
@@ -116,6 +122,7 @@ class UserController {
         companyId: user.company_id,
         profileId: user.profile_id,
         profileName: user.profile_name,
+        viewOwnLeadsOnly: user.view_own_leads_only,
         createdAt: user.created_at,
       }));
 
@@ -131,7 +138,7 @@ class UserController {
       logger.info("✅ GET /users - Usuários encontrados:", {
         total: totalUsers,
         returned: users.length,
-        withProfile: users.filter(u => u.profileId).length,
+        withProfile: users.filter((u) => u.profileId).length,
       });
 
       res.json({
@@ -151,7 +158,7 @@ class UserController {
       logger.error("❌ GET /users - Erro:", {
         message: error.message,
         stack: error.stack,
-        params: { page, limit, search, companyId }
+        params: { page, limit, search, companyId },
       });
       throw error;
     }
@@ -168,6 +175,7 @@ class UserController {
         `
         SELECT 
           u.id, u.full_name, u.email, u.user_role, u.company_id, u.profile_id, u.created_at,
+          u.view_own_leads_only,
           p.name as profile_name
         FROM users u
         LEFT JOIN profiles p ON u.profile_id = p.id AND p.deleted_at IS NULL
@@ -204,6 +212,7 @@ class UserController {
             companyId: user.company_id,
             profileId: user.profile_id,
             profileName: user.profile_name,
+            viewOwnLeadsOnly: user.view_own_leads_only,
             createdAt: user.created_at,
           },
         },
@@ -222,6 +231,7 @@ class UserController {
         `
         SELECT 
           u.id, u.full_name, u.email, u.user_role, u.company_id, u.profile_id, u.created_at,
+          u.view_own_leads_only,
           p.name as profile_name
         FROM users u
         LEFT JOIN profiles p ON u.profile_id = p.id AND p.deleted_at IS NULL
@@ -254,6 +264,7 @@ class UserController {
             companyId: user.company_id,
             profileId: user.profile_id,
             profileName: user.profile_name,
+            viewOwnLeadsOnly: user.view_own_leads_only,
             createdAt: user.created_at,
           },
         },
@@ -268,7 +279,15 @@ class UserController {
    */
   static updateUser = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { name, email, role, company_id, status, profile_id } = req.body;
+    const {
+      name,
+      email,
+      role,
+      company_id,
+      status,
+      profile_id,
+      view_own_leads_only,
+    } = req.body;
 
     try {
       // Verificar se usuário existe
@@ -349,6 +368,12 @@ class UserController {
         paramIndex++;
       }
 
+      if (view_own_leads_only !== undefined) {
+        updates.push(`view_own_leads_only = $${paramIndex}`);
+        values.push(view_own_leads_only);
+        paramIndex++;
+      }
+
       if (updates.length === 0) {
         throw new ApiError(
           400,
@@ -365,7 +390,7 @@ class UserController {
         UPDATE users 
         SET ${updates.join(", ")}
         WHERE id = $${paramIndex} AND deleted_at IS NULL
-        RETURNING id, full_name, email, user_role, company_id, profile_id, created_at, updated_at
+        RETURNING id, full_name, email, user_role, company_id, profile_id, view_own_leads_only, created_at, updated_at
       `,
         values
       );
@@ -382,13 +407,24 @@ class UserController {
         [user.profile_id]
       );
 
-      const profileName = profileResult.rows.length > 0 ? profileResult.rows[0].profile_name : null;
+      const profileName =
+        profileResult.rows.length > 0
+          ? profileResult.rows[0].profile_name
+          : null;
 
       // Log de auditoria
       auditLogger(tc(req, "userController", "audit.user_updated"), {
         adminId: req.user.id,
         updatedUserId: id,
-        changes: { name, email, role, company_id, status, profile_id },
+        changes: {
+          name,
+          email,
+          role,
+          company_id,
+          status,
+          profile_id,
+          view_own_leads_only,
+        },
         ip: req.ip,
       });
 
@@ -404,6 +440,7 @@ class UserController {
             companyId: user.company_id,
             profileId: user.profile_id,
             profileName: profileName,
+            viewOwnLeadsOnly: user.view_own_leads_only,
             createdAt: user.created_at,
             updatedAt: user.updated_at,
           },
@@ -448,7 +485,7 @@ class UserController {
       }
 
       // Construir query de atualização
-      const updates = ['full_name = $1', 'email = $2', 'updated_at = NOW()'];
+      const updates = ["full_name = $1", "email = $2", "updated_at = NOW()"];
       const values = [name.trim(), email.toLowerCase()];
       let paramIndex = 3;
 
@@ -487,7 +524,10 @@ class UserController {
         [user.profile_id]
       );
 
-      const profileName = profileResult.rows.length > 0 ? profileResult.rows[0].profile_name : null;
+      const profileName =
+        profileResult.rows.length > 0
+          ? profileResult.rows[0].profile_name
+          : null;
 
       // Log de auditoria
       auditLogger(tc(req, "userController", "audit.profile_updated"), {
@@ -522,7 +562,15 @@ class UserController {
    * ✨ CREATE USER - Criar novo usuário (admin)
    */
   static createUser = asyncHandler(async (req, res) => {
-    const { name, email, password, role = "user", company_id, profile_id } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role = "user",
+      company_id,
+      profile_id,
+      view_own_leads_only = false,
+    } = req.body;
 
     try {
       // Validações básicas
@@ -576,10 +624,10 @@ class UserController {
       const userResult = await query(
         `
         INSERT INTO users (
-          full_name, email, password_hash, user_role, company_id, profile_id
+          full_name, email, password_hash, user_role, company_id, profile_id, view_own_leads_only
         ) VALUES (
-          $1, $2, $3, $4, $5, $6
-        ) RETURNING id, full_name, email, user_role, company_id, profile_id, created_at
+          $1, $2, $3, $4, $5, $6, $7
+        ) RETURNING id, full_name, email, user_role, company_id, profile_id, view_own_leads_only, created_at
       `,
         [
           name.trim(),
@@ -588,6 +636,7 @@ class UserController {
           role,
           parseInt(targetCompanyId),
           profile_id || null,
+          view_own_leads_only,
         ]
       );
 
@@ -604,7 +653,10 @@ class UserController {
         `,
           [newUser.profile_id]
         );
-        profileName = profileResult.rows.length > 0 ? profileResult.rows[0].profile_name : null;
+        profileName =
+          profileResult.rows.length > 0
+            ? profileResult.rows[0].profile_name
+            : null;
       }
 
       // Log de auditoria
@@ -627,6 +679,7 @@ class UserController {
             companyId: newUser.company_id,
             profileId: newUser.profile_id,
             profileName: profileName,
+            viewOwnLeadsOnly: newUser.view_own_leads_only,
             createdAt: newUser.created_at,
           },
         },
@@ -820,7 +873,7 @@ class UserController {
       // 1. Buscar usuário com profile
       const userQuery = `
         SELECT 
-          u.id, u.full_name, u.email, u.user_role, u.company_id, u.profile_id,
+          u.id, u.full_name, u.email, u.user_role, u.company_id, u.profile_id, u.view_own_leads_only,
           p.id as profile_id, p.name as profile_name, p.screen_ids,
           p.translations as profile_translations
         FROM users u
@@ -854,6 +907,7 @@ class UserController {
               companyId: user.company_id,
               profileId: null,
               profileName: null,
+              viewOwnLeadsOnly: user.view_own_leads_only,
             },
             profile: null,
             menus: [],
@@ -871,11 +925,7 @@ class UserController {
         );
         return res.json({
           success: true,
-          message: tc(
-            req,
-            "userController",
-            "get_profile_menu.no_permissions"
-          ),
+          message: tc(req, "userController", "get_profile_menu.no_permissions"),
           data: {
             user: {
               id: user.id,
@@ -885,6 +935,7 @@ class UserController {
               companyId: user.company_id,
               profileId: user.profile_id,
               profileName: user.profile_name,
+              viewOwnLeadsOnly: user.view_own_leads_only,
             },
             profile: {
               id: user.profile_id,
@@ -987,6 +1038,7 @@ class UserController {
             companyId: user.company_id,
             profileId: user.profile_id,
             profileName: user.profile_name,
+            viewOwnLeadsOnly: user.view_own_leads_only,
           },
           profile: {
             id: user.profile_id,
