@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -76,6 +76,17 @@ class ContactController {
     phone: Joi.string().max(20).allow(null, ""),
     document: Joi.string().max(20).allow(null, ""),
     tipo: Joi.string().valid("lead", "cliente").default("lead"),
+    status: Joi.string()
+      .valid(
+        "novo",
+        "em_contato",
+        "qualificado",
+        "proposta_enviada",
+        "em_negociacao",
+        "fechado",
+        "perdido"
+      )
+      .default("novo"),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()).default([]),
     interests: Joi.array().items(Joi.number().integer().positive()).default([]),
@@ -85,6 +96,8 @@ class ContactController {
     state: Joi.string().allow(null),
     zip_code: Joi.string().allow(null),
     owner_id: Joi.number().integer().allow(null),
+    company_id: Joi.number().integer().allow(null),
+    temperature: Joi.string().valid("frio", "morno", "quente").allow(null),
   }).or("email", "phone", "document");
 
   static updateContactSchema = Joi.object({
@@ -93,6 +106,15 @@ class ContactController {
     phone: Joi.string().max(20).allow(null, ""),
     document: Joi.string().max(20).allow(null, ""),
     tipo: Joi.string().valid("lead", "cliente"),
+    status: Joi.string().valid(
+      "novo",
+      "em_contato",
+      "qualificado",
+      "proposta_enviada",
+      "em_negociacao",
+      "fechado",
+      "perdido"
+    ),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()),
     interests: Joi.array().items(Joi.number().integer().positive()),
@@ -103,6 +125,8 @@ class ContactController {
     zip_code: Joi.string().allow(null),
     owner_id: Joi.number().integer().allow(null),
     lifetime_value_cents: Joi.number().integer().min(0),
+    company_id: Joi.number().integer().allow(null),
+    temperature: Joi.string().valid("frio", "morno", "quente").allow(null),
   });
 
   /**
@@ -121,6 +145,7 @@ class ContactController {
       sort_order,
       limit = 50,
       offset = 0,
+      company_id,
     } = req.query;
 
     const filters = {
@@ -133,6 +158,7 @@ class ContactController {
       sort_order,
       limit: parseInt(limit),
       offset: parseInt(offset),
+      company_id: company_id ? parseInt(company_id) : undefined,
     };
 
     const contacts = await Contact.list(companyId, filters);
@@ -142,6 +168,7 @@ class ContactController {
       owner_id,
       search,
       tags,
+      company_id,
     });
 
     return paginatedResponse(
@@ -189,9 +216,12 @@ class ContactController {
     const userId = req.user.id;
 
     // Validação
-    const { error, value } = ContactController.createContactSchema.validate(req.body, {
-      abortEarly: false,
-    });
+    const { error, value } = ContactController.createContactSchema.validate(
+      req.body,
+      {
+        abortEarly: false,
+      }
+    );
 
     if (error) {
       const messages = error.details.map((d) => d.message).join(", ");
@@ -264,7 +294,75 @@ class ContactController {
   });
 
   /**
-   * 🗑️ Excluir contato (soft delete)
+   * � Atualizar apenas o status do contato
+   * PATCH /api/contacts/:id/status
+   */
+  static updateStatus = asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId;
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validação do status
+    const validStatuses = [
+      "novo",
+      "em_contato",
+      "qualificado",
+      "proposta_enviada",
+      "em_negociacao",
+      "fechado",
+      "perdido",
+    ];
+
+    if (!status) {
+      throw new ValidationError(
+        tc(req, "contactController", "update_status.status_required")
+      );
+    }
+
+    if (!validStatuses.includes(status)) {
+      throw new ValidationError(
+        tc(req, "contactController", "update_status.invalid_status", {
+          valid: validStatuses.join(", "),
+        })
+      );
+    }
+
+    // Verificar se contato existe
+    const existingContact = await Contact.findById(id, companyId);
+    if (!existingContact) {
+      throw new NotFoundError(
+        tc(req, "contactController", "update_status.not_found")
+      );
+    }
+
+    // Atualizar apenas o status
+    const updatedContact = await Contact.update(id, companyId, {
+      status: status,
+    });
+
+    // Audit log
+    auditLogger({
+      action: tc(req, "contactController", "audit.status_updated"),
+      userId,
+      companyId,
+      resourceType: "contact",
+      resourceId: id,
+      changes: {
+        old_status: existingContact.status,
+        new_status: status,
+      },
+    });
+
+    return successResponse(
+      res,
+      updatedContact,
+      tc(req, "contactController", "update_status.success")
+    );
+  });
+
+  /**
+   * �🗑️ Excluir contato (soft delete)
    * DELETE /api/contacts/:id
    */
   static delete = asyncHandler(async (req, res) => {

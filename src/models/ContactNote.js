@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -357,7 +357,16 @@ class ContactNote {
         if (key === "content" && (!value || value.trim().length === 0)) {
           throw new ValidationError("Content cannot be empty");
         }
-        updates.push(`${key} = $${paramCount}`);
+
+        // Mapear nomes dos campos para os nomes das colunas na tabela
+        const columnName =
+          key === "content"
+            ? "note_content"
+            : key === "type"
+            ? "note_type"
+            : key;
+
+        updates.push(`${columnName} = $${paramCount}`);
         values.push(value);
         paramCount++;
       }
@@ -370,14 +379,18 @@ class ContactNote {
     updates.push("updated_at = NOW()");
     values.push(id, companyId);
 
+    // Atualizar paramCount para incluir os novos parâmetros (id e companyId)
+    const idParamIndex = paramCount;
+    const companyIdParamIndex = paramCount + 1;
+
     const updateQuery = `
       UPDATE polox.contact_notes 
       SET ${updates.join(", ")}
-      WHERE id = $${paramCount} 
-        AND company_id = $${paramCount + 1} 
+      WHERE id = $${idParamIndex} 
+        AND company_id = $${companyIdParamIndex} 
         AND deleted_at IS NULL
       RETURNING 
-        id, contato_id, created_by_id, content, type, company_id,
+        id, contato_id, created_by_id, note_content as content, note_type as type, company_id,
         created_at, updated_at
     `;
 

@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -73,6 +73,8 @@ const createUserValidation = Joi.object({
   role: Joi.string()
     .valid("super_admin", "company_admin", "manager", "user")
     .default("user"),
+  view_own_leads_only: Joi.boolean().optional().default(false),
+  viewOwnLeadsOnly: Joi.boolean().optional().default(false),
 });
 
 const resetPasswordValidation = Joi.object({
@@ -91,6 +93,8 @@ const updateUserValidation = Joi.object({
   company_id: Joi.number().integer(),
   profile_id: Joi.number().integer().allow(null).optional(),
   status: Joi.string().valid("active", "inactive", "suspended"),
+  view_own_leads_only: Joi.boolean().optional(),
+  viewOwnLeadsOnly: Joi.boolean().optional(),
 });
 
 /**
@@ -235,10 +239,10 @@ router.put(
  *     description: |
  *       Retorna o perfil do usuário autenticado (via token JWT) e os menus que ele tem permissão de acessar.
  *       Usado no login para carregar o menu dinâmico baseado no perfil.
- *       
+ *
  *       **SEGURANÇA:** Usa automaticamente o ID do usuário do token JWT (req.user.id),
  *       não permitindo que um usuário acesse dados de outro.
- *       
+ *
  *       Lógica de permissões:
  *       1. Identifica usuário pelo token JWT
  *       2. Busca o perfil do usuário (profiles.id via users.profile_id)
@@ -262,7 +266,11 @@ router.put(
  *       500:
  *         description: Erro no servidor
  */
-router.get("/profile-menu", rateLimiter.general, UserController.getUserProfileWithMenus);
+router.get(
+  "/profile-menu",
+  rateLimiter.general,
+  UserController.getUserProfileWithMenus
+);
 
 /**
  * @swagger

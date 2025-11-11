@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -39,18 +39,18 @@
  * ==========================================
  * 👥 ROTAS DE CONTATOS - IDENTIDADE UNIFICADA
  * ==========================================
- * 
+ *
  * Arquitetura: "Identidade vs. Intenção"
  * - Unifica Leads + Clientes em uma única tabela
  * - Tabela: polox.contacts
  */
 
-const express = require('express');
-const ContactController = require('../controllers/ContactController');
-const DealController = require('../controllers/DealController');
-const ContactNoteController = require('../controllers/ContactNoteController');
-const { authenticateToken } = require('../middleware/auth');
-const { rateLimiter } = require('../middleware/rateLimiter');
+const express = require("express");
+const ContactController = require("../controllers/ContactController");
+const DealController = require("../controllers/DealController");
+const ContactNoteController = require("../controllers/ContactNoteController");
+const { authenticateToken } = require("../middleware/auth");
+const { rateLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
@@ -84,6 +84,12 @@ router.use(authenticateToken);
  *         schema:
  *           type: integer
  *         description: Filtrar por responsável
+ *       - in: query
+ *         name: company_id
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por empresa específica
+ *         example: 25
  *       - in: query
  *         name: search
  *         schema:
@@ -147,7 +153,7 @@ router.use(authenticateToken);
  *                     offset:
  *                       type: integer
  */
-router.get('/', ContactController.list);
+router.get("/", ContactController.list);
 
 /**
  * @swagger
@@ -197,7 +203,7 @@ router.get('/', ContactController.list);
  *                     - $ref: '#/components/schemas/Contact'
  *                     - type: null
  */
-router.get('/search', ContactController.searchContact);
+router.get("/search", ContactController.searchContact);
 
 /**
  * @swagger
@@ -224,7 +230,7 @@ router.get('/search', ContactController.searchContact);
  *       200:
  *         description: Estatísticas de contatos
  */
-router.get('/stats', ContactController.getStats);
+router.get("/stats", ContactController.getStats);
 
 /**
  * @swagger
@@ -267,7 +273,7 @@ router.get('/stats', ContactController.getStats);
  *       201:
  *         description: Novo contato criado
  */
-router.post('/get-or-create', ContactController.getOrCreate);
+router.post("/get-or-create", ContactController.getOrCreate);
 
 /**
  * @swagger
@@ -276,19 +282,19 @@ router.post('/get-or-create', ContactController.getOrCreate);
  *     summary: 🔥 ENDPOINT CRÍTICO - Buscar/Criar Contato + Criar Negociação
  *     description: |
  *       ⭐ Este é o CORAÇÃO da solução para Extensão WhatsApp + Landing Pages
- *       
+ *
  *       **COMPORTAMENTO:**
  *       1. Busca contato existente por phone/email/document (prioridade: phone)
  *       2. Se NÃO encontrar: Cria novo contato como 'lead'
  *       3. Se encontrar deletado: Restaura o contato
  *       4. **SEMPRE** cria uma NOVA negociação para esse contato
- *       
+ *
  *       **RESOLVE:**
  *       - Cliente que virou lead de novo? ✅ Cria nova negociação
  *       - Múltiplos deals por contato? ✅ Suportado nativamente
  *       - Duplicidade? ✅ Constraints do banco impedem (Migration 036)
  *       - Extensão WhatsApp? ✅ 1 telefone = 1 contato sempre
- *       
+ *
  *       **USO TÍPICO:**
  *       - Extensão WhatsApp: Novo contato via chat
  *       - Landing Pages: Lead preencheu formulário
@@ -409,7 +415,7 @@ router.post('/get-or-create', ContactController.getOrCreate);
  *         description: Validação falhou (falta phone/email/document ou nome)
  */
 router.post(
-  '/get-or-create-with-negotiation',
+  "/get-or-create-with-negotiation",
   rateLimiter.general, // Rate limit geral
   ContactController.getOrCreateWithNegotiation
 );
@@ -437,7 +443,7 @@ router.post(
  *       404:
  *         description: Contato não encontrado
  */
-router.get('/:id', ContactController.show);
+router.get("/:id", ContactController.show);
 
 /**
  * @swagger
@@ -477,6 +483,11 @@ router.get('/:id', ContactController.show);
  *                 type: string
  *                 enum: [lead, cliente]
  *                 default: lead
+ *               status:
+ *                 type: string
+ *                 enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido]
+ *                 default: novo
+ *                 description: "Status do contato no pipeline de vendas"
  *               origem:
  *                 type: string
  *                 example: "site"
@@ -509,7 +520,7 @@ router.get('/:id', ContactController.show);
  *       400:
  *         description: Dados inválidos
  */
-router.post('/', rateLimiter.general, ContactController.create);
+router.post("/", rateLimiter.general, ContactController.create);
 
 /**
  * @swagger
@@ -536,39 +547,154 @@ router.post('/', rateLimiter.general, ContactController.create);
  *             properties:
  *               nome:
  *                 type: string
+ *                 example: "João Silva"
  *               email:
  *                 type: string
+ *                 format: email
+ *                 example: "joao@example.com"
  *               phone:
  *                 type: string
+ *                 example: "5511999999999"
  *               document:
  *                 type: string
+ *                 example: "12345678900"
  *               tipo:
  *                 type: string
  *                 enum: [lead, cliente]
+ *                 example: "lead"
+ *               status:
+ *                 type: string
+ *                 enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido]
+ *                 description: "Status do contato no pipeline de vendas"
+ *                 example: "proposta_enviada"
  *               origem:
  *                 type: string
+ *                 example: "whatsapp"
  *               tags:
  *                 type: array
  *                 items:
  *                   type: string
+ *                 example: ["vip", "quente"]
  *               interests:
  *                 type: array
  *                 items:
- *                   type: string
+ *                   type: integer
+ *                 example: [1, 5, 10]
  *               owner_id:
  *                 type: integer
+ *                 example: 59
  *               lifetime_value_cents:
  *                 type: integer
  *                 minimum: 0
+ *                 example: 150000
+ *               address:
+ *                 type: string
+ *                 example: "Rua das Flores, 123"
+ *               city:
+ *                 type: string
+ *                 example: "São Paulo"
+ *               state:
+ *                 type: string
+ *                 example: "SP"
+ *               zip_code:
+ *                 type: string
+ *                 example: "01234-567"
  *               metadata:
  *                 type: object
+ *                 example: {}
+ *           example:
+ *             nome: "João Silva"
+ *             email: "joao@example.com"
+ *             phone: "5511999999999"
+ *             status: "proposta_enviada"
+ *             owner_id: 59
  *     responses:
  *       200:
- *         description: Contato atualizado
+ *         description: Contato atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Contato atualizado com sucesso"
+ *                 data:
+ *                   $ref: '#/components/schemas/Contact'
  *       404:
  *         description: Contato não encontrado
+ *       422:
+ *         description: Dados inválidos
  */
-router.put('/:id', ContactController.update);
+router.put("/:id", ContactController.update);
+
+/**
+ * @swagger
+ * /contacts/{id}/status:
+ *   patch:
+ *     summary: Atualizar apenas o status do contato
+ *     description: |
+ *       Altera apenas o status do contato sem modificar outros campos.
+ *       Útil para mudanças rápidas no funil de vendas.
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do contato
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - novo
+ *                   - em_contato
+ *                   - qualificado
+ *                   - proposta_enviada
+ *                   - em_negociacao
+ *                   - fechado
+ *                   - perdido
+ *                 description: Novo status do contato
+ *                 example: "qualificado"
+ *     responses:
+ *       200:
+ *         description: Status do contato atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Status do contato atualizado com sucesso"
+ *                 data:
+ *                   $ref: '#/components/schemas/Contact'
+ *       400:
+ *         description: Status inválido ou não fornecido
+ *       404:
+ *         description: Contato não encontrado
+ *       422:
+ *         description: Dados de validação inválidos
+ */
+router.patch("/:id/status", ContactController.updateStatus);
 
 /**
  * @swagger
@@ -595,7 +721,7 @@ router.put('/:id', ContactController.update);
  *       404:
  *         description: Lead não encontrado
  */
-router.post('/:id/convert', ContactController.convertToClient);
+router.post("/:id/convert", ContactController.convertToClient);
 
 /**
  * @swagger
@@ -619,7 +745,7 @@ router.post('/:id/convert', ContactController.convertToClient);
  *       404:
  *         description: Contato não encontrado
  */
-router.delete('/:id', ContactController.delete);
+router.delete("/:id", ContactController.delete);
 
 // ==========================================
 // ROTAS ANINHADAS: DEALS E NOTES DE UM CONTATO
@@ -645,7 +771,7 @@ router.delete('/:id', ContactController.delete);
  *       200:
  *         description: Lista de negociações do contato
  */
-router.get('/:contactId/deals', DealController.listByContact);
+router.get("/:contactId/deals", DealController.listByContact);
 
 /**
  * @swagger
@@ -677,7 +803,7 @@ router.get('/:contactId/deals', DealController.listByContact);
  *       200:
  *         description: Histórico de interações do contato
  */
-router.get('/:contactId/notes', ContactNoteController.listByContact);
+router.get("/:contactId/notes", ContactNoteController.listByContact);
 
 /**
  * @swagger
@@ -720,7 +846,11 @@ router.get('/:contactId/notes', ContactNoteController.listByContact);
  *       201:
  *         description: Anotação criada
  */
-router.post('/:contactId/notes', rateLimiter.general, ContactNoteController.create);
+router.post(
+  "/:contactId/notes",
+  rateLimiter.general,
+  ContactNoteController.create
+);
 
 /**
  * @swagger
@@ -742,7 +872,7 @@ router.post('/:contactId/notes', rateLimiter.general, ContactNoteController.crea
  *       200:
  *         description: Estatísticas de interações
  */
-router.get('/:contactId/notes/stats', ContactNoteController.getContactStats);
+router.get("/:contactId/notes/stats", ContactNoteController.getContactStats);
 
 /**
  * @swagger
@@ -769,7 +899,10 @@ router.get('/:contactId/notes/stats', ContactNoteController.getContactStats);
  *       200:
  *         description: Anotações recentes
  */
-router.get('/:contactId/notes/recent', ContactNoteController.getRecentByContact);
+router.get(
+  "/:contactId/notes/recent",
+  ContactNoteController.getRecentByContact
+);
 
 /**
  * @swagger

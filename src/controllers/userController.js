@@ -287,6 +287,7 @@ class UserController {
       status,
       profile_id,
       view_own_leads_only,
+      viewOwnLeadsOnly,
     } = req.body;
 
     try {
@@ -326,6 +327,18 @@ class UserController {
           );
         }
       }
+
+      // Normalizar viewOwnLeadsOnly (aceitar tanto camelCase quanto snake_case)
+      const finalViewOwnLeadsOnly =
+        viewOwnLeadsOnly !== undefined ? viewOwnLeadsOnly : view_own_leads_only;
+
+      // Debug log para verificar valores
+      logger.info("🔍 UPDATE USER - Debug valores:", {
+        viewOwnLeadsOnly,
+        view_own_leads_only,
+        finalViewOwnLeadsOnly,
+        body: req.body,
+      });
 
       // Construir query de atualização dinamicamente
       const updates = [];
@@ -368,9 +381,16 @@ class UserController {
         paramIndex++;
       }
 
-      if (view_own_leads_only !== undefined) {
+      if (finalViewOwnLeadsOnly !== undefined) {
+        logger.info(
+          "🔍 UPDATE USER - Adicionando view_own_leads_only na query:",
+          {
+            finalViewOwnLeadsOnly,
+            paramIndex,
+          }
+        );
         updates.push(`view_own_leads_only = $${paramIndex}`);
-        values.push(view_own_leads_only);
+        values.push(finalViewOwnLeadsOnly);
         paramIndex++;
       }
 
@@ -383,6 +403,13 @@ class UserController {
 
       updates.push("updated_at = NOW()");
       values.push(id);
+
+      // Log da query antes de executar
+      logger.info("🔍 UPDATE USER - Query que será executada:", {
+        updates: updates.join(", "),
+        values,
+        paramIndex,
+      });
 
       // Atualizar usuário
       const userResult = await query(
@@ -423,7 +450,7 @@ class UserController {
           company_id,
           status,
           profile_id,
-          view_own_leads_only,
+          viewOwnLeadsOnly: finalViewOwnLeadsOnly,
         },
         ip: req.ip,
       });
@@ -570,6 +597,7 @@ class UserController {
       company_id,
       profile_id,
       view_own_leads_only = false,
+      viewOwnLeadsOnly,
     } = req.body;
 
     try {
@@ -587,6 +615,10 @@ class UserController {
           tc(req, "userController", "validation.password_min_length")
         );
       }
+
+      // Normalizar viewOwnLeadsOnly (aceitar tanto camelCase quanto snake_case)
+      const finalViewOwnLeadsOnly =
+        viewOwnLeadsOnly !== undefined ? viewOwnLeadsOnly : view_own_leads_only;
 
       // Determinar company_id: usar o do body se fornecido, senão usar do usuário autenticado
       const targetCompanyId =
@@ -636,7 +668,7 @@ class UserController {
           role,
           parseInt(targetCompanyId),
           profile_id || null,
-          view_own_leads_only,
+          finalViewOwnLeadsOnly,
         ]
       );
 

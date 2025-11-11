@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -196,7 +196,11 @@ class Contact {
    * @param {boolean} includeDeleted - Incluir registros deletados
    * @returns {Promise<Object|null>} Contato ou null
    */
-  static async findByIdentifier(companyId, identifiers = {}, includeDeleted = false) {
+  static async findByIdentifier(
+    companyId,
+    identifiers = {},
+    includeDeleted = false
+  ) {
     const { phone, email, document } = identifiers;
 
     // Buscar por telefone primeiro
@@ -213,7 +217,11 @@ class Contact {
 
     // Buscar por documento se não encontrou pelos anteriores
     if (document) {
-      const contact = await this.findByDocument(companyId, document, includeDeleted);
+      const contact = await this.findByDocument(
+        companyId,
+        document,
+        includeDeleted
+      );
       if (contact) return contact;
     }
 
@@ -230,7 +238,7 @@ class Contact {
     const sql = `
       SELECT 
         id, company_id, owner_id, tipo, nome, email, phone, document_number,
-        company_name, lead_source, first_contact_at, score, temperature,
+        company_name, status, lead_source, first_contact_at, score, temperature,
         last_purchase_date, lifetime_value_cents,
         address_street, address_number, address_complement, address_neighborhood,
         address_city, address_state, address_country, address_postal_code,
@@ -262,6 +270,7 @@ class Contact {
       sort_order = "DESC",
       limit = 50,
       offset = 0,
+      company_id, // Filtro adicional por company_id específico
     } = filters;
 
     const conditions = ["company_id = $1", "deleted_at IS NULL"];
@@ -292,11 +301,18 @@ class Contact {
       paramIndex++;
     }
 
+    // Se company_id específico for fornecido, sobrescreve o companyId do usuário autenticado
+    if (company_id && company_id !== companyId) {
+      conditions[0] = "company_id = $1"; // Mantém a mesma condição mas com valor diferente
+      params[0] = company_id; // Substitui o valor
+    }
+
     // Validar sort_by para prevenir SQL injection
     const allowedSortFields = [
       "created_at",
       "updated_at",
       "nome",
+      "status",
       "score",
       "temperature",
       "lifetime_value_cents",
@@ -309,7 +325,7 @@ class Contact {
     const sql = `
       SELECT 
         id, company_id, owner_id, tipo, nome, email, phone, document_number,
-        company_name, score, temperature, lifetime_value_cents,
+        company_name, status, score, temperature, lifetime_value_cents,
         address_city, address_state, created_at, updated_at
       FROM polox.contacts
       WHERE ${conditions.join(" AND ")}
@@ -439,7 +455,7 @@ class Contact {
 
         return result.rows[0];
       });
-      
+
       return { contact: restoredContact, created: false, restored: true };
     }
 
@@ -458,7 +474,7 @@ class Contact {
       owner_id,
       ...otherData,
     });
-    
+
     return { contact: newContact, created: true, restored: false };
   }
 
@@ -476,6 +492,7 @@ class Contact {
       document_number,
       document_type = null,
       company_name = null,
+      status = "novo",
       tipo = "lead",
       owner_id = null,
       lead_source = null,
@@ -562,29 +579,44 @@ class Contact {
       // 1. Criar contato
       const insertQuery = `
         INSERT INTO polox.contacts (
-          company_id, owner_id, tipo, nome, email, phone, document_number, document_type,
-          company_name, lead_source, first_contact_at, score, temperature,
-          last_purchase_date, lifetime_value_cents,
-          address_street, address_number, address_complement, address_neighborhood,
-          address_city, address_state, address_country, address_postal_code,
-          created_at, updated_at
-        )
+            company_id, owner_id, tipo, nome, email, phone, document_number, document_type,
+            company_name, status, lead_source, first_contact_at, score, temperature,
+            last_purchase_date, lifetime_value_cents,
+            address_street, address_number, address_complement, address_neighborhood,
+            address_city, address_state, address_country, address_postal_code,
+            created_at, updated_at
+          )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8,
-          $9, $10, $11, $12, $13,
-          $14, $15,
-          $16, $17, $18, $19,
-          $20, $21, $22, $23,
+          $9, $10, $11, $12, $13, $14,
+          $15, $16,
+          $17, $18, $19, $20,
+          $21, $22, $23, $24,
           NOW(), NOW()
         )
         RETURNING 
           id, company_id, owner_id, tipo, nome, email, phone, document_number, document_type,
-          company_name, lead_source, first_contact_at, score, temperature,
+          company_name, status, lead_source, first_contact_at, score, temperature,
           last_purchase_date, lifetime_value_cents,
           address_street, address_number, address_complement, address_neighborhood,
           address_city, address_state, address_country, address_postal_code,
           created_at, updated_at, deleted_at
       `;
+
+      // Validate status value (application-level)
+      const allowedStatuses = [
+        "novo",
+        "em_contato",
+        "qualificado",
+        "proposta_enviada",
+        "em_negociacao",
+        "fechado",
+        "perdido",
+      ];
+      const normalizedStatus = (status || "novo").toString().toLowerCase();
+      if (!allowedStatuses.includes(normalizedStatus)) {
+        throw new ValidationError("Status inválido");
+      }
 
       const result = await client.query(insertQuery, [
         companyId,
@@ -596,6 +628,7 @@ class Contact {
         normalizedDocument,
         document_type,
         company_name,
+        normalizedStatus,
         lead_source,
         first_contact_at,
         score,
@@ -699,6 +732,7 @@ class Contact {
       document_number,
       document_type,
       company_name,
+      status,
       owner_id,
       lead_source,
       score,
@@ -771,6 +805,26 @@ class Contact {
     if (owner_id !== undefined) {
       updates.push(`owner_id = $${paramIndex}`);
       params.push(owner_id);
+      paramIndex++;
+    }
+
+    if (status !== undefined) {
+      // Validar status
+      const allowedStatuses = [
+        "novo",
+        "em_contato",
+        "qualificado",
+        "proposta_enviada",
+        "em_negociacao",
+        "fechado",
+        "perdido",
+      ];
+      const normalizedStatus = status.toString().toLowerCase();
+      if (!allowedStatuses.includes(normalizedStatus)) {
+        throw new ValidationError("Status inválido");
+      }
+      updates.push(`status = $${paramIndex}`);
+      params.push(normalizedStatus);
       paramIndex++;
     }
 
@@ -864,19 +918,39 @@ class Contact {
       WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
       RETURNING 
         id, company_id, owner_id, tipo, nome, email, phone, document_number, document_type,
-        company_name, lead_source, first_contact_at, score, temperature,
+        company_name, status, lead_source, first_contact_at, score, temperature,
         last_purchase_date, lifetime_value_cents,
         address_street, address_number, address_complement, address_neighborhood,
         address_city, address_state, address_country, address_postal_code,
         created_at, updated_at, deleted_at
     `;
 
-    const result = await query(sql, params);
-    if (result.rows.length === 0) {
-      throw new NotFoundError("Contact not found");
-    }
+    try {
+      const result = await query(sql, params);
+      if (result.rows.length === 0) {
+        throw new NotFoundError("Contact not found");
+      }
 
-    return result.rows[0];
+      return result.rows[0];
+    } catch (error) {
+      // Map common unique constraint DB errors to validation errors
+      // Postgres unique violation code = '23505'
+      if (error && error.code === "23505") {
+        const constraint = error.constraint || "";
+        let friendly = "Duplicate value violates unique constraint";
+        if (constraint.includes("phone")) {
+          friendly = "Telefone já está em uso por outro contato nesta empresa";
+        } else if (constraint.includes("email")) {
+          friendly = "Email já está em uso por outro contato nesta empresa";
+        } else if (constraint.includes("document")) {
+          friendly = "Documento já está em uso por outro contato nesta empresa";
+        }
+        throw new ValidationError(friendly);
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   /**
@@ -895,7 +969,7 @@ class Contact {
       WHERE id = $1 AND company_id = $2 AND tipo = 'lead' AND deleted_at IS NULL
       RETURNING 
         id, company_id, owner_id, tipo, nome, email, phone, document_number,
-        company_name, lead_source, first_contact_at, score, temperature,
+        company_name, status, lead_source, first_contact_at, score, temperature,
         last_purchase_date, lifetime_value_cents,
         address_street, address_number, address_complement, address_neighborhood,
         address_city, address_state, address_country, address_postal_code,
@@ -943,7 +1017,7 @@ class Contact {
    * @returns {Promise<number>} Total de contatos
    */
   static async count(companyId, filters = {}) {
-    const { tipo, owner_id } = filters;
+    const { tipo, owner_id, company_id } = filters;
 
     const conditions = ["company_id = $1", "deleted_at IS NULL"];
     const params = [companyId];
@@ -959,6 +1033,12 @@ class Contact {
       conditions.push(`owner_id = $${paramIndex}`);
       params.push(owner_id);
       paramIndex++;
+    }
+
+    // Se company_id específico for fornecido, sobrescreve o companyId do usuário autenticado
+    if (company_id && company_id !== companyId) {
+      conditions[0] = "company_id = $1"; // Mantém a mesma condição mas com valor diferente
+      params[0] = company_id; // Substitui o valor
     }
 
     const sql = `
