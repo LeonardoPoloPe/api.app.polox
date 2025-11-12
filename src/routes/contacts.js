@@ -96,6 +96,17 @@ router.use(authenticateToken);
  *           type: string
  *         description: Buscar por nome, email, telefone ou documento
  *       - in: query
+ *         name: numerotelefone
+ *         schema:
+ *           type: string
+ *         description: |
+ *           Filtro específico por número de telefone (WhatsApp). Regra:
+ *           - Remove caracteres não numéricos automaticamente
+ *           - Se não começar com 55, o sistema também busca pela variante com 55 prefixado
+ *           - Se começar com 55, também busca pela variante sem 55
+ *           Exemplo: 11999999999 → busca 11999999999 e 5511999999999
+ *           Exemplo: 5511999999999 → busca 5511999999999 e 11999999999
+ *       - in: query
  *         name: tags
  *         schema:
  *           type: string
@@ -172,7 +183,18 @@ router.get("/", ContactController.list);
  *         name: phone
  *         schema:
  *           type: string
- *         description: Buscar por telefone
+ *         description: |
+ *           Buscar por telefone. Regra do WhatsApp:
+ *           - Remove caracteres não numéricos automaticamente
+ *           - Se não começar com 55, também busca pela variante com 55 prefixado
+ *           - Se começar com 55, também busca pela variante sem 55
+ *       - in: query
+ *         name: company_id
+ *         schema:
+ *           type: integer
+ *         description: ID da empresa a ser usada na busca (obrigatório)
+ *         required: true
+ *         example: 25
  *       - in: query
  *         name: email
  *         schema:
@@ -200,7 +222,32 @@ router.get("/", ContactController.list);
  *                   type: string
  *                 data:
  *                   oneOf:
- *                     - $ref: '#/components/schemas/Contact'
+ *                     - type: object
+ *                       description: Campos mínimos retornados para performance
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         company_id:
+ *                           type: integer
+ *                         nome:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         score:
+ *                           type: integer
+ *                         temperature:
+ *                           type: string
+ *                           enum: [frio, morno, quente]
+ *                         tipo:
+ *                           type: string
+ *                           enum: [lead, cliente]
+ *                         status:
+ *                           type: string
+ *                         notes_count:
+ *                           type: integer
+ *                           description: Quantidade de notas do contato
  *                     - type: null
  */
 router.get("/search", ContactController.searchContact);

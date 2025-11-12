@@ -140,6 +140,7 @@ class ContactController {
       origem,
       owner_id,
       search,
+      numerotelefone,
       tags,
       sort_by,
       sort_order,
@@ -153,6 +154,7 @@ class ContactController {
       origem,
       owner_id: owner_id ? parseInt(owner_id) : undefined,
       search,
+      numerotelefone,
       tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined,
       sort_by,
       sort_order,
@@ -164,11 +166,9 @@ class ContactController {
     const contacts = await Contact.list(companyId, filters);
     const total = await Contact.count(companyId, {
       tipo,
-      origem,
       owner_id,
-      search,
-      tags,
       company_id,
+      numerotelefone,
     });
 
     return paginatedResponse(
@@ -659,8 +659,21 @@ class ContactController {
    * Para a Extensão WhatsApp buscar rapidamente um contato
    */
   static searchContact = asyncHandler(async (req, res) => {
-    const companyId = req.user.companyId;
-    const { phone, email, document } = req.query;
+    const { phone, email, document, company_id } = req.query;
+
+    // company_id agora é obrigatório no endpoint de busca
+    if (!company_id) {
+      throw new ValidationError(
+        tc(req, "contactController", "search.company_id_required")
+      );
+    }
+    const parsedCompanyId = parseInt(company_id, 10);
+    if (Number.isNaN(parsedCompanyId) || parsedCompanyId <= 0) {
+      throw new ValidationError(
+        tc(req, "contactController", "search.company_id_invalid")
+      );
+    }
+    const effectiveCompanyId = parsedCompanyId;
 
     if (!phone && !email && !document) {
       throw new ValidationError(
@@ -672,12 +685,22 @@ class ContactController {
       );
     }
 
-    // Buscar contato por qualquer dos identificadores
-    const contact = await Contact.findByIdentifier(companyId, {
-      phone,
-      email,
-      document,
-    });
+    // Buscar contato por qualquer dos identificadores (prioridade: phone com variantes -> email -> document)
+    let contact = null;
+    if (phone) {
+      contact = await Contact.findByPhoneVariants(effectiveCompanyId, phone);
+    }
+
+    if (!contact && email) {
+      contact = await Contact.findMinimalByEmail(effectiveCompanyId, email);
+    }
+
+    if (!contact && document) {
+      contact = await Contact.findMinimalByDocument(
+        effectiveCompanyId,
+        document
+      );
+    }
 
     if (!contact) {
       return res.json({

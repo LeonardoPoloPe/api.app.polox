@@ -84,6 +84,120 @@ class Contact {
   }
 
   /**
+   * Gera variantes do telefone considerando a regra do WhatsApp (prefixo 55)
+   * - Sempre normaliza para dígitos
+   * - Se começar com 55, também tenta a variante sem 55
+   * - Se não começar com 55, também tenta a variante com 55 prefixado
+   * @param {string} rawPhone
+   * @returns {string[]} Lista de variantes únicas (dígitos)
+   */
+  static generatePhoneVariants(rawPhone) {
+    const digits = this.normalizePhone(rawPhone);
+    if (!digits) return [];
+
+    const variantsSet = new Set();
+    variantsSet.add(digits);
+
+    if (digits.startsWith("55")) {
+      const without55 = digits.slice(2);
+      if (without55 && without55.length >= 8) {
+        variantsSet.add(without55);
+      }
+    } else {
+      variantsSet.add(`55${digits}`);
+    }
+
+    return Array.from(variantsSet);
+  }
+
+  /**
+   * Busca contato por múltiplas variantes de telefone (com/sem 55)
+   * @param {number} companyId
+   * @param {string} phone
+   * @param {boolean} includeDeleted
+   * @returns {Promise<Object|null>}
+   */
+  static async findByPhoneVariants(companyId, phone, includeDeleted = false) {
+    const variants = this.generatePhoneVariants(phone);
+    if (!variants || variants.length === 0) return null;
+
+    const whereDeleted = includeDeleted ? "" : "AND deleted_at IS NULL";
+
+    const sql = `
+      SELECT 
+        id, company_id, tipo, status, nome, email, phone, score, temperature,
+        (
+          SELECT COUNT(*) 
+          FROM polox.contact_notes cn 
+          WHERE cn.contato_id = polox.contacts.id AND cn.deleted_at IS NULL
+        )::int AS notes_count
+      FROM polox.contacts
+      WHERE company_id = $1 AND phone = ANY($2) ${whereDeleted}
+      ORDER BY deleted_at IS NULL DESC, created_at DESC
+      LIMIT 1
+    `;
+
+    const result = await query(sql, [companyId, variants]);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Busca minimal por email (campos essenciais + notes_count)
+   */
+  static async findMinimalByEmail(companyId, email, includeDeleted = false) {
+    if (!email) return null;
+    const normalizedEmail = this.normalizeEmail(email);
+    if (!normalizedEmail) return null;
+
+    const whereDeleted = includeDeleted ? "" : "AND deleted_at IS NULL";
+    const sql = `
+      SELECT 
+        id, company_id, tipo, status, nome, email, phone, score, temperature,
+        (
+          SELECT COUNT(*) 
+          FROM polox.contact_notes cn 
+          WHERE cn.contato_id = polox.contacts.id AND cn.deleted_at IS NULL
+        )::int AS notes_count
+      FROM polox.contacts
+      WHERE company_id = $1 AND email = $2 ${whereDeleted}
+      ORDER BY deleted_at IS NULL DESC, created_at DESC
+      LIMIT 1
+    `;
+    const result = await query(sql, [companyId, normalizedEmail]);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Busca minimal por documento (campos essenciais + notes_count)
+   */
+  static async findMinimalByDocument(
+    companyId,
+    document,
+    includeDeleted = false
+  ) {
+    if (!document) return null;
+    const normalizedDocument = this.normalizeDocument(document);
+    if (!normalizedDocument) return null;
+
+    const whereDeleted = includeDeleted ? "" : "AND deleted_at IS NULL";
+    const sql = `
+      SELECT 
+        id, company_id, tipo, status, nome, email, phone, score, temperature,
+        (
+          SELECT COUNT(*) 
+          FROM polox.contact_notes cn 
+          WHERE cn.contato_id = polox.contacts.id AND cn.deleted_at IS NULL
+        )::int AS notes_count
+      FROM polox.contacts
+      WHERE company_id = $1 AND document_number = $2 ${whereDeleted}
+      ORDER BY deleted_at IS NULL DESC, created_at DESC
+      LIMIT 1
+    `;
+    const result = await query(sql, [companyId, normalizedDocument]);
+    return result.rows[0] || null;
+  }
+
+  /**
    * Busca contato por telefone
    * @param {number} companyId - ID da empresa
    * @param {string} phone - Telefone
@@ -266,6 +380,7 @@ class Contact {
       tipo, // 'lead' | 'cliente'
       owner_id,
       search,
+      numerotelefone,
       sort_by = "created_at",
       sort_order = "DESC",
       limit = 50,
@@ -301,6 +416,30 @@ class Contact {
       paramIndex++;
     }
 
+    // Filtro específico por número de telefone com regra do WhatsApp (55)
+    if (numerotelefone) {
+      const onlyDigits = (numerotelefone || "").toString().replace(/\D/g, "");
+      if (onlyDigits.length > 0) {
+        let variantA = onlyDigits; // como veio
+        let variantB = null; // com/sem 55
+        if (onlyDigits.startsWith("55")) {
+          variantB = onlyDigits.slice(2);
+        } else {
+          variantB = `55${onlyDigits}`;
+        }
+
+        if (variantB && variantB !== variantA) {
+          conditions.push(`(phone = $${paramIndex} OR phone = $${paramIndex + 1})`);
+          params.push(variantA, variantB);
+          paramIndex += 2;
+        } else {
+          conditions.push(`phone = $${paramIndex}`);
+          params.push(variantA);
+          paramIndex += 1;
+        }
+      }
+    }
+
     // Se company_id específico for fornecido, sobrescreve o companyId do usuário autenticado
     if (company_id && company_id !== companyId) {
       conditions[0] = "company_id = $1"; // Mantém a mesma condição mas com valor diferente
@@ -326,7 +465,12 @@ class Contact {
       SELECT 
         id, company_id, owner_id, tipo, nome, email, phone, document_number,
         company_name, status, score, temperature, lifetime_value_cents,
-        address_city, address_state, created_at, updated_at
+        address_city, address_state, created_at, updated_at,
+        (
+          SELECT COUNT(*) 
+          FROM polox.contact_notes cn 
+          WHERE cn.contato_id = polox.contacts.id AND cn.deleted_at IS NULL
+        )::int AS notes_count
       FROM polox.contacts
       WHERE ${conditions.join(" AND ")}
       ORDER BY ${sortField} ${sortDirection}
@@ -1017,7 +1161,7 @@ class Contact {
    * @returns {Promise<number>} Total de contatos
    */
   static async count(companyId, filters = {}) {
-    const { tipo, owner_id, company_id } = filters;
+    const { tipo, owner_id, company_id, numerotelefone } = filters;
 
     const conditions = ["company_id = $1", "deleted_at IS NULL"];
     const params = [companyId];
@@ -1033,6 +1177,29 @@ class Contact {
       conditions.push(`owner_id = $${paramIndex}`);
       params.push(owner_id);
       paramIndex++;
+    }
+
+    // Aplicar mesma lógica de filtro de telefone que na listagem
+    if (numerotelefone) {
+      const onlyDigits = (numerotelefone || "").toString().replace(/\D/g, "");
+      if (onlyDigits.length > 0) {
+        let variantA = onlyDigits;
+        let variantB = null;
+        if (onlyDigits.startsWith("55")) {
+          variantB = onlyDigits.slice(2);
+        } else {
+          variantB = `55${onlyDigits}`;
+        }
+        if (variantB && variantB !== variantA) {
+          conditions.push(`(phone = $${paramIndex} OR phone = $${paramIndex + 1})`);
+          params.push(variantA, variantB);
+          paramIndex += 2;
+        } else {
+          conditions.push(`phone = $${paramIndex}`);
+          params.push(variantA);
+          paramIndex += 1;
+        }
+      }
     }
 
     // Se company_id específico for fornecido, sobrescreve o companyId do usuário autenticado
