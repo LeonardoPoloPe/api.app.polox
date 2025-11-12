@@ -115,6 +115,36 @@
 - [🏢 ESTRUTURA_PROJETO.md](./ESTRUTURA_PROJETO.md) - Organização de arquivos
 - [🔗 STATUS_RDS_PROXY.md](./STATUS_RDS_PROXY.md) - Configuração de banco
 
+## 🏷️ **API de Tags (NOVO - 12/11/2025)** ⭐ **IMPLEMENTADO**
+
+### **Documentação Completa**
+
+- **[API_TAGS_GUIA_COMPLETO.md](./API_TAGS_GUIA_COMPLETO.md)** ⭐ **NOVO**
+  - Guia completo de uso da API de Tags
+  - 18 endpoints implementados 
+  - Sistema CRUD + associações + analytics
+  - Suporte a 7 tipos de entidades
+  - Exemplos práticos em curl/JavaScript
+  - Casos de uso reais e boas práticas
+
+- **[API_TAGS_REFERENCIA_RAPIDA.md](./API_TAGS_REFERENCIA_RAPIDA.md)** ⭐ **NOVO**
+  - Referência rápida para consulta
+  - Endpoints principais
+  - Exemplos de uso direto
+  - Códigos de status e cores recomendadas
+
+### **Características Implementadas:**
+- ✅ **CRUD Completo:** Criar, listar, atualizar, excluir tags
+- ✅ **Associações:** Link tags com contacts, suppliers, products, sales, tickets, events, financial_transactions
+- ✅ **Operações em Lote:** Sincronização e criação múltipla
+- ✅ **Analytics:** Estatísticas, tags mais usadas, sugestões
+- ✅ **Multi-tenant:** Isolamento por empresa (company_id)
+- ✅ **Swagger:** Documentação automática integrada
+- ✅ **Soft Delete:** Exclusão lógica com recuperação
+- ✅ **Validação:** Joi schemas para todos os endpoints
+
+---
+
 ### 📖 **Desenvolvimento**
 
 - [📝 SWAGGER.md](./SWAGGER.md) - Documentação da API
