@@ -74,7 +74,7 @@ class TagModel {
     return await transaction(async (client) => {
       // Verificar se já existe tag com mesmo nome
       const existingTag = await client.query(
-        'SELECT id FROM polox.tags WHERE company_id = $1 AND LOWER(name) = LOWER($2) AND deleted_at IS NULL',
+        'SELECT id FROM polox.tags WHERE company_id = $1 AND LOWER(tag_name) = LOWER($2) AND deleted_at IS NULL',
         [companyId, name]
       );
 
@@ -107,20 +107,17 @@ class TagModel {
 
       const insertQuery = `
         INSERT INTO polox.tags (
-          company_id, name, slug, color, description, category,
-          is_system, is_active, metadata, created_at, updated_at
+          company_id, tag_name, slug, color, is_active, created_at, updated_at
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()
+          $1, $2, $3, $4, $5, NOW(), NOW()
         )
         RETURNING 
-          id, name, slug, color, description, category,
-          is_system, is_active, created_at, updated_at
+          id, tag_name as name, slug, color, is_active, created_at, updated_at
       `;
 
       const result = await client.query(insertQuery, [
-        companyId, name, finalSlug, color, description, category,
-        is_system, is_active, metadata
+        companyId, name, finalSlug, color, is_active
       ]);
 
       return result.rows[0];
@@ -136,9 +133,25 @@ class TagModel {
   static async findById(id, companyId) {
     const selectQuery = `
       SELECT 
-        t.*,
-        (SELECT COUNT(*) FROM polox.taggable_items ti WHERE ti.tag_id = t.id) as usage_count,
-        (SELECT COUNT(DISTINCT ti.taggable_type) FROM polox.taggable_items ti WHERE ti.tag_id = t.id) as entity_types_count
+        t.id, t.tag_name as name, t.slug, t.color, t.is_active, t.created_at, t.updated_at,
+        (
+          (SELECT COUNT(*) FROM polox.contact_tags ct WHERE ct.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.supplier_tags st WHERE st.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.product_tags pt WHERE pt.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.sale_tags slt WHERE slt.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.ticket_tags tt WHERE tt.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.event_tags et WHERE et.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.financial_transaction_tags ftt WHERE ftt.tag_id = t.id)
+        ) as usage_count,
+        (
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.contact_tags ct WHERE ct.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.supplier_tags st WHERE st.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.product_tags pt WHERE pt.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.sale_tags slt WHERE slt.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.ticket_tags tt WHERE tt.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.event_tags et WHERE et.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.financial_transaction_tags ftt WHERE ftt.tag_id = t.id) THEN 1 ELSE 0 END)
+        ) as entity_types_count
       FROM polox.tags t
       WHERE t.id = $1 AND t.company_id = $2 AND t.deleted_at IS NULL
     `;
@@ -159,7 +172,8 @@ class TagModel {
    */
   static async findBySlug(slug, companyId) {
     const selectQuery = `
-      SELECT * FROM polox.tags
+      SELECT id, tag_name as name, slug, color, is_active, created_at, updated_at 
+      FROM polox.tags
       WHERE slug = $1 AND company_id = $2 AND deleted_at IS NULL
     `;
 
@@ -214,7 +228,7 @@ class TagModel {
     }
 
     if (search) {
-      conditions.push(`(name ILIKE $${paramCount} OR description ILIKE $${paramCount})`);
+      conditions.push(`tag_name ILIKE $${paramCount}`);
       values.push(`%${search}%`);
       paramCount++;
     }
@@ -231,13 +245,28 @@ class TagModel {
     // Query para buscar dados
     const selectQuery = `
       SELECT 
-        t.id, t.name, t.slug, t.color, t.description, t.category,
-        t.is_system, t.is_active, t.created_at, t.updated_at,
-        (SELECT COUNT(*) FROM polox.taggable_items ti WHERE ti.tag_id = t.id) as usage_count,
-        (SELECT COUNT(DISTINCT ti.taggable_type) FROM polox.taggable_items ti WHERE ti.tag_id = t.id) as entity_types_count
+        t.id, t.tag_name as name, t.slug, t.color, t.is_active, t.created_at, t.updated_at,
+        (
+          (SELECT COUNT(*) FROM polox.contact_tags ct WHERE ct.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.supplier_tags st WHERE st.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.product_tags pt WHERE pt.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.sale_tags slt WHERE slt.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.ticket_tags tt WHERE tt.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.event_tags et WHERE et.tag_id = t.id) +
+          (SELECT COUNT(*) FROM polox.financial_transaction_tags ftt WHERE ftt.tag_id = t.id)
+        ) as usage_count,
+        (
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.contact_tags ct WHERE ct.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.supplier_tags st WHERE st.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.product_tags pt WHERE pt.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.sale_tags slt WHERE slt.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.ticket_tags tt WHERE tt.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.event_tags et WHERE et.tag_id = t.id) THEN 1 ELSE 0 END) +
+          (CASE WHEN EXISTS(SELECT 1 FROM polox.financial_transaction_tags ftt WHERE ftt.tag_id = t.id) THEN 1 ELSE 0 END)
+        ) as entity_types_count
       FROM polox.tags t
       ${whereClause}
-      ORDER BY ${sortBy} ${sortOrder}
+      ORDER BY ${sortBy === 'name' ? 'tag_name' : sortBy} ${sortOrder}
       LIMIT $${paramCount} OFFSET $${paramCount + 1}
     `;
 
@@ -274,7 +303,7 @@ class TagModel {
    * @returns {Promise<Object|null>} Tag atualizada ou null
    */
   static async update(id, updateData, companyId) {
-    const allowedFields = ['name', 'color', 'description', 'category', 'is_active', 'metadata'];
+    const allowedFields = ['name', 'color', 'is_active'];
 
     return await transaction(async (client) => {
       // Verificar se tag existe
@@ -297,7 +326,7 @@ class TagModel {
       // Verificar se nome não está duplicado (se sendo alterado)
       if (updateData.name && updateData.name !== currentTag.name) {
         const nameCheck = await client.query(
-          'SELECT id FROM polox.tags WHERE company_id = $1 AND LOWER(name) = LOWER($2) AND id != $3 AND deleted_at IS NULL',
+          'SELECT id FROM polox.tags WHERE company_id = $1 AND LOWER(tag_name) = LOWER($2) AND id != $3 AND deleted_at IS NULL',
           [companyId, updateData.name, id]
         );
 
@@ -321,7 +350,8 @@ class TagModel {
       // Construir query dinamicamente
       for (const [key, value] of Object.entries(updateData)) {
         if (allowedFields.includes(key)) {
-          updates.push(`${key} = $${paramCount}`);
+          const columnName = key === 'name' ? 'tag_name' : key;
+          updates.push(`${columnName} = $${paramCount}`);
           values.push(value);
           paramCount++;
         }
@@ -368,8 +398,7 @@ class TagModel {
         SET ${updates.join(', ')}
         WHERE id = $${paramCount} AND company_id = $${paramCount + 1} AND deleted_at IS NULL
         RETURNING 
-          id, name, slug, color, description, category,
-          is_system, is_active, created_at, updated_at
+          id, tag_name as name, slug, color, is_active, created_at, updated_at
       `;
 
       const result = await client.query(updateQuery, values);
@@ -380,7 +409,7 @@ class TagModel {
   /**
    * Adiciona tag a uma entidade
    * @param {number} tagId - ID da tag
-   * @param {string} entityType - Tipo da entidade (leads, clients, sales, etc.)
+   * @param {string} entityType - Tipo da entidade (contacts, suppliers, products, etc.)
    * @param {number} entityId - ID da entidade
    * @param {number} companyId - ID da empresa
    * @returns {Promise<Object>} Associação criada
@@ -391,8 +420,8 @@ class TagModel {
     }
 
     const validEntityTypes = [
-      'leads', 'clients', 'sales', 'products', 'tickets',
-      'events', 'suppliers', 'users', 'companies'
+      'contacts', 'suppliers', 'products', 'sales', 'tickets',
+      'events', 'financial_transactions'
     ];
 
     if (!validEntityTypes.includes(entityType)) {
@@ -402,7 +431,7 @@ class TagModel {
     return await transaction(async (client) => {
       // Verificar se tag existe e está ativa
       const tag = await client.query(
-        'SELECT id, name FROM polox.tags WHERE id = $1 AND company_id = $2 AND is_active = TRUE AND deleted_at IS NULL',
+        'SELECT id, tag_name as name FROM polox.tags WHERE id = $1 AND company_id = $2 AND is_active = TRUE AND deleted_at IS NULL',
         [tagId, companyId]
       );
 
@@ -410,10 +439,23 @@ class TagModel {
         throw new NotFoundError('Tag não encontrada ou inativa');
       }
 
+      // Mapear tipo de entidade para tabela e colunas correspondentes
+      const entityMappings = {
+        'contacts': { table: 'contact_tags', entityColumn: 'contato_id' },
+        'suppliers': { table: 'supplier_tags', entityColumn: 'supplier_id' },
+        'products': { table: 'product_tags', entityColumn: 'product_id' },
+        'sales': { table: 'sale_tags', entityColumn: 'sale_id' },
+        'tickets': { table: 'ticket_tags', entityColumn: 'ticket_id' },
+        'events': { table: 'event_tags', entityColumn: 'event_id' },
+        'financial_transactions': { table: 'financial_transaction_tags', entityColumn: 'financial_transaction_id' }
+      };
+
+      const mapping = entityMappings[entityType];
+      
       // Verificar se associação já existe
       const existing = await client.query(
-        'SELECT id FROM polox.taggable_items WHERE tag_id = $1 AND taggable_type = $2 AND taggable_id = $3 AND company_id = $4',
-        [tagId, entityType, entityId, companyId]
+        `SELECT 1 FROM polox.${mapping.table} WHERE tag_id = $1 AND ${mapping.entityColumn} = $2`,
+        [tagId, entityId]
       );
 
       if (existing.rows.length > 0) {
@@ -421,19 +463,21 @@ class TagModel {
       }
 
       const insertQuery = `
-        INSERT INTO polox.taggable_items (
-          company_id, tag_id, taggable_type, taggable_id, tagged_at
+        INSERT INTO polox.${mapping.table} (
+          tag_id, ${mapping.entityColumn}, created_at
         )
-        VALUES ($1, $2, $3, $4, NOW())
-        RETURNING id, tag_id, taggable_type, taggable_id, tagged_at
+        VALUES ($1, $2, NOW())
+        RETURNING tag_id, ${mapping.entityColumn} as entity_id, created_at
       `;
 
-      const result = await client.query(insertQuery, [
-        companyId, tagId, entityType, entityId
-      ]);
+      const result = await client.query(insertQuery, [tagId, entityId]);
 
       return {
-        ...result.rows[0],
+        id: `${tagId}_${entityId}`,
+        tag_id: tagId,
+        entity_type: entityType,
+        entity_id: entityId,
+        tagged_at: result.rows[0].created_at,
         tag_name: tag.rows[0].name
       };
     }, { companyId });
@@ -448,13 +492,26 @@ class TagModel {
    * @returns {Promise<boolean>} True se removido com sucesso
    */
   static async removeFromEntity(tagId, entityType, entityId, companyId) {
-    const deleteQuery = `
-      DELETE FROM polox.taggable_items 
-      WHERE tag_id = $1 AND taggable_type = $2 AND taggable_id = $3 AND company_id = $4
-    `;
-
     try {
-      const result = await query(deleteQuery, [tagId, entityType, entityId, companyId], { companyId });
+      // Mapear tipo de entidade para tabela e colunas correspondentes
+      const entityMappings = {
+        'contacts': { table: 'contact_tags', entityColumn: 'contato_id' },
+        'suppliers': { table: 'supplier_tags', entityColumn: 'supplier_id' },
+        'products': { table: 'product_tags', entityColumn: 'product_id' },
+        'sales': { table: 'sale_tags', entityColumn: 'sale_id' },
+        'tickets': { table: 'ticket_tags', entityColumn: 'ticket_id' },
+        'events': { table: 'event_tags', entityColumn: 'event_id' },
+        'financial_transactions': { table: 'financial_transaction_tags', entityColumn: 'financial_transaction_id' }
+      };
+
+      const mapping = entityMappings[entityType];
+      
+      const deleteQuery = `
+        DELETE FROM polox.${mapping.table} 
+        WHERE tag_id = $1 AND ${mapping.entityColumn} = $2
+      `;
+
+      const result = await query(deleteQuery, [tagId, entityId], { companyId });
       return result.rowCount > 0;
     } catch (error) {
       throw new ApiError(500, `Erro ao remover tag da entidade: ${error.message}`);
@@ -469,19 +526,32 @@ class TagModel {
    * @returns {Promise<Array>} Lista de tags da entidade
    */
   static async getEntityTags(entityType, entityId, companyId) {
-    const selectQuery = `
-      SELECT 
-        t.id, t.name, t.slug, t.color, t.category,
-        ti.tagged_at
-      FROM polox.tags t
-      JOIN polox.taggable_items ti ON t.id = ti.tag_id
-      WHERE ti.taggable_type = $1 AND ti.taggable_id = $2 AND ti.company_id = $3
-        AND t.is_active = TRUE AND t.deleted_at IS NULL
-      ORDER BY t.name ASC
-    `;
-
     try {
-      const result = await query(selectQuery, [entityType, entityId, companyId], { companyId });
+      // Mapear tipo de entidade para tabela e colunas correspondentes
+      const entityMappings = {
+        'contacts': { table: 'contact_tags', entityColumn: 'contato_id' },
+        'suppliers': { table: 'supplier_tags', entityColumn: 'supplier_id' },
+        'products': { table: 'product_tags', entityColumn: 'product_id' },
+        'sales': { table: 'sale_tags', entityColumn: 'sale_id' },
+        'tickets': { table: 'ticket_tags', entityColumn: 'ticket_id' },
+        'events': { table: 'event_tags', entityColumn: 'event_id' },
+        'financial_transactions': { table: 'financial_transaction_tags', entityColumn: 'financial_transaction_id' }
+      };
+
+      const mapping = entityMappings[entityType];
+      
+      const selectQuery = `
+        SELECT 
+          t.id, t.tag_name as name, t.slug, t.color,
+          et.created_at as tagged_at
+        FROM polox.tags t
+        JOIN polox.${mapping.table} et ON t.id = et.tag_id
+        WHERE et.${mapping.entityColumn} = $1 AND t.company_id = $2
+          AND t.is_active = TRUE AND t.deleted_at IS NULL
+        ORDER BY t.tag_name ASC
+      `;
+
+      const result = await query(selectQuery, [entityId, companyId], { companyId });
       return result.rows;
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar tags da entidade: ${error.message}`);
@@ -676,19 +746,30 @@ class TagModel {
     }
 
     return await transaction(async (client) => {
+      // Mapear tipo de entidade para tabela e colunas correspondentes
+      const entityMappings = {
+        'contacts': { table: 'contact_tags', entityColumn: 'contato_id' },
+        'suppliers': { table: 'supplier_tags', entityColumn: 'supplier_id' },
+        'products': { table: 'product_tags', entityColumn: 'product_id' },
+        'sales': { table: 'sale_tags', entityColumn: 'sale_id' },
+        'tickets': { table: 'ticket_tags', entityColumn: 'ticket_id' },
+        'events': { table: 'event_tags', entityColumn: 'event_id' },
+        'financial_transactions': { table: 'financial_transaction_tags', entityColumn: 'financial_transaction_id' }
+      };
+
+      const mapping = entityMappings[entityType];
+      
       // Remover todas as tags atuais da entidade
       await client.query(
-        'DELETE FROM polox.taggable_items WHERE taggable_type = $1 AND taggable_id = $2 AND company_id = $3',
-        [entityType, entityId, companyId]
+        `DELETE FROM polox.${mapping.table} WHERE ${mapping.entityColumn} = $1`,
+        [entityId]
       );
 
       const results = {
-        removed: 0,
+        removed: 1,
         added: 0,
         errors: []
       };
-
-      results.removed = 1; // Pelo menos uma remoção foi feita
 
       // Adicionar novas tags
       if (tagIds.length > 0) {
@@ -709,8 +790,8 @@ class TagModel {
         if (validTagIds.length > 0) {
           const insertPromises = validTagIds.map(tagId => 
             client.query(
-              'INSERT INTO polox.taggable_items (company_id, tag_id, taggable_type, taggable_id, tagged_at) VALUES ($1, $2, $3, $4, NOW())',
-              [companyId, tagId, entityType, entityId]
+              `INSERT INTO polox.${mapping.table} (tag_id, ${mapping.entityColumn}, created_at) VALUES ($1, $2, NOW())`,
+              [tagId, entityId]
             )
           );
 
@@ -738,7 +819,7 @@ class TagModel {
     return await transaction(async (client) => {
       // Buscar tags existentes
       const existingTags = await client.query(
-        'SELECT * FROM polox.tags WHERE company_id = $1 AND name = ANY($2) AND deleted_at IS NULL',
+        'SELECT id, tag_name as name, slug, color, is_active, created_at, updated_at FROM polox.tags WHERE company_id = $1 AND tag_name = ANY($2) AND deleted_at IS NULL',
         [companyId, names]
       );
 
@@ -879,10 +960,15 @@ class TagModel {
       }
 
       // Remover todas as associações da tag
-      await client.query(
-        'DELETE FROM polox.taggable_items WHERE tag_id = $1 AND company_id = $2',
-        [id, companyId]
-      );
+      await Promise.all([
+        client.query('DELETE FROM polox.contact_tags WHERE tag_id = $1', [id]),
+        client.query('DELETE FROM polox.supplier_tags WHERE tag_id = $1', [id]),
+        client.query('DELETE FROM polox.product_tags WHERE tag_id = $1', [id]),
+        client.query('DELETE FROM polox.sale_tags WHERE tag_id = $1', [id]),
+        client.query('DELETE FROM polox.ticket_tags WHERE tag_id = $1', [id]),
+        client.query('DELETE FROM polox.event_tags WHERE tag_id = $1', [id]),
+        client.query('DELETE FROM polox.financial_transaction_tags WHERE tag_id = $1', [id])
+      ]);
 
       // Fazer soft delete da tag
       const updateQuery = `
@@ -899,29 +985,7 @@ class TagModel {
     }, { companyId });
   }
 
-  /**
-   * Busca tags por categoria
-   * @param {string} category - Categoria das tags
-   * @param {number} companyId - ID da empresa
-   * @returns {Promise<Array>} Tags da categoria
-   */
-  static async getByCategory(category, companyId) {
-    const selectQuery = `
-      SELECT 
-        id, name, slug, color, description, is_system, is_active,
-        (SELECT COUNT(*) FROM polox.taggable_items ti WHERE ti.tag_id = id) as usage_count
-      FROM polox.tags
-      WHERE category = $1 AND company_id = $2 AND is_active = TRUE AND deleted_at IS NULL
-      ORDER BY name ASC
-    `;
-
-    try {
-      const result = await query(selectQuery, [category, companyId], { companyId });
-      return result.rows;
-    } catch (error) {
-      throw new ApiError(500, `Erro ao buscar tags por categoria: ${error.message}`);
-    }
-  }
+  // Método removido: getByCategory - campo category não existe no banco real
 
   /**
    * Cria tags padrão do sistema
@@ -930,15 +994,15 @@ class TagModel {
    */
   static async createSystemTags(companyId) {
     const systemTags = [
-      { name: 'Importante', color: '#e74c3c', category: 'priority', description: 'Itens de alta prioridade' },
-      { name: 'Urgente', color: '#c0392b', category: 'priority', description: 'Itens urgentes' },
-      { name: 'Baixa Prioridade', color: '#95a5a6', category: 'priority', description: 'Itens de baixa prioridade' },
-      { name: 'Em Andamento', color: '#f39c12', category: 'status', description: 'Em processo' },
-      { name: 'Concluído', color: '#27ae60', category: 'status', description: 'Finalizado' },
-      { name: 'Cancelado', color: '#7f8c8d', category: 'status', description: 'Cancelado' },
-      { name: 'VIP', color: '#9b59b6', category: 'type', description: 'Cliente VIP' },
-      { name: 'Lead Quente', color: '#e67e22', category: 'type', description: 'Lead com alta probabilidade' },
-      { name: 'Requer Atenção', color: '#e74c3c', category: 'general', description: 'Necessita atenção especial' }
+      { name: 'Importante', color: '#e74c3c' },
+      { name: 'Urgente', color: '#c0392b' },
+      { name: 'Baixa Prioridade', color: '#95a5a6' },
+      { name: 'Em Andamento', color: '#f39c12' },
+      { name: 'Concluído', color: '#27ae60' },
+      { name: 'Cancelado', color: '#7f8c8d' },
+      { name: 'VIP', color: '#9b59b6' },
+      { name: 'Lead Quente', color: '#e67e22' },
+      { name: 'Requer Atenção', color: '#e74c3c' }
     ];
 
     const createdTags = [];
@@ -953,7 +1017,7 @@ class TagModel {
         if (!existingTag) {
           const newTag = await this.create({
             ...tagData,
-            is_system: true
+            is_active: true
           }, companyId);
           createdTags.push(newTag);
         }

@@ -61,6 +61,7 @@ const gamificationRoutes = require("./gamification");
 const analyticsRoutes = require("./analytics");
 const profileRoutes = require("./profiles"); // 🆕 Perfis de Usuário
 const menuRoutes = require("./menus"); // 🆕 Menus do Sistema
+const tagRoutes = require("./tags"); // 🏷️ Sistema de Tags
 
 const router = express.Router();
 
@@ -122,5 +123,8 @@ router.use("/analytics", analyticsRoutes);
 // e devem estar disponíveis em /profiles e /menu-items
 router.use("/profiles", profileRoutes);
 router.use("/menu-items", menuRoutes);
+
+// 🏷️ Sistema de Tags
+router.use("/tags", tagRoutes);
 
 module.exports = router;

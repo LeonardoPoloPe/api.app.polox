@@ -130,6 +130,10 @@ const swaggerOptions = {
         description: "Gerenciamento de menus hierárquicos",
       },
       {
+        name: "Tags",
+        description: "Sistema de tags/etiquetas para categorização",
+      },
+      {
         name: "Health",
         description: "Verificação de saúde da aplicação",
       },
@@ -1025,6 +1029,111 @@ const swaggerOptions = {
                 $ref: "#/components/schemas/MenuItem",
               },
               description: "Submenus (retornado em /hierarchy)",
+            },
+          },
+        },
+        Tag: {
+          type: "object",
+          properties: {
+            id: {
+              type: "integer",
+              minimum: 1,
+              description: "ID único da tag",
+              example: 1,
+            },
+            name: {
+              type: "string",
+              description: "Nome da tag",
+              example: "Importante",
+            },
+            slug: {
+              type: "string",
+              description: "Slug único da tag (gerado automaticamente)",
+              example: "importante",
+            },
+            color: {
+              type: "string",
+              pattern: "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              description: "Cor da tag em formato hexadecimal",
+              example: "#e74c3c",
+            },
+            is_active: {
+              type: "boolean",
+              description: "Se a tag está ativa",
+              example: true,
+            },
+            created_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação da tag",
+              example: "2025-11-12T10:00:00Z",
+            },
+            updated_at: {
+              type: "string",
+              format: "date-time",
+              description: "Data de atualização da tag",
+              example: "2025-11-12T10:00:00Z",
+            },
+          },
+        },
+        TagWithStats: {
+          allOf: [
+            {
+              $ref: "#/components/schemas/Tag",
+            },
+            {
+              type: "object",
+              properties: {
+                usage_count: {
+                  type: "integer",
+                  description: "Número de vezes que a tag foi usada",
+                  example: 15,
+                },
+                entity_types_count: {
+                  type: "integer",
+                  description: "Número de tipos de entidades que usam esta tag",
+                  example: 3,
+                },
+              },
+            },
+          ],
+        },
+        Pagination: {
+          type: "object",
+          properties: {
+            page: {
+              type: "integer",
+              minimum: 1,
+              description: "Página atual",
+              example: 1,
+            },
+            limit: {
+              type: "integer",
+              minimum: 1,
+              description: "Items por página",
+              example: 20,
+            },
+            total: {
+              type: "integer",
+              minimum: 0,
+              description: "Total de items",
+              example: 150,
+            },
+            totalPages: {
+              type: "integer",
+              minimum: 0,
+              description: "Total de páginas",
+              example: 8,
+            },
+            hasNext: {
+              type: "boolean",
+              description: "Se existe próxima página",
+              example: true,
+            },
+            hasPrev: {
+              type: "boolean",
+              description: "Se existe página anterior",
+              example: false,
             },
           },
         },
