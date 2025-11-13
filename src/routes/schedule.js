@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -81,7 +81,7 @@ router.use(authenticateToken);
  *           description: Evento de dia inteiro
  *         event_type:
  *           type: string
- *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit]
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service]
  *           default: meeting
  *           description: Tipo do evento
  *         status:
@@ -178,7 +178,7 @@ router.use(authenticateToken);
  *         name: event_type
  *         schema:
  *           type: string
- *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit]
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service]
  *         description: Filtrar por tipo de evento
  *         example: "meeting"
  *       - in: query
@@ -240,24 +240,63 @@ router.use(authenticateToken);
  *                   properties:
  *                     events:
  *                       type: array
+ *                       description: Lista otimizada com apenas campos essenciais
  *                       items:
- *                         allOf:
- *                           - $ref: '#/components/schemas/ScheduleEvent'
- *                           - type: object
- *                             properties:
- *                               id:
- *                                 type: integer
- *                                 example: 6
- *                               company_id:
- *                                 type: integer
- *                                 example: 25
- *                               user_id:
- *                                 type: integer
- *                                 example: 58
- *                               contato_id:
- *                                 type: integer
- *                                 nullable: true
- *                                 example: 16
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 6
+ *                           title:
+ *                             type: string
+ *                             example: "Reunião com Cliente"
+ *                           start_datetime:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-05T14:00:00.000Z"
+ *                           end_datetime:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-05T15:00:00.000Z"
+ *                           timezone:
+ *                             type: string
+ *                             example: "America/Sao_Paulo"
+ *                           event_type:
+ *                             type: string
+ *                             example: "meeting"
+ *                           event_type_translated:
+ *                             type: string
+ *                             example: "reunião"
+ *                             description: Tipo traduzido (apenas se Accept-Language for pt ou pt-BR)
+ *                           status:
+ *                             type: string
+ *                             example: "scheduled"
+ *                           reminder_minutes:
+ *                             type: integer
+ *                             example: 15
+ *                           is_all_day:
+ *                             type: boolean
+ *                             example: false
+ *                           contato_id:
+ *                             type: integer
+ *                             nullable: true
+ *                             example: 16
+ *                             description: ID do contato vinculado (apenas se existir)
+ *                           contact_name:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "João Silva"
+ *                             description: Nome do contato (apenas se existir)
+ *                           contact_type:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "lead"
+ *                             description: Tipo do contato (apenas se existir)
+ *                           contact_type_translated:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "lead"
+ *                             description: Tipo do contato traduzido (apenas se existir e Accept-Language for pt ou pt-BR)
  *                     period:
  *                       type: object
  *                       properties:
@@ -331,7 +370,10 @@ router.use(authenticateToken);
  *                   type: string
  *                   example: "Acesso negado à empresa especificada"
  */
-router.get("/companies/:company_id/events", ScheduleController.getEventsByCompany);
+router.get(
+  "/companies/:company_id/events",
+  ScheduleController.getEventsByCompany
+);
 
 /**
  * @swagger
@@ -339,7 +381,7 @@ router.get("/companies/:company_id/events", ScheduleController.getEventsByCompan
  *   get:
  *     summary: Listar eventos da agenda (endpoint legado)
  *     description: >
- *       Endpoint original mantido para compatibilidade. 
+ *       Endpoint original mantido para compatibilidade.
  *       Recomenda-se usar /companies/{company_id}/events para melhor performance.
  *     tags: [Schedule]
  *     parameters:
@@ -363,7 +405,7 @@ router.get("/companies/:company_id/events", ScheduleController.getEventsByCompan
  *         name: type
  *         schema:
  *           type: string
- *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit]
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service]
  *         description: Filtrar por tipo
  *       - in: query
  *         name: status

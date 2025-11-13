@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,21 +22,21 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
 
-const { query, transaction } = require('../config/database');
-const { ApiError, ValidationError, NotFoundError } = require('../utils/errors');
+const { query, transaction } = require("../config/database");
+const { ApiError, ValidationError, NotFoundError } = require("../utils/errors");
 
 /**
  * Model para sistema de eventos/agenda
@@ -53,13 +53,13 @@ class EventModel {
     const {
       title,
       description = null,
-      event_type = 'meeting',
+      event_type = "meeting",
       start_date,
       end_date = null,
       all_day = false,
       location = null,
-      status = 'scheduled',
-      priority = 'medium',
+      status = "scheduled",
+      priority = "medium",
       organizer_id,
       client_id = null,
       lead_id = null,
@@ -69,28 +69,52 @@ class EventModel {
       is_private = false,
       tags = [], // Array de nomes de tags - será processado separadamente
       custom_fields = null,
-      attachments = null
+      attachments = null,
     } = eventData;
 
     // Validar dados obrigatórios
     if (!title) {
-      throw new ValidationError('Título do evento é obrigatório');
+      throw new ValidationError("Título do evento é obrigatório");
     }
 
     if (!start_date) {
-      throw new ValidationError('Data de início é obrigatória');
+      throw new ValidationError("Data de início é obrigatória");
     }
 
     if (!organizer_id) {
-      throw new ValidationError('Organizador é obrigatório');
+      throw new ValidationError("Organizador é obrigatório");
     }
 
-    if (!['meeting', 'call', 'task', 'appointment', 'reminder', 'event', 'demo', 'proposal', 'follow_up', 'onboarding', 'block_time', 'site_visit'].includes(event_type)) {
-      throw new ValidationError('Tipo de evento inválido');
+    if (
+      ![
+        "meeting",
+        "call",
+        "task",
+        "appointment",
+        "reminder",
+        "event",
+        "demo",
+        "proposal",
+        "follow_up",
+        "onboarding",
+        "block_time",
+        "site_visit",
+        "service",
+      ].includes(event_type)
+    ) {
+      throw new ValidationError("Tipo de evento inválido");
     }
 
-    if (!['scheduled', 'in_progress', 'completed', 'cancelled', 'postponed'].includes(status)) {
-      throw new ValidationError('Status inválido');
+    if (
+      ![
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "postponed",
+      ].includes(status)
+    ) {
+      throw new ValidationError("Status inválido");
     }
 
     // Validar datas
@@ -98,12 +122,15 @@ class EventModel {
     const endDateTime = end_date ? new Date(end_date) : null;
 
     if (endDateTime && endDateTime <= startDateTime) {
-      throw new ValidationError('Data de fim deve ser posterior à data de início');
+      throw new ValidationError(
+        "Data de fim deve ser posterior à data de início"
+      );
     }
 
-    return await transaction(async (client) => {
-      // 1. Criar o evento (sem tags)
-      const insertQuery = `
+    return await transaction(
+      async (client) => {
+        // 1. Criar o evento (sem tags)
+        const insertQuery = `
         INSERT INTO polox.events (
           company_id, title, description, event_type, start_date, end_date,
           all_day, location, status, priority, organizer_id, client_id,
@@ -122,44 +149,71 @@ class EventModel {
           reminder_minutes, is_private, created_at, updated_at
       `;
 
-      const result = await client.query(insertQuery, [
-        companyId, title, description, event_type, start_date, end_date,
-        all_day, location, status, priority, organizer_id, client_id,
-        lead_id, sale_id, recurrence_rule, reminder_minutes, is_private,
-        custom_fields, attachments
-      ]);
+        const result = await client.query(insertQuery, [
+          companyId,
+          title,
+          description,
+          event_type,
+          start_date,
+          end_date,
+          all_day,
+          location,
+          status,
+          priority,
+          organizer_id,
+          client_id,
+          lead_id,
+          sale_id,
+          recurrence_rule,
+          reminder_minutes,
+          is_private,
+          custom_fields,
+          attachments,
+        ]);
 
-      const event = result.rows[0];
+        const event = result.rows[0];
 
-      // 2. Adicionar tags
-      if (tags && tags.length > 0) {
-        for (const tagName of tags) {
-          if (tagName && tagName.trim() !== '') {
-            // Inserir tag se não existir (específica da empresa)
-            const tagResult = await client.query(`
+        // 2. Adicionar tags
+        if (tags && tags.length > 0) {
+          for (const tagName of tags) {
+            if (tagName && tagName.trim() !== "") {
+              // Inserir tag se não existir (específica da empresa)
+              const tagResult = await client.query(
+                `
               INSERT INTO polox.tags (name, slug, company_id)
               VALUES ($1, $2, $3)
               ON CONFLICT (company_id, name, slug) 
               WHERE company_id IS NOT NULL 
               DO UPDATE SET name = EXCLUDED.name
               RETURNING id
-            `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+            `,
+                [
+                  tagName.trim(),
+                  tagName.trim().toLowerCase().replace(/\s+/g, "-"),
+                  companyId,
+                ]
+              );
 
-            const tagId = tagResult.rows[0].id;
+              const tagId = tagResult.rows[0].id;
 
-            // Associar tag ao evento
-            await client.query(`
+              // Associar tag ao evento
+              await client.query(
+                `
               INSERT INTO polox.event_tags (event_id, tag_id)
               VALUES ($1, $2)
               ON CONFLICT DO NOTHING
-            `, [event.id, tagId]);
+            `,
+                [event.id, tagId]
+              );
+            }
           }
         }
-      }
 
-      // 3. Retornar evento completo com tags
-      return await this.findById(event.id, companyId);
-    }, { companyId });
+        // 3. Retornar evento completo com tags
+        return await this.findById(event.id, companyId);
+      },
+      { companyId }
+    );
   }
 
   /**
@@ -191,24 +245,28 @@ class EventModel {
     try {
       const result = await query(selectQuery, [id, companyId], { companyId });
       const event = result.rows[0];
-      
+
       if (!event) {
         return null;
       }
 
       // Buscar tags do evento
-      const tagsResult = await query(`
+      const tagsResult = await query(
+        `
         SELECT t.id, t.name, t.slug, t.color
         FROM polox.tags t
         INNER JOIN polox.event_tags et ON t.id = et.tag_id
         WHERE et.event_id = $1
         ORDER BY t.name
-      `, [id], { companyId });
+      `,
+        [id],
+        { companyId }
+      );
 
       // Montar objeto completo
       return {
         ...event,
-        tags: tagsResult.rows
+        tags: tagsResult.rows,
       };
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar evento: ${error.message}`);
@@ -235,12 +293,12 @@ class EventModel {
       date_to = null,
       upcoming_only = false,
       search = null,
-      sortBy = 'start_date',
-      sortOrder = 'ASC'
+      sortBy = "start_date",
+      sortOrder = "ASC",
     } = options;
 
     const offset = (page - 1) * limit;
-    const conditions = ['e.company_id = $1', 'e.deleted_at IS NULL'];
+    const conditions = ["e.company_id = $1", "e.deleted_at IS NULL"];
     const values = [companyId];
     let paramCount = 2;
 
@@ -294,17 +352,20 @@ class EventModel {
     }
 
     if (upcoming_only) {
-      conditions.push('e.start_date >= NOW()');
-      conditions.push('e.status IN (\'scheduled\', \'in_progress\')');
+      conditions.push("e.start_date >= NOW()");
+      conditions.push("e.status IN ('scheduled', 'in_progress')");
     }
 
     if (search) {
-      conditions.push(`(e.title ILIKE $${paramCount} OR e.description ILIKE $${paramCount} OR e.location ILIKE $${paramCount})`);
+      conditions.push(
+        `(e.title ILIKE $${paramCount} OR e.description ILIKE $${paramCount} OR e.location ILIKE $${paramCount})`
+      );
       values.push(`%${search}%`);
       paramCount++;
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     // Query para contar total
     const countQuery = `
@@ -346,7 +407,7 @@ class EventModel {
     try {
       const [countResult, dataResult] = await Promise.all([
         query(countQuery, values, { companyId }),
-        query(selectQuery, [...values, limit, offset], { companyId })
+        query(selectQuery, [...values, limit, offset], { companyId }),
       ]);
 
       const total = parseInt(countResult.rows[0].count);
@@ -360,8 +421,8 @@ class EventModel {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
       throw new ApiError(500, `Erro ao listar eventos: ${error.message}`);
@@ -377,10 +438,22 @@ class EventModel {
    */
   static async update(id, updateData, companyId) {
     const allowedFields = [
-      'title', 'description', 'event_type', 'start_date', 'end_date',
-      'all_day', 'location', 'status', 'priority', 'client_id', 'lead_id',
-      'sale_id', 'recurrence_rule', 'reminder_minutes', 'is_private',
-      'custom_fields'
+      "title",
+      "description",
+      "event_type",
+      "start_date",
+      "end_date",
+      "all_day",
+      "location",
+      "status",
+      "priority",
+      "client_id",
+      "lead_id",
+      "sale_id",
+      "recurrence_rule",
+      "reminder_minutes",
+      "is_private",
+      "custom_fields",
     ];
 
     // Validar datas se fornecidas
@@ -389,7 +462,9 @@ class EventModel {
       const endDateTime = new Date(updateData.end_date);
 
       if (endDateTime <= startDateTime) {
-        throw new ValidationError('Data de fim deve ser posterior à data de início');
+        throw new ValidationError(
+          "Data de fim deve ser posterior à data de início"
+        );
       }
     }
 
@@ -407,16 +482,18 @@ class EventModel {
     }
 
     if (updates.length === 0) {
-      throw new ValidationError('Nenhum campo válido para atualizar');
+      throw new ValidationError("Nenhum campo válido para atualizar");
     }
 
-    updates.push('updated_at = NOW()');
+    updates.push("updated_at = NOW()");
     values.push(id, companyId);
 
     const updateQuery = `
       UPDATE polox.events 
-      SET ${updates.join(', ')}
-      WHERE id = $${paramCount} AND company_id = $${paramCount + 1} AND deleted_at IS NULL
+      SET ${updates.join(", ")}
+      WHERE id = $${paramCount} AND company_id = $${
+      paramCount + 1
+    } AND deleted_at IS NULL
       RETURNING 
         id, title, description, event_type, start_date, end_date,
         all_day, location, status, priority, updated_at
@@ -438,21 +515,32 @@ class EventModel {
    * @returns {Promise<Object|null>} Evento atualizado
    */
   static async updateStatus(id, newStatus, companyId) {
-    if (!['scheduled', 'in_progress', 'completed', 'cancelled', 'postponed'].includes(newStatus)) {
-      throw new ValidationError('Status inválido');
+    if (
+      ![
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "postponed",
+      ].includes(newStatus)
+    ) {
+      throw new ValidationError("Status inválido");
     }
 
     // Definir campos adicionais baseados no status
     const additionalFields = {};
-    if (newStatus === 'completed') {
-      additionalFields.completed_at = 'NOW()';
-    } else if (newStatus === 'cancelled') {
-      additionalFields.cancelled_at = 'NOW()';
+    if (newStatus === "completed") {
+      additionalFields.completed_at = "NOW()";
+    } else if (newStatus === "cancelled") {
+      additionalFields.cancelled_at = "NOW()";
     }
 
-    const setClause = Object.keys(additionalFields).length > 0 
-      ? `, ${Object.keys(additionalFields).map(field => `${field} = ${additionalFields[field]}`).join(', ')}`
-      : '';
+    const setClause =
+      Object.keys(additionalFields).length > 0
+        ? `, ${Object.keys(additionalFields)
+            .map((field) => `${field} = ${additionalFields[field]}`)
+            .join(", ")}`
+        : "";
 
     const updateQuery = `
       UPDATE polox.events 
@@ -462,10 +550,15 @@ class EventModel {
     `;
 
     try {
-      const result = await query(updateQuery, [newStatus, id, companyId], { companyId });
+      const result = await query(updateQuery, [newStatus, id, companyId], {
+        companyId,
+      });
       return result.rows[0] || null;
     } catch (error) {
-      throw new ApiError(500, `Erro ao atualizar status do evento: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao atualizar status do evento: ${error.message}`
+      );
     }
   }
 
@@ -481,44 +574,47 @@ class EventModel {
       user_id = null,
       email = null,
       name = null,
-      status = 'invited',
-      is_organizer = false
+      status = "invited",
+      is_organizer = false,
     } = attendeeData;
 
     if (!user_id && !email) {
-      throw new ValidationError('ID do usuário ou email é obrigatório');
+      throw new ValidationError("ID do usuário ou email é obrigatório");
     }
 
-    return await transaction(async (client) => {
-      // Verificar se evento existe
-      const event = await client.query(
-        'SELECT id FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-        [eventId, companyId]
-      );
+    return await transaction(
+      async (client) => {
+        // Verificar se evento existe
+        const event = await client.query(
+          "SELECT id FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL",
+          [eventId, companyId]
+        );
 
-      if (event.rows.length === 0) {
-        throw new NotFoundError('Evento não encontrado');
-      }
+        if (event.rows.length === 0) {
+          throw new NotFoundError("Evento não encontrado");
+        }
 
-      // Verificar se participante já foi adicionado
-      let existingCheck = 'user_id = $3';
-      let checkValue = user_id;
-      
-      if (!user_id && email) {
-        existingCheck = 'email = $3';
-        checkValue = email;
-      }
+        // Verificar se participante já foi adicionado
+        let existingCheck = "user_id = $3";
+        let checkValue = user_id;
 
-      const existing = await client.query(
-        `SELECT id FROM polox.event_attendees WHERE event_id = $1 AND company_id = $2 AND ${existingCheck}`,
-        [eventId, companyId, checkValue]
-      );
+        if (!user_id && email) {
+          existingCheck = "email = $3";
+          checkValue = email;
+        }
 
-      if (existing.rows.length > 0) {
-        throw new ValidationError('Participante já foi adicionado a este evento');
-      }
+        const existing = await client.query(
+          `SELECT id FROM polox.event_attendees WHERE event_id = $1 AND company_id = $2 AND ${existingCheck}`,
+          [eventId, companyId, checkValue]
+        );
 
-      const insertQuery = `
+        if (existing.rows.length > 0) {
+          throw new ValidationError(
+            "Participante já foi adicionado a este evento"
+          );
+        }
+
+        const insertQuery = `
         INSERT INTO polox.event_attendees (
           event_id, company_id, user_id, email, name, status,
           is_organizer, created_at, updated_at
@@ -529,12 +625,20 @@ class EventModel {
           is_organizer, created_at
       `;
 
-      const result = await client.query(insertQuery, [
-        eventId, companyId, user_id, email, name, status, is_organizer
-      ]);
+        const result = await client.query(insertQuery, [
+          eventId,
+          companyId,
+          user_id,
+          email,
+          name,
+          status,
+          is_organizer,
+        ]);
 
-      return result.rows[0];
-    }, { companyId });
+        return result.rows[0];
+      },
+      { companyId }
+    );
   }
 
   /**
@@ -546,8 +650,17 @@ class EventModel {
    * @returns {Promise<Object|null>} Participante atualizado
    */
   static async updateAttendeeStatus(eventId, attendeeId, status, companyId) {
-    if (!['invited', 'accepted', 'declined', 'maybe', 'attended', 'no_show'].includes(status)) {
-      throw new ValidationError('Status de participação inválido');
+    if (
+      ![
+        "invited",
+        "accepted",
+        "declined",
+        "maybe",
+        "attended",
+        "no_show",
+      ].includes(status)
+    ) {
+      throw new ValidationError("Status de participação inválido");
     }
 
     const updateQuery = `
@@ -558,10 +671,17 @@ class EventModel {
     `;
 
     try {
-      const result = await query(updateQuery, [status, attendeeId, eventId, companyId], { companyId });
+      const result = await query(
+        updateQuery,
+        [status, attendeeId, eventId, companyId],
+        { companyId }
+      );
       return result.rows[0] || null;
     } catch (error) {
-      throw new ApiError(500, `Erro ao atualizar status de participação: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao atualizar status de participação: ${error.message}`
+      );
     }
   }
 
@@ -584,7 +704,9 @@ class EventModel {
     `;
 
     try {
-      const result = await query(selectQuery, [eventId, companyId], { companyId });
+      const result = await query(selectQuery, [eventId, companyId], {
+        companyId,
+      });
       return result.rows;
     } catch (error) {
       throw new ApiError(500, `Erro ao buscar participantes: ${error.message}`);
@@ -605,26 +727,28 @@ class EventModel {
       date_from = null,
       date_to = null,
       upcoming_only = false,
-      role = null // 'organizer', 'attendee', 'all'
+      role = null, // 'organizer', 'attendee', 'all'
     } = options;
 
     const offset = (page - 1) * limit;
-    const conditions = ['e.company_id = $1', 'e.deleted_at IS NULL'];
+    const conditions = ["e.company_id = $1", "e.deleted_at IS NULL"];
     const values = [companyId];
     let paramCount = 2;
 
     // Filtro por papel do usuário
-    if (role === 'organizer') {
+    if (role === "organizer") {
       conditions.push(`e.organizer_id = $${paramCount}`);
       values.push(userId);
       paramCount++;
-    } else if (role === 'attendee') {
+    } else if (role === "attendee") {
       conditions.push(`ea.user_id = $${paramCount}`);
       values.push(userId);
       paramCount++;
     } else {
       // Todos os eventos (organizados ou participando)
-      conditions.push(`(e.organizer_id = $${paramCount} OR ea.user_id = $${paramCount})`);
+      conditions.push(
+        `(e.organizer_id = $${paramCount} OR ea.user_id = $${paramCount})`
+      );
       values.push(userId);
       paramCount++;
     }
@@ -642,11 +766,11 @@ class EventModel {
     }
 
     if (upcoming_only) {
-      conditions.push('e.start_date >= NOW()');
-      conditions.push('e.status IN (\'scheduled\', \'in_progress\')');
+      conditions.push("e.start_date >= NOW()");
+      conditions.push("e.status IN ('scheduled', 'in_progress')");
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const selectQuery = `
       SELECT DISTINCT
@@ -662,15 +786,17 @@ class EventModel {
     `;
 
     try {
-      const result = await query(selectQuery, [...values, limit, offset], { companyId });
-      
+      const result = await query(selectQuery, [...values, limit, offset], {
+        companyId,
+      });
+
       const countQuery = `
         SELECT COUNT(DISTINCT e.id) 
         FROM polox.events e
         LEFT JOIN polox.event_attendees ea ON e.id = ea.event_id
         ${whereClause}
       `;
-      
+
       const countResult = await query(countQuery, values, { companyId });
       const total = parseInt(countResult.rows[0].count);
       const totalPages = Math.ceil(total / limit);
@@ -683,11 +809,14 @@ class EventModel {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar eventos do usuário: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar eventos do usuário: ${error.message}`
+      );
     }
   }
 
@@ -702,23 +831,27 @@ class EventModel {
       user_id = null,
       date_from = null,
       date_to = null,
-      include_private = true
+      include_private = true,
     } = options;
 
-    const conditions = ['e.company_id = $1', 'e.deleted_at IS NULL'];
+    const conditions = ["e.company_id = $1", "e.deleted_at IS NULL"];
     const values = [companyId];
     let paramCount = 2;
 
     if (user_id) {
       if (include_private) {
-        conditions.push(`(e.organizer_id = $${paramCount} OR ea.user_id = $${paramCount} OR e.is_private = FALSE)`);
+        conditions.push(
+          `(e.organizer_id = $${paramCount} OR ea.user_id = $${paramCount} OR e.is_private = FALSE)`
+        );
       } else {
-        conditions.push(`(e.organizer_id = $${paramCount} OR ea.user_id = $${paramCount}) AND e.is_private = FALSE`);
+        conditions.push(
+          `(e.organizer_id = $${paramCount} OR ea.user_id = $${paramCount}) AND e.is_private = FALSE`
+        );
       }
       values.push(user_id);
       paramCount++;
     } else if (!include_private) {
-      conditions.push('e.is_private = FALSE');
+      conditions.push("e.is_private = FALSE");
     }
 
     if (date_from) {
@@ -733,7 +866,7 @@ class EventModel {
       paramCount++;
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const selectQuery = `
       SELECT DISTINCT
@@ -755,7 +888,10 @@ class EventModel {
       const result = await query(selectQuery, values, { companyId });
       return result.rows;
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar eventos do calendário: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar eventos do calendário: ${error.message}`
+      );
     }
   }
 
@@ -766,13 +902,9 @@ class EventModel {
    * @returns {Promise<Object>} Estatísticas de eventos
    */
   static async getStats(companyId, options = {}) {
-    const {
-      date_from = null,
-      date_to = null,
-      organizer_id = null
-    } = options;
+    const { date_from = null, date_to = null, organizer_id = null } = options;
 
-    const conditions = ['company_id = $1', 'deleted_at IS NULL'];
+    const conditions = ["company_id = $1", "deleted_at IS NULL"];
     const values = [companyId];
     let paramCount = 2;
 
@@ -794,7 +926,7 @@ class EventModel {
       paramCount++;
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const statsQuery = `
       SELECT 
@@ -831,17 +963,24 @@ class EventModel {
    * @returns {Promise<Array>} Próximos eventos
    */
   static async getUpcomingEvents(companyId, limit = 10, userId = null) {
-    const conditions = ['e.company_id = $1', 'e.deleted_at IS NULL', 'e.start_date >= NOW()', 'e.status = \'scheduled\''];
+    const conditions = [
+      "e.company_id = $1",
+      "e.deleted_at IS NULL",
+      "e.start_date >= NOW()",
+      "e.status = 'scheduled'",
+    ];
     const values = [companyId];
     let paramCount = 2;
 
     if (userId) {
-      conditions.push(`(e.organizer_id = $${paramCount} OR ea.user_id = $${paramCount})`);
+      conditions.push(
+        `(e.organizer_id = $${paramCount} OR ea.user_id = $${paramCount})`
+      );
       values.push(userId);
       paramCount++;
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const selectQuery = `
       SELECT DISTINCT
@@ -860,10 +999,15 @@ class EventModel {
     `;
 
     try {
-      const result = await query(selectQuery, [...values, limit], { companyId });
+      const result = await query(selectQuery, [...values, limit], {
+        companyId,
+      });
       return result.rows;
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar próximos eventos: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar próximos eventos: ${error.message}`
+      );
     }
   }
 
@@ -902,7 +1046,11 @@ class EventModel {
     `;
 
     try {
-      const result = await query(deleteQuery, [attendeeId, eventId, companyId], { companyId });
+      const result = await query(
+        deleteQuery,
+        [attendeeId, eventId, companyId],
+        { companyId }
+      );
       return result.rowCount > 0;
     } catch (error) {
       throw new ApiError(500, `Erro ao remover participante: ${error.message}`);
@@ -918,13 +1066,19 @@ class EventModel {
    * @param {number} excludeEventId - ID do evento a excluir da verificação
    * @returns {Promise<Array>} Eventos conflitantes
    */
-  static async getScheduleConflicts(organizerId, startDate, endDate, companyId, excludeEventId = null) {
+  static async getScheduleConflicts(
+    organizerId,
+    startDate,
+    endDate,
+    companyId,
+    excludeEventId = null
+  ) {
     const conditions = [
-      'organizer_id = $1',
-      'company_id = $2',
-      'deleted_at IS NULL',
-      'status IN (\'scheduled\', \'in_progress\')',
-      '(start_date < $4 AND (end_date > $3 OR end_date IS NULL))'
+      "organizer_id = $1",
+      "company_id = $2",
+      "deleted_at IS NULL",
+      "status IN ('scheduled', 'in_progress')",
+      "(start_date < $4 AND (end_date > $3 OR end_date IS NULL))",
     ];
     const values = [organizerId, companyId, startDate, endDate];
     let paramCount = 5;
@@ -934,7 +1088,7 @@ class EventModel {
       values.push(excludeEventId);
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const selectQuery = `
       SELECT id, title, start_date, end_date, event_type, location
@@ -947,7 +1101,10 @@ class EventModel {
       const result = await query(selectQuery, values, { companyId });
       return result.rows;
     } catch (error) {
-      throw new ApiError(500, `Erro ao verificar conflitos de agenda: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao verificar conflitos de agenda: ${error.message}`
+      );
     }
   }
 
@@ -959,42 +1116,55 @@ class EventModel {
    * @returns {Promise<Object>} Tag associada
    */
   static async addTag(eventId, tagName, companyId) {
-    if (!tagName || tagName.trim() === '') {
-      throw new ValidationError('Nome da tag é obrigatório');
+    if (!tagName || tagName.trim() === "") {
+      throw new ValidationError("Nome da tag é obrigatório");
     }
 
-    return await transaction(async (client) => {
-      // Verificar se evento existe
-      const event = await client.query(
-        'SELECT id FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-        [eventId, companyId]
-      );
+    return await transaction(
+      async (client) => {
+        // Verificar se evento existe
+        const event = await client.query(
+          "SELECT id FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL",
+          [eventId, companyId]
+        );
 
-      if (event.rows.length === 0) {
-        throw new NotFoundError('Evento não encontrado');
-      }
+        if (event.rows.length === 0) {
+          throw new NotFoundError("Evento não encontrado");
+        }
 
-      // Inserir tag se não existir (específica da empresa)
-      const tagResult = await client.query(`
+        // Inserir tag se não existir (específica da empresa)
+        const tagResult = await client.query(
+          `
         INSERT INTO polox.tags (name, slug, company_id)
         VALUES ($1, $2, $3)
         ON CONFLICT (company_id, name, slug) 
         WHERE company_id IS NOT NULL 
         DO UPDATE SET name = EXCLUDED.name
         RETURNING id, name, slug, color
-      `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+      `,
+          [
+            tagName.trim(),
+            tagName.trim().toLowerCase().replace(/\s+/g, "-"),
+            companyId,
+          ]
+        );
 
-      const tag = tagResult.rows[0];
+        const tag = tagResult.rows[0];
 
-      // Associar tag ao evento
-      await client.query(`
+        // Associar tag ao evento
+        await client.query(
+          `
         INSERT INTO polox.event_tags (event_id, tag_id)
         VALUES ($1, $2)
         ON CONFLICT DO NOTHING
-      `, [eventId, tag.id]);
+      `,
+          [eventId, tag.id]
+        );
 
-      return tag;
-    }, { companyId });
+        return tag;
+      },
+      { companyId }
+    );
   }
 
   /**
@@ -1049,59 +1219,78 @@ class EventModel {
    * @returns {Promise<Array>} Lista de tags atualizadas
    */
   static async updateTags(eventId, tagNames, companyId) {
-    return await transaction(async (client) => {
-      // Verificar se evento existe
-      const event = await client.query(
-        'SELECT id FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
-        [eventId, companyId]
-      );
+    return await transaction(
+      async (client) => {
+        // Verificar se evento existe
+        const event = await client.query(
+          "SELECT id FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL",
+          [eventId, companyId]
+        );
 
-      if (event.rows.length === 0) {
-        throw new NotFoundError('Evento não encontrado');
-      }
+        if (event.rows.length === 0) {
+          throw new NotFoundError("Evento não encontrado");
+        }
 
-      // Remover todas as tags antigas
-      await client.query(`
+        // Remover todas as tags antigas
+        await client.query(
+          `
         DELETE FROM polox.event_tags WHERE event_id = $1
-      `, [eventId]);
+      `,
+          [eventId]
+        );
 
-      // Adicionar novas tags
-      if (tagNames && tagNames.length > 0) {
-        for (const tagName of tagNames) {
-          if (tagName && tagName.trim() !== '') {
-            // Inserir tag se não existir
-            const tagResult = await client.query(`
+        // Adicionar novas tags
+        if (tagNames && tagNames.length > 0) {
+          for (const tagName of tagNames) {
+            if (tagName && tagName.trim() !== "") {
+              // Inserir tag se não existir
+              const tagResult = await client.query(
+                `
               INSERT INTO polox.tags (name, slug, company_id)
               VALUES ($1, $2, $3)
               ON CONFLICT (company_id, name, slug) 
               WHERE company_id IS NOT NULL 
               DO UPDATE SET name = EXCLUDED.name
               RETURNING id
-            `, [tagName.trim(), tagName.trim().toLowerCase().replace(/\s+/g, '-'), companyId]);
+            `,
+                [
+                  tagName.trim(),
+                  tagName.trim().toLowerCase().replace(/\s+/g, "-"),
+                  companyId,
+                ]
+              );
 
-            const tagId = tagResult.rows[0].id;
+              const tagId = tagResult.rows[0].id;
 
-            // Associar tag ao evento
-            await client.query(`
+              // Associar tag ao evento
+              await client.query(
+                `
               INSERT INTO polox.event_tags (event_id, tag_id)
               VALUES ($1, $2)
               ON CONFLICT DO NOTHING
-            `, [eventId, tagId]);
+            `,
+                [eventId, tagId]
+              );
+            }
           }
         }
-      }
 
-      // Retornar tags atualizadas
-      const result = await client.query(`
+        // Retornar tags atualizadas
+        const result = await client.query(
+          `
         SELECT t.id, t.name, t.slug, t.color
         FROM polox.tags t
         INNER JOIN polox.event_tags et ON t.id = et.tag_id
         WHERE et.event_id = $1
         ORDER BY t.name
-      `, [eventId]);
+      `,
+          [eventId]
+        );
 
-      return result.rows;
-    }, { companyId });
+        return result.rows;
+      },
+      { companyId }
+    );
   }
 }
 

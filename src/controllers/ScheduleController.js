@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -65,6 +65,75 @@ const Joi = require("joi");
 
 class ScheduleController {
   /**
+   * 🌐 Traduções de event_type
+   */
+  static translateEventType(eventType, language = "en") {
+    const translations = {
+      "pt-BR": {
+        meeting: "reunião",
+        call: "ligação",
+        task: "tarefa",
+        reminder: "lembrete",
+        event: "evento",
+        appointment: "compromisso",
+        demo: "demonstração",
+        proposal: "proposta",
+        follow_up: "follow_up",
+        onboarding: "onboarding",
+        block_time: "tempo reservado",
+        site_visit: "visita ao local",
+        service: "atendimento",
+      },
+      pt: {
+        meeting: "reunião",
+        call: "ligação",
+        task: "tarefa",
+        reminder: "lembrete",
+        event: "evento",
+        appointment: "compromisso",
+        demo: "demonstração",
+        proposal: "proposta",
+        follow_up: "follow_up",
+        onboarding: "onboarding",
+        block_time: "tempo reservado",
+        site_visit: "visita ao local",
+        service: "atendimento",
+      },
+    };
+
+    // Se for português, retorna traduzido, senão retorna original
+    if (translations[language] && translations[language][eventType]) {
+      return translations[language][eventType];
+    }
+    return eventType;
+  }
+
+  /**
+   * 🌐 Traduções de contact_type
+   */
+  static translateContactType(contactType, language = "en") {
+    const translations = {
+      "pt-BR": {
+        lead: "lead",
+        client: "cliente",
+        prospect: "prospect",
+        partner: "parceiro",
+      },
+      pt: {
+        lead: "lead",
+        client: "cliente",
+        prospect: "prospect",
+        partner: "parceiro",
+      },
+    };
+
+    if (translations[language] && translations[language][contactType]) {
+      return translations[language][contactType];
+    }
+    return contactType;
+  }
+
+  /**
    * 📝 VALIDAÇÕES JOI
    */
   static createEventSchema = Joi.object({
@@ -75,18 +144,19 @@ class ScheduleController {
     is_all_day: Joi.boolean().default(false),
     event_type: Joi.string()
       .valid(
-        "meeting", 
-        "call", 
-        "task", 
-        "reminder", 
-        "event", 
+        "meeting",
+        "call",
+        "task",
+        "reminder",
+        "event",
         "appointment",
         "demo",
-        "proposal", 
+        "proposal",
         "follow_up",
         "onboarding",
         "block_time",
-        "site_visit"
+        "site_visit",
+        "service"
       )
       .default("meeting"),
     status: Joi.string()
@@ -126,7 +196,8 @@ class ScheduleController {
       "follow_up",
       "onboarding",
       "block_time",
-      "site_visit"
+      "site_visit",
+      "service"
     ),
     status: Joi.string().valid(
       "scheduled",
@@ -233,33 +304,19 @@ class ScheduleController {
     const eventsQuery = `
       SELECT 
         e.id::integer as id,
-        e.company_id::integer as company_id,
-        e.user_id::integer as user_id,
-        e.contato_id::integer as contato_id,
         e.title,
-        e.description,
         e.start_datetime,
         e.end_datetime,
         e.timezone,
         e.event_type,
         e.status,
-        e.event_location,
-        e.meeting_link,
-        e.is_all_day,
-        e.is_recurring,
-        e.recurrence_pattern,
         e.reminder_minutes,
-        e.created_at,
-        e.updated_at,
-        e.deleted_at,
+        e.is_all_day,
+        e.contato_id::integer as contato_id,
         c.nome as contact_name,
-        c.tipo as contact_type,
-        c.email as contact_email,
-        c.phone as contact_phone,
-        u.full_name as organizer_name
+        c.tipo as contact_type
       FROM polox.events e
       LEFT JOIN polox.contacts c ON e.contato_id = c.id AND c.company_id = e.company_id AND c.deleted_at IS NULL
-      LEFT JOIN polox.users u ON e.user_id = u.id
       WHERE ${whereClause}
       ORDER BY e.${sortField} ${sortDirection}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -278,9 +335,41 @@ class ScheduleController {
       query(countQuery, params.slice(0, -2)),
     ]);
 
+    // Traduzir event_type e contact_type se for pt-BR e retornar apenas campos essenciais
+    const language = req.headers["accept-language"] || "en";
+    const translatedEvents = eventsResult.rows.map((event) => {
+      const mapped = {
+        id: event.id,
+        title: event.title,
+        start_datetime: event.start_datetime,
+        end_datetime: event.end_datetime,
+        timezone: event.timezone,
+        event_type: event.event_type,
+        event_type_translated: ScheduleController.translateEventType(
+          event.event_type,
+          language
+        ),
+        status: event.status,
+        reminder_minutes: event.reminder_minutes,
+        is_all_day: event.is_all_day,
+      };
+
+      // Adicionar informações de contato apenas se existir
+      if (event.contato_id) {
+        mapped.contato_id = event.contato_id;
+        mapped.contact_name = event.contact_name;
+        mapped.contact_type = event.contact_type;
+        mapped.contact_type_translated =
+          ScheduleController.translateContactType(event.contact_type, language);
+      }
+
+      return mapped;
+    });
+
     const response = {
-      events: eventsResult.rows,
-      _deprecated_warning: "Este endpoint será descontinuado. Use /api/schedule/companies/{company_id}/events com filtros de data obrigatórios para melhor performance."
+      events: translatedEvents,
+      _deprecated_warning:
+        "Este endpoint será descontinuado. Use /api/schedule/companies/{company_id}/events com filtros de data obrigatórios para melhor performance.",
     };
 
     return paginatedResponse(
@@ -441,6 +530,14 @@ class ScheduleController {
     const event = result.rows[0];
 
     // Todos os eventos são visíveis para usuários da mesma empresa
+
+    // Traduzir event_type se for pt-BR
+    const language = req.headers["accept-language"] || "en";
+    event.event_type_translated = ScheduleController.translateEventType(
+      event.event_type,
+      language
+    );
+    event.event_type_original = event.event_type;
 
     return successResponse(
       res,
@@ -710,10 +807,13 @@ class ScheduleController {
   static getEventsByCompany = asyncHandler(async (req, res) => {
     const userCompanyId = req.user.companyId;
     const { company_id } = req.params;
-    
+
     // Verificar se usuário tem acesso à empresa solicitada
     if (parseInt(company_id) !== parseInt(userCompanyId)) {
-      throw new ApiError(403, tc(req, "scheduleController", "company.access_denied"));
+      throw new ApiError(
+        403,
+        tc(req, "scheduleController", "company.access_denied")
+      );
     }
 
     const {
@@ -721,7 +821,7 @@ class ScheduleController {
       event_type,
       status,
       start_date, // Data obrigatória de início
-      end_date,   // Data obrigatória de fim
+      end_date, // Data obrigatória de fim
       search,
       sort_by = "start_datetime",
       sort_order = "ASC",
@@ -731,26 +831,32 @@ class ScheduleController {
 
     // Validação de datas obrigatórias
     if (!start_date || !end_date) {
-      throw new ValidationError(tc(req, "scheduleController", "date_range.required"));
+      throw new ValidationError(
+        tc(req, "scheduleController", "date_range.required")
+      );
     }
 
     // Validar formato das datas
     const startDateObj = new Date(start_date);
     const endDateObj = new Date(end_date);
-    
+
     if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
-      throw new ValidationError(tc(req, "scheduleController", "date_format.invalid"));
+      throw new ValidationError(
+        tc(req, "scheduleController", "date_format.invalid")
+      );
     }
 
     if (startDateObj >= endDateObj) {
-      throw new ValidationError(tc(req, "scheduleController", "date_range.invalid"));
+      throw new ValidationError(
+        tc(req, "scheduleController", "date_range.invalid")
+      );
     }
 
     const conditions = [
-      "e.company_id = $1", 
+      "e.company_id = $1",
       "e.deleted_at IS NULL",
       "DATE(e.start_datetime) >= $2",
-      "DATE(e.start_datetime) <= $3"
+      "DATE(e.start_datetime) <= $3",
     ];
     const params = [company_id, start_date, end_date];
     let paramIndex = 4;
@@ -775,14 +881,23 @@ class ScheduleController {
     }
 
     if (search) {
-      conditions.push(`(LOWER(e.title) LIKE $${paramIndex} OR LOWER(e.description) LIKE $${paramIndex})`);
+      conditions.push(
+        `(LOWER(e.title) LIKE $${paramIndex} OR LOWER(e.description) LIKE $${paramIndex})`
+      );
       params.push(`%${search.toLowerCase()}%`);
       paramIndex++;
     }
 
     // Validar sort_by
-    const allowedSortFields = ["start_datetime", "created_at", "title", "status"];
-    const sortField = allowedSortFields.includes(sort_by) ? sort_by : "start_datetime";
+    const allowedSortFields = [
+      "start_datetime",
+      "created_at",
+      "title",
+      "status",
+    ];
+    const sortField = allowedSortFields.includes(sort_by)
+      ? sort_by
+      : "start_datetime";
     const sortDirection = sort_order.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
     const whereClause = conditions.join(" AND ");
@@ -790,33 +905,19 @@ class ScheduleController {
     const eventsQuery = `
       SELECT 
         e.id::integer as id,
-        e.company_id::integer as company_id,
-        e.user_id::integer as user_id,
-        e.contato_id::integer as contato_id,
         e.title,
-        e.description,
         e.start_datetime,
         e.end_datetime,
         e.timezone,
         e.event_type,
         e.status,
-        e.event_location,
-        e.meeting_link,
-        e.is_all_day,
-        e.is_recurring,
-        e.recurrence_pattern,
         e.reminder_minutes,
-        e.created_at,
-        e.updated_at,
+        e.is_all_day,
+        e.contato_id::integer as contato_id,
         c.nome as contact_name,
-        c.tipo as contact_type,
-        c.email as contact_email,
-        c.phone as contact_phone,
-        u.full_name as organizer_name,
-        u.email as organizer_email
+        c.tipo as contact_type
       FROM polox.events e
       LEFT JOIN polox.contacts c ON e.contato_id = c.id AND c.company_id = e.company_id AND c.deleted_at IS NULL
-      LEFT JOIN polox.users u ON e.user_id = u.id
       WHERE ${whereClause}
       ORDER BY e.${sortField} ${sortDirection}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -852,14 +953,45 @@ class ScheduleController {
 
     const statsResult = await query(statsQuery, params.slice(0, -2));
 
+    // Traduzir event_type e contact_type se for pt-BR e retornar apenas campos essenciais
+    const language = req.headers["accept-language"] || "en";
+    const translatedEvents = eventsResult.rows.map((event) => {
+      const mapped = {
+        id: event.id,
+        title: event.title,
+        start_datetime: event.start_datetime,
+        end_datetime: event.end_datetime,
+        timezone: event.timezone,
+        event_type: event.event_type,
+        event_type_translated: ScheduleController.translateEventType(
+          event.event_type,
+          language
+        ),
+        status: event.status,
+        reminder_minutes: event.reminder_minutes,
+        is_all_day: event.is_all_day,
+      };
+
+      // Adicionar informações de contato apenas se existir
+      if (event.contato_id) {
+        mapped.contato_id = event.contato_id;
+        mapped.contact_name = event.contact_name;
+        mapped.contact_type = event.contact_type;
+        mapped.contact_type_translated =
+          ScheduleController.translateContactType(event.contact_type, language);
+      }
+
+      return mapped;
+    });
+
     const responseData = {
-      events: eventsResult.rows,
+      events: translatedEvents,
       period: {
         start_date,
         end_date,
-        days: Math.ceil((endDateObj - startDateObj) / (1000 * 60 * 60 * 24))
+        days: Math.ceil((endDateObj - startDateObj) / (1000 * 60 * 60 * 24)),
       },
-      stats: statsResult.rows[0]
+      stats: statsResult.rows[0],
     };
 
     return paginatedResponse(
@@ -867,10 +999,14 @@ class ScheduleController {
       responseData,
       {
         page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
-        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / parseInt(limit)),
+        totalPages: Math.ceil(
+          parseInt(countResult.rows[0].total) / parseInt(limit)
+        ),
         totalItems: parseInt(countResult.rows[0].total),
         limit: parseInt(limit),
-        hasNextPage: parseInt(offset) + parseInt(limit) < parseInt(countResult.rows[0].total),
+        hasNextPage:
+          parseInt(offset) + parseInt(limit) <
+          parseInt(countResult.rows[0].total),
         hasPreviousPage: parseInt(offset) > 0,
       },
       tc(req, "scheduleController", "company_events.success")
@@ -889,9 +1025,13 @@ class ScheduleController {
     const params = [companyId];
     let paramIndex = 2;
 
-    if (date_from) {/* Lines 676-679 omitted */}
+    if (date_from) {
+      /* Lines 676-679 omitted */
+    }
 
-    if (date_to) {/* Lines 682-685 omitted */}
+    if (date_to) {
+      /* Lines 682-685 omitted */
+    }
 
     const statsQuery = `
       SELECT 
