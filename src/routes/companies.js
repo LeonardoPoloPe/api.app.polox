@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -137,6 +137,11 @@ router.get(
  *         schema:
  *           type: string
  *         description: Buscar por nome ou domínio da empresa
+ *       - in: query
+ *         name: enable_chatgpt
+ *         schema:
+ *           type: boolean
+ *         description: Filtrar por empresas com ChatGPT habilitado/desabilitado
  *       - in: query
  *         name: sort
  *         schema:
@@ -262,6 +267,17 @@ router.get("/", rateLimiter.admin, CompanyController.index);
  *               settings:
  *                 type: object
  *                 example: {"maxUploadSize": "25MB"}
+ *               enable_chatgpt:
+ *                 type: boolean
+ *                 default: false
+ *                 example: false
+ *                 description: Habilita integração com ChatGPT
+ *               chatgpt_api_key:
+ *                 type: string
+ *                 maxLength: 500
+ *                 nullable: true
+ *                 example: "sk-proj-abc123..."
+ *                 description: Chave da API do ChatGPT (será criptografada)
  *     responses:
  *       201:
  *         description: Empresa criada com sucesso
@@ -314,6 +330,81 @@ router.get("/stats", rateLimiter.admin, CompanyController.getGlobalStats);
  *         description: Empresa não encontrada
  */
 router.get("/:id", rateLimiter.admin, CompanyController.show);
+
+/**
+ * @swagger
+ * /companies/{id}/summary:
+ *   get:
+ *     summary: Dados resumidos da empresa
+ *     description: Obter dados essenciais da empresa incluindo status e configurações ChatGPT (Super Admin only)
+ *     tags: [Companies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
+ *     responses:
+ *       200:
+ *         description: Dados resumidos da empresa
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "30"
+ *                     company_name:
+ *                       type: string
+ *                       example: "Agência Parceira XYZ"
+ *                     company_domain:
+ *                       type: string
+ *                       example: "agenciaxyz.com"
+ *                     status:
+ *                       type: string
+ *                       enum: [active, inactive, trial]
+ *                       example: "active"
+ *                     company_type:
+ *                       type: string
+ *                       enum: [tenant, partner, license]
+ *                       example: "partner"
+ *                     enable_chatgpt:
+ *                       type: boolean
+ *                       example: true
+ *                     chatgpt_api_key:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "sk-proj-abc123..."
+ *                     subscription_plan:
+ *                       type: string
+ *                       example: "partner_pro"
+ *                     max_users:
+ *                       type: integer
+ *                       example: 50
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-12T17:04:54.315Z"
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-12T17:04:54.315Z"
+ *       404:
+ *         description: Empresa não encontrada
+ */
+router.get("/:id/summary", rateLimiter.admin, CompanyController.getSummary);
 
 /**
  * @swagger
@@ -408,6 +499,16 @@ router.get("/:id", rateLimiter.admin, CompanyController.show);
  *                   type: string
  *               settings:
  *                 type: object
+ *               enable_chatgpt:
+ *                 type: boolean
+ *                 example: true
+ *                 description: Habilita integração com ChatGPT
+ *               chatgpt_api_key:
+ *                 type: string
+ *                 maxLength: 500
+ *                 nullable: true
+ *                 example: "sk-proj-abc123..."
+ *                 description: Chave da API do ChatGPT (será criptografada)
  *     responses:
  *       200:
  *         description: Empresa atualizada

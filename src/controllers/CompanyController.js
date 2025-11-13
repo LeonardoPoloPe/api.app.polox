@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -77,25 +77,37 @@ class CompanyController {
    */
   static update = asyncHandler(async (req, res) => {
     const companyId = req.params.id;
-    
+
     // Log de debug da requisição
     logger.info("🔍 PUT /companies/:id - Dados recebidos:", {
       companyId,
-      body: req.body
+      body: req.body,
     });
 
     // Pré-processar dados: converter strings numéricas para números
     const preprocessedData = { ...req.body };
-    if (preprocessedData.partner_id && typeof preprocessedData.partner_id === 'string') {
-      preprocessedData.partner_id = preprocessedData.partner_id.trim() === '' 
-        ? null 
-        : parseInt(preprocessedData.partner_id);
+    if (
+      preprocessedData.partner_id &&
+      typeof preprocessedData.partner_id === "string"
+    ) {
+      preprocessedData.partner_id =
+        preprocessedData.partner_id.trim() === ""
+          ? null
+          : parseInt(preprocessedData.partner_id);
     }
-    if (preprocessedData.max_users && typeof preprocessedData.max_users === 'string') {
+    if (
+      preprocessedData.max_users &&
+      typeof preprocessedData.max_users === "string"
+    ) {
       preprocessedData.max_users = parseInt(preprocessedData.max_users);
     }
-    if (preprocessedData.max_storage_mb && typeof preprocessedData.max_storage_mb === 'string') {
-      preprocessedData.max_storage_mb = parseInt(preprocessedData.max_storage_mb);
+    if (
+      preprocessedData.max_storage_mb &&
+      typeof preprocessedData.max_storage_mb === "string"
+    ) {
+      preprocessedData.max_storage_mb = parseInt(
+        preprocessedData.max_storage_mb
+      );
     }
 
     // Validação dos dados
@@ -137,6 +149,8 @@ class CompanyController {
       subscription_ends_at: "subscription_ends_at",
       enabled_modules: "enabled_modules",
       settings: "settings",
+      enable_chatgpt: "enable_chatgpt",
+      chatgpt_api_key: "chatgpt_api_key",
     };
     for (const key in data) {
       if (map[key]) {
@@ -185,7 +199,7 @@ class CompanyController {
     logger.info("✅ PUT /companies/:id - Empresa atualizada com sucesso:", {
       companyId: updatedCompany.id,
       companyName: updatedCompany.company_name,
-      updatedFields: Object.keys(data)
+      updatedFields: Object.keys(data),
     });
 
     return successResponse(
@@ -278,6 +292,9 @@ class CompanyController {
     max_storage_mb: Joi.number().integer().optional(),
     trial_ends_at: Joi.date().iso().allow(null).optional(),
     subscription_ends_at: Joi.date().iso().allow(null).optional(),
+    // Campos de integração ChatGPT
+    enable_chatgpt: Joi.boolean().default(false).optional(),
+    chatgpt_api_key: Joi.string().max(500).allow("", null).optional(),
   });
 
   static updateCompanySchema = Joi.object({
@@ -300,7 +317,9 @@ class CompanyController {
     partner_id: Joi.alternatives()
       .try(
         Joi.number().integer(),
-        Joi.string().pattern(/^\d+$/).custom((value) => parseInt(value))
+        Joi.string()
+          .pattern(/^\d+$/)
+          .custom((value) => parseInt(value))
       )
       .allow(null)
       .optional(), // Aceita string ou number
@@ -320,17 +339,20 @@ class CompanyController {
     max_storage_mb: Joi.number().integer().min(100),
     trial_ends_at: Joi.date().iso().allow(null),
     subscription_ends_at: Joi.date().iso().allow(null),
+    // Campos de integração ChatGPT
+    enable_chatgpt: Joi.boolean().optional(),
+    chatgpt_api_key: Joi.string().max(500).allow("", null).optional(),
   });
 
   /**
    * 🌐 Valida dados com mensagens traduzidas
    */
   static validateWithTranslation(req, schema, data) {
-    const { error, value } = schema.validate(data, { 
+    const { error, value } = schema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true,
     });
-    
+
     if (error) {
       const field = error.details[0].path[0];
       const type = error.details[0].type;
@@ -342,11 +364,11 @@ class CompanyController {
         type,
         message: errorMessage,
         value: data[field],
-        allErrors: error.details.map(d => ({
+        allErrors: error.details.map((d) => ({
           field: d.path[0],
           type: d.type,
-          message: d.message
-        }))
+          message: d.message,
+        })),
       });
 
       // Mapear erros Joi para chaves de tradução
@@ -369,7 +391,7 @@ class CompanyController {
       };
 
       const messageKey = errorKeyMap[type] || "validation.invalid_field";
-      
+
       // Incluir campo e tipo de erro para ajudar no debug
       const translatedMessage = tc(req, "companyController", messageKey);
       throw new ApiError(400, `${translatedMessage} (${field}: ${type})`);
@@ -420,6 +442,11 @@ class CompanyController {
       whereClause += ` AND (c.company_name ILIKE $${++paramCount} OR c.company_domain ILIKE $${++paramCount})`;
       queryParams.push(`%${req.query.search}%`, `%${req.query.search}%`);
       paramCount++; // Segundo parâmetro
+    }
+
+    if (req.query.enable_chatgpt !== undefined) {
+      whereClause += ` AND c.enable_chatgpt = $${++paramCount}`;
+      queryParams.push(req.query.enable_chatgpt === "true");
     }
 
     // 📊 QUERY PRINCIPAL COM ESTATÍSTICAS
@@ -557,11 +584,12 @@ class CompanyController {
           primary_color, secondary_color, support_email, support_phone,
           terms_url, privacy_url, tenant_plan,
           status, max_users, max_storage_mb, trial_ends_at, subscription_ends_at,
+          enable_chatgpt, chatgpt_api_key,
           created_at, updated_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
           $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
-          $23, $24, $25, $26, $27, $28, NOW(), NOW()
+          $23, $24, $25, $26, $27, $28, $29, $30, NOW(), NOW()
         ) RETURNING *
       `;
       const companyResult = await client.query(createCompanyQuery, [
@@ -593,6 +621,8 @@ class CompanyController {
         companyData.max_storage_mb,
         companyData.trial_ends_at,
         companyData.subscription_ends_at,
+        companyData.enable_chatgpt,
+        companyData.chatgpt_api_key,
       ]);
 
       const newCompany = companyResult.rows[0];
@@ -814,7 +844,48 @@ class CompanyController {
   });
 
   /**
-   * 🔧 GERENCIAR MÓDULOS
+   * � OBTER DADOS RESUMIDOS DA EMPRESA
+   * GET /api/companies/:id/summary
+   */
+  static getSummary = asyncHandler(async (req, res) => {
+    const companyId = req.params.id;
+
+    const summaryQuery = `
+      SELECT 
+        id,
+        company_name,
+        company_domain,
+        status,
+        company_type,
+        enable_chatgpt,
+        chatgpt_api_key,
+        subscription_plan,
+        max_users,
+        created_at,
+        updated_at
+      FROM polox.companies 
+      WHERE id = $1 AND deleted_at IS NULL
+    `;
+
+    const result = await query(summaryQuery, [companyId]);
+
+    if (result.rows.length === 0) {
+      throw new ApiError(404, tc(req, "companyController", "show.not_found"));
+    }
+
+    const company = result.rows[0];
+
+    logger.info(tc(req, "companyController", "info.company_summary_viewed"), {
+      superAdminId: req.user.id,
+      companyId: company.id,
+      companyName: company.company_name,
+    });
+
+    return successResponse(res, company);
+  });
+
+  /**
+   * �🔧 GERENCIAR MÓDULOS
    * PUT /api/companies/:id/modules
    */
   static updateModules = asyncHandler(async (req, res) => {
