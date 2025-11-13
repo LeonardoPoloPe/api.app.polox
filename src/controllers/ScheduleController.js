@@ -74,7 +74,20 @@ class ScheduleController {
     end_datetime: Joi.date().greater(Joi.ref("start_datetime")).required(),
     is_all_day: Joi.boolean().default(false),
     event_type: Joi.string()
-      .valid("meeting", "call", "task", "reminder", "event", "appointment")
+      .valid(
+        "meeting", 
+        "call", 
+        "task", 
+        "reminder", 
+        "event", 
+        "appointment",
+        "demo",
+        "proposal", 
+        "follow_up",
+        "onboarding",
+        "block_time",
+        "site_visit"
+      )
       .default("meeting"),
     status: Joi.string()
       .valid(
@@ -107,7 +120,13 @@ class ScheduleController {
       "task",
       "reminder",
       "event",
-      "appointment"
+      "appointment",
+      "demo",
+      "proposal",
+      "follow_up",
+      "onboarding",
+      "block_time",
+      "site_visit"
     ),
     status: Joi.string().valid(
       "scheduled",
@@ -213,7 +232,26 @@ class ScheduleController {
 
     const eventsQuery = `
       SELECT 
-        e.*,
+        e.id::integer as id,
+        e.company_id::integer as company_id,
+        e.user_id::integer as user_id,
+        e.contato_id::integer as contato_id,
+        e.title,
+        e.description,
+        e.start_datetime,
+        e.end_datetime,
+        e.timezone,
+        e.event_type,
+        e.status,
+        e.event_location,
+        e.meeting_link,
+        e.is_all_day,
+        e.is_recurring,
+        e.recurrence_pattern,
+        e.reminder_minutes,
+        e.created_at,
+        e.updated_at,
+        e.deleted_at,
         c.nome as contact_name,
         c.tipo as contact_type,
         c.email as contact_email,
@@ -240,9 +278,14 @@ class ScheduleController {
       query(countQuery, params.slice(0, -2)),
     ]);
 
+    const response = {
+      events: eventsResult.rows,
+      _deprecated_warning: "Este endpoint será descontinuado. Use /api/schedule/companies/{company_id}/events com filtros de data obrigatórios para melhor performance."
+    };
+
     return paginatedResponse(
       res,
-      eventsResult.rows,
+      response,
       {
         page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
         totalPages: Math.ceil(
@@ -661,6 +704,180 @@ class ScheduleController {
   }
 
   /**
+   * � Listar eventos por empresa (novo endpoint)
+   * GET /api/schedule/companies/:company_id/events
+   */
+  static getEventsByCompany = asyncHandler(async (req, res) => {
+    const userCompanyId = req.user.companyId;
+    const { company_id } = req.params;
+    
+    // Verificar se usuário tem acesso à empresa solicitada
+    if (parseInt(company_id) !== parseInt(userCompanyId)) {
+      throw new ApiError(403, tc(req, "scheduleController", "company.access_denied"));
+    }
+
+    const {
+      contato_id,
+      event_type,
+      status,
+      start_date, // Data obrigatória de início
+      end_date,   // Data obrigatória de fim
+      search,
+      sort_by = "start_datetime",
+      sort_order = "ASC",
+      limit = 50,
+      offset = 0,
+    } = req.query;
+
+    // Validação de datas obrigatórias
+    if (!start_date || !end_date) {
+      throw new ValidationError(tc(req, "scheduleController", "date_range.required"));
+    }
+
+    // Validar formato das datas
+    const startDateObj = new Date(start_date);
+    const endDateObj = new Date(end_date);
+    
+    if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+      throw new ValidationError(tc(req, "scheduleController", "date_format.invalid"));
+    }
+
+    if (startDateObj >= endDateObj) {
+      throw new ValidationError(tc(req, "scheduleController", "date_range.invalid"));
+    }
+
+    const conditions = [
+      "e.company_id = $1", 
+      "e.deleted_at IS NULL",
+      "DATE(e.start_datetime) >= $2",
+      "DATE(e.start_datetime) <= $3"
+    ];
+    const params = [company_id, start_date, end_date];
+    let paramIndex = 4;
+
+    // Filtros opcionais
+    if (contato_id) {
+      conditions.push(`e.contato_id = $${paramIndex}`);
+      params.push(parseInt(contato_id));
+      paramIndex++;
+    }
+
+    if (event_type) {
+      conditions.push(`e.event_type = $${paramIndex}`);
+      params.push(event_type);
+      paramIndex++;
+    }
+
+    if (status) {
+      conditions.push(`e.status = $${paramIndex}`);
+      params.push(status);
+      paramIndex++;
+    }
+
+    if (search) {
+      conditions.push(`(LOWER(e.title) LIKE $${paramIndex} OR LOWER(e.description) LIKE $${paramIndex})`);
+      params.push(`%${search.toLowerCase()}%`);
+      paramIndex++;
+    }
+
+    // Validar sort_by
+    const allowedSortFields = ["start_datetime", "created_at", "title", "status"];
+    const sortField = allowedSortFields.includes(sort_by) ? sort_by : "start_datetime";
+    const sortDirection = sort_order.toUpperCase() === "DESC" ? "DESC" : "ASC";
+
+    const whereClause = conditions.join(" AND ");
+
+    const eventsQuery = `
+      SELECT 
+        e.id::integer as id,
+        e.company_id::integer as company_id,
+        e.user_id::integer as user_id,
+        e.contato_id::integer as contato_id,
+        e.title,
+        e.description,
+        e.start_datetime,
+        e.end_datetime,
+        e.timezone,
+        e.event_type,
+        e.status,
+        e.event_location,
+        e.meeting_link,
+        e.is_all_day,
+        e.is_recurring,
+        e.recurrence_pattern,
+        e.reminder_minutes,
+        e.created_at,
+        e.updated_at,
+        c.nome as contact_name,
+        c.tipo as contact_type,
+        c.email as contact_email,
+        c.phone as contact_phone,
+        u.full_name as organizer_name,
+        u.email as organizer_email
+      FROM polox.events e
+      LEFT JOIN polox.contacts c ON e.contato_id = c.id AND c.company_id = e.company_id AND c.deleted_at IS NULL
+      LEFT JOIN polox.users u ON e.user_id = u.id
+      WHERE ${whereClause}
+      ORDER BY e.${sortField} ${sortDirection}
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
+    params.push(parseInt(limit), parseInt(offset));
+
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM polox.events e
+      WHERE ${whereClause}
+    `;
+
+    const [eventsResult, countResult] = await Promise.all([
+      query(eventsQuery, params),
+      query(countQuery, params.slice(0, -2)),
+    ]);
+
+    // Estatísticas adicionais do período
+    const statsQuery = `
+      SELECT 
+        COUNT(*) as total_events,
+        COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as scheduled,
+        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
+        COUNT(CASE WHEN event_type = 'meeting' THEN 1 END) as meetings,
+        COUNT(CASE WHEN event_type = 'call' THEN 1 END) as calls,
+        COUNT(CASE WHEN event_type = 'task' THEN 1 END) as tasks
+      FROM polox.events e
+      WHERE ${whereClause}
+    `;
+
+    const statsResult = await query(statsQuery, params.slice(0, -2));
+
+    const responseData = {
+      events: eventsResult.rows,
+      period: {
+        start_date,
+        end_date,
+        days: Math.ceil((endDateObj - startDateObj) / (1000 * 60 * 60 * 24))
+      },
+      stats: statsResult.rows[0]
+    };
+
+    return paginatedResponse(
+      res,
+      responseData,
+      {
+        page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / parseInt(limit)),
+        totalItems: parseInt(countResult.rows[0].total),
+        limit: parseInt(limit),
+        hasNextPage: parseInt(offset) + parseInt(limit) < parseInt(countResult.rows[0].total),
+        hasPreviousPage: parseInt(offset) > 0,
+      },
+      tc(req, "scheduleController", "company_events.success")
+    );
+  });
+
+  /**
    * 📊 Estatísticas de eventos
    * GET /api/schedule/stats
    */
@@ -672,17 +889,9 @@ class ScheduleController {
     const params = [companyId];
     let paramIndex = 2;
 
-    if (date_from) {
-      whereClause += ` AND start_datetime >= $${paramIndex}`;
-      params.push(date_from);
-      paramIndex++;
-    }
+    if (date_from) {/* Lines 676-679 omitted */}
 
-    if (date_to) {
-      whereClause += ` AND end_datetime <= $${paramIndex}`;
-      params.push(date_to);
-      paramIndex++;
-    }
+    if (date_to) {/* Lines 682-685 omitted */}
 
     const statsQuery = `
       SELECT 

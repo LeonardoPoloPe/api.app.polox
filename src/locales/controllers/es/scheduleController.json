@@ -68,5 +68,20 @@
   },
   "updateStatus": {
     "success": "Estado del evento actualizado con éxito"
+  },
+  "company_events": {
+    "success": "Eventos de la empresa listados con éxito",
+    "access_denied": "Acceso denegado a la empresa especificada",
+    "invalid_company": "ID de empresa inválido"
+  },
+  "date_range": {
+    "required": "Los parámetros start_date y end_date son obligatorios",
+    "invalid": "Rango de fechas inválido: la fecha final debe ser mayor que la inicial"
+  },
+  "date_format": {
+    "invalid": "Formato de fecha inválido. Use el formato YYYY-MM-DD"
+  },
+  "stats": {
+    "success": "Estadísticas de eventos obtenidas con éxito"
   }
 }

@@ -81,7 +81,7 @@ router.use(authenticateToken);
  *           description: Evento de dia inteiro
  *         event_type:
  *           type: string
- *           enum: [meeting, call, task, reminder, event, appointment]
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit]
  *           default: meeting
  *           description: Tipo do evento
  *         status:
@@ -136,9 +136,211 @@ router.use(authenticateToken);
 
 /**
  * @swagger
+ * /schedule/companies/{company_id}/events:
+ *   get:
+ *     summary: Listar eventos por empresa (com filtros obrigatórios)
+ *     description: >
+ *       Endpoint melhorado que obriga especificar a empresa e intervalo de datas.
+ *       Resolve problemas de performance e garante filtragem adequada por período.
+ *       IDs são retornados como integers em vez de strings.
+ *     tags: [Schedule]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: company_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID da empresa (obrigatório)
+ *       - in: query
+ *         name: start_date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data inicial do período (obrigatória) - formato YYYY-MM-DD
+ *         example: "2025-11-01"
+ *       - in: query
+ *         name: end_date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data final do período (obrigatória) - formato YYYY-MM-DD
+ *         example: "2025-11-30"
+ *       - in: query
+ *         name: contato_id
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por contato específico (opcional)
+ *         example: 16
+ *       - in: query
+ *         name: event_type
+ *         schema:
+ *           type: string
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit]
+ *         description: Filtrar por tipo de evento
+ *         example: "meeting"
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
+ *         description: Filtrar por status
+ *         example: "scheduled"
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar no título e descrição
+ *         example: "reunião"
+ *       - in: query
+ *         name: sort_by
+ *         schema:
+ *           type: string
+ *           enum: [start_datetime, created_at, title, status]
+ *           default: start_datetime
+ *         description: Campo para ordenação
+ *       - in: query
+ *         name: sort_order
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: ASC
+ *         description: Direção da ordenação
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *           maximum: 200
+ *         description: Itens por página (máximo 200)
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Offset para paginação
+ *     responses:
+ *       200:
+ *         description: Lista de eventos com estatísticas do período
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Eventos da empresa listados com sucesso"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     events:
+ *                       type: array
+ *                       items:
+ *                         allOf:
+ *                           - $ref: '#/components/schemas/ScheduleEvent'
+ *                           - type: object
+ *                             properties:
+ *                               id:
+ *                                 type: integer
+ *                                 example: 6
+ *                               company_id:
+ *                                 type: integer
+ *                                 example: 25
+ *                               user_id:
+ *                                 type: integer
+ *                                 example: 58
+ *                               contato_id:
+ *                                 type: integer
+ *                                 nullable: true
+ *                                 example: 16
+ *                     period:
+ *                       type: object
+ *                       properties:
+ *                         start_date:
+ *                           type: string
+ *                           format: date
+ *                         end_date:
+ *                           type: string
+ *                           format: date
+ *                         days:
+ *                           type: integer
+ *                           description: Número de dias no período
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         total_events:
+ *                           type: integer
+ *                         scheduled:
+ *                           type: integer
+ *                         confirmed:
+ *                           type: integer
+ *                         completed:
+ *                           type: integer
+ *                         cancelled:
+ *                           type: integer
+ *                         meetings:
+ *                           type: integer
+ *                         calls:
+ *                           type: integer
+ *                         tasks:
+ *                           type: integer
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalItems:
+ *                       type: integer
+ *                     itemsPerPage:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPreviousPage:
+ *                       type: boolean
+ *       400:
+ *         description: Dados inválidos - datas obrigatórias
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Parâmetros start_date e end_date são obrigatórios"
+ *       403:
+ *         description: Sem acesso à empresa solicitada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Acesso negado à empresa especificada"
+ */
+router.get("/companies/:company_id/events", ScheduleController.getEventsByCompany);
+
+/**
+ * @swagger
  * /schedule/events:
  *   get:
- *     summary: Listar eventos da agenda
+ *     summary: Listar eventos da agenda (endpoint legado)
+ *     description: >
+ *       Endpoint original mantido para compatibilidade. 
+ *       Recomenda-se usar /companies/{company_id}/events para melhor performance.
  *     tags: [Schedule]
  *     parameters:
  *       - $ref: '#/components/parameters/AcceptLanguage'
@@ -161,7 +363,7 @@ router.use(authenticateToken);
  *         name: type
  *         schema:
  *           type: string
- *           enum: [meeting, call, task, reminder, event, appointment]
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit]
  *         description: Filtrar por tipo
  *       - in: query
  *         name: status

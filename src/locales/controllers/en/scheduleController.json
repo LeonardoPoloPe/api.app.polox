@@ -68,5 +68,20 @@
   },
   "updateStatus": {
     "success": "Event status updated successfully"
+  },
+  "company_events": {
+    "success": "Company events listed successfully",
+    "access_denied": "Access denied to specified company",
+    "invalid_company": "Invalid company ID"
+  },
+  "date_range": {
+    "required": "start_date and end_date parameters are required",
+    "invalid": "Invalid date range: end date must be greater than start date"
+  },
+  "date_format": {
+    "invalid": "Invalid date format. Use YYYY-MM-DD format"
+  },
+  "stats": {
+    "success": "Event statistics retrieved successfully"
   }
 }

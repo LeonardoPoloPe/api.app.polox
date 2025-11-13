@@ -85,7 +85,7 @@ class EventModel {
       throw new ValidationError('Organizador é obrigatório');
     }
 
-    if (!['meeting', 'call', 'task', 'appointment', 'reminder', 'follow_up', 'demo', 'training', 'other'].includes(event_type)) {
+    if (!['meeting', 'call', 'task', 'appointment', 'reminder', 'event', 'demo', 'proposal', 'follow_up', 'onboarding', 'block_time', 'site_visit'].includes(event_type)) {
       throw new ValidationError('Tipo de evento inválido');
     }
 
