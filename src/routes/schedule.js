@@ -81,7 +81,7 @@ router.use(authenticateToken);
  *           description: Evento de dia inteiro
  *         event_type:
  *           type: string
- *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service]
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service, out_of_office]
  *           default: meeting
  *           description: Tipo do evento
  *         status:
@@ -178,7 +178,7 @@ router.use(authenticateToken);
  *         name: event_type
  *         schema:
  *           type: string
- *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service]
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service, out_of_office]
  *         description: Filtrar por tipo de evento
  *         example: "meeting"
  *       - in: query
@@ -405,7 +405,7 @@ router.get(
  *         name: type
  *         schema:
  *           type: string
- *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service]
+ *           enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service, out_of_office]
  *         description: Filtrar por tipo
  *       - in: query
  *         name: status

@@ -83,5 +83,21 @@
   },
   "stats": {
     "success": "Estadísticas de eventos obtenidas con éxito"
+  },
+  "event_types": {
+    "meeting": "Reunión",
+    "call": "Llamada",
+    "task": "Tarea",
+    "reminder": "Recordatorio",
+    "event": "Evento",
+    "appointment": "Cita",
+    "demo": "Demostración",
+    "proposal": "Propuesta",
+    "follow_up": "Seguimiento",
+    "onboarding": "Incorporación",
+    "block_time": "Tiempo Reservado",
+    "site_visit": "Visita al Sitio",
+    "service": "Servicio",
+    "out_of_office": "Fuera de Oficina"
   }
 }

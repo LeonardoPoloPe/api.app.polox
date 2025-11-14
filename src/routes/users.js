@@ -274,6 +274,157 @@ router.get(
 
 /**
  * @swagger
+ * /users/company/{company_id}:
+ *   get:
+ *     summary: Listar usuários por empresa
+ *     description: |
+ *       Lista todos os usuários de uma empresa específica com paginação, busca e filtros.
+ *       
+ *       **Filtros disponíveis:**
+ *       - Busca por nome ou email
+ *       - Filtro por role (função)
+ *       - Paginação customizável
+ *       
+ *       **Informações retornadas:**
+ *       - Dados completos do usuário
+ *       - Nome da empresa
+ *       - Perfil de acesso vinculado
+ *       - Status e último login
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: company_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID da empresa
+ *         example: 25
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Página da consulta
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *         description: Itens por página
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Busca por nome ou email
+ *         example: "joão"
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: [super_admin, company_admin, manager, user]
+ *         description: Filtrar por função do usuário
+ *         example: "user"
+ *     responses:
+ *       200:
+ *         description: Lista de usuários da empresa
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Usuários da empresa listados com sucesso"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 58
+ *                           name:
+ *                             type: string
+ *                             example: "João Silva"
+ *                           email:
+ *                             type: string
+ *                             example: "joao@empresa.com"
+ *                           role:
+ *                             type: string
+ *                             example: "user"
+ *                           companyId:
+ *                             type: integer
+ *                             example: 25
+ *                           companyName:
+ *                             type: string
+ *                             example: "Empresa XYZ"
+ *                           profileId:
+ *                             type: integer
+ *                             nullable: true
+ *                             example: 5
+ *                           profileName:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "Vendedor"
+ *                           status:
+ *                             type: string
+ *                             example: "active"
+ *                           phone:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "(11) 99999-9999"
+ *                           position:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "Gerente de Vendas"
+ *                           department:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "Comercial"
+ *                           viewOwnLeadsOnly:
+ *                             type: boolean
+ *                             example: false
+ *                           lastLoginAt:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                     company:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                           example: 25
+ *                         name:
+ *                           type: string
+ *                           example: "Empresa XYZ"
+ *                     pagination:
+ *                       $ref: '#/components/schemas/PaginationInfo'
+ *       400:
+ *         description: ID da empresa inválido
+ *       404:
+ *         description: Empresa não encontrada ou sem usuários
+ */
+router.get(
+  "/company/:company_id",
+  rateLimiter.general,
+  UserController.getUsersByCompany
+);
+
+/**
+ * @swagger
  * /users/{id}:
  *   get:
  *     summary: Obter usuário por ID

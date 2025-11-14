@@ -168,6 +168,116 @@ router.get("/", ContactController.list);
 
 /**
  * @swagger
+ * /contacts/simplified:
+ *   get:
+ *     summary: 📋 Listar contatos simplificados
+ *     description: |
+ *       Lista contatos com apenas os campos essenciais para melhor performance.
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Não é necessário (nem possível) passar o company_id como parâmetro.
+ *       
+ *       **Campos retornados:**
+ *       - id (string)
+ *       - company_id (string) - da empresa do usuário autenticado
+ *       - tipo (lead/cliente)
+ *       - nome
+ *       
+ *       **Ideal para:**
+ *       - Autocompletes e selects
+ *       - Listagens rápidas
+ *       - Aplicações móveis
+ *       - Widgets e dashboards
+ *       
+ *       **Segurança:**
+ *       - Isolamento multi-tenant automático
+ *       - Usuário só vê contatos da própria empresa
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: query
+ *         name: tipo
+ *         schema:
+ *           type: string
+ *           enum: [lead, cliente]
+ *         description: Filtrar por tipo de contato
+ *       - in: query
+ *         name: owner_id
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por responsável
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar por nome
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *           maximum: 200
+ *         description: Itens por página
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Offset para paginação
+ *     responses:
+ *       200:
+ *         description: Lista simplificada de contatos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Contatos simplificados carregados com sucesso"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "67"
+ *                       company_id:
+ *                         type: string
+ *                         example: "25"
+ *                       tipo:
+ *                         type: string
+ *                         enum: [lead, cliente]
+ *                         example: "lead"
+ *                       nome:
+ *                         type: string
+ *                         example: "Dani"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalItems:
+ *                       type: integer
+ *                     itemsPerPage:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPreviousPage:
+ *                       type: boolean
+ */
+router.get("/simplified", ContactController.getSimplifiedList);
+
+/**
+ * @swagger
  * /contacts/search:
  *   get:
  *     summary: 🔍 Buscar contato por identificador

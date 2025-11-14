@@ -100,6 +100,7 @@ class EventModel {
         "block_time",
         "site_visit",
         "service",
+        "out_of_office",
       ].includes(event_type)
     ) {
       throw new ValidationError("Tipo de evento inválido");

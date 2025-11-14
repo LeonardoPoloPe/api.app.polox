@@ -83,6 +83,7 @@ class ScheduleController {
         block_time: "tempo reservado",
         site_visit: "visita ao local",
         service: "atendimento",
+        out_of_office: "indisponibilidade",
       },
       pt: {
         meeting: "reunião",
@@ -98,6 +99,7 @@ class ScheduleController {
         block_time: "tempo reservado",
         site_visit: "visita ao local",
         service: "atendimento",
+        out_of_office: "indisponibilidade",
       },
     };
 
@@ -156,7 +158,8 @@ class ScheduleController {
         "onboarding",
         "block_time",
         "site_visit",
-        "service"
+        "service",
+        "out_of_office"
       )
       .default("meeting"),
     status: Joi.string()
@@ -197,7 +200,8 @@ class ScheduleController {
       "onboarding",
       "block_time",
       "site_visit",
-      "service"
+      "service",
+      "out_of_office"
     ),
     status: Joi.string().valid(
       "scheduled",

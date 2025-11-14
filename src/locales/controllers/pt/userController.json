@@ -33,8 +33,14 @@
   "change_password": {
     "success": "Senha alterada com sucesso"
   },
+  "company": {
+    "invalid_id": "ID da empresa inválido",
+    "list_success": "Usuários da empresa listados com sucesso",
+    "not_found": "Empresa não encontrada",
+    "no_users": "Nenhum usuário encontrado para esta empresa"
+  },
   "profile": {
-    "get_success": "Perfil carregado com sucesso",
+    "get_success": "Perfil obtido com sucesso",
     "update_success": "Perfil atualizado com sucesso",
     "not_found": "Usuário não encontrado"
   },
@@ -46,6 +52,7 @@
   },
   "audit": {
     "users_listed": "Usuários listados",
+    "users_by_company_listed": "Usuários da empresa listados",
     "user_viewed": "Usuário visualizado",
     "user_updated": "Usuário atualizado por administrador",
     "profile_viewed": "Perfil visualizado",

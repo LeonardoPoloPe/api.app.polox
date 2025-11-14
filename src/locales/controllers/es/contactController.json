@@ -26,6 +26,7 @@
   },
   "list": {
     "success": "Contactos cargados con éxito",
+    "simplified_success": "Contactos simplificados cargados con éxito",
     "empty": "No se encontraron contactos"
   },
   "convert": {

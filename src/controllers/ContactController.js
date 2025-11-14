@@ -187,6 +187,60 @@ class ContactController {
   });
 
   /**
+   * 📋 Listar contatos simplificados (apenas campos essenciais)
+   * GET /api/contacts/simplified
+   */
+  static getSimplifiedList = asyncHandler(async (req, res) => {
+    // Usa company_id do token JWT automaticamente
+    const companyId = req.user.companyId;
+    const {
+      tipo,
+      owner_id,
+      search,
+      limit = 50,
+      offset = 0,
+    } = req.query;
+
+    const filters = {
+      tipo,
+      owner_id: owner_id ? parseInt(owner_id) : undefined,
+      search,
+      sort_by: 'created_at',
+      sort_order: 'DESC',
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    };
+
+    const contacts = await Contact.list(companyId, filters);
+    const total = await Contact.count(companyId, {
+      tipo,
+      owner_id,
+    });
+
+    // Mapear para formato simplificado
+    const simplifiedContacts = contacts.map((contact) => ({
+      id: String(contact.id),
+      company_id: String(contact.company_id),
+      tipo: contact.tipo,
+      nome: contact.nome,
+    }));
+
+    return paginatedResponse(
+      res,
+      simplifiedContacts,
+      {
+        page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalItems: total,
+        limit: parseInt(limit),
+        hasNextPage: parseInt(offset) + parseInt(limit) < total,
+        hasPreviousPage: parseInt(offset) > 0,
+      },
+      tc(req, "contactController", "list.simplified_success")
+    );
+  });
+
+  /**
    * 🔍 Buscar contato por ID
    * GET /api/contacts/:id
    */

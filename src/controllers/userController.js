@@ -165,6 +165,135 @@ class UserController {
   });
 
   /**
+   * 🏢 GET USERS BY COMPANY - Listar usuários por empresa
+   * GET /users/company/:company_id
+   */
+  static getUsersByCompany = asyncHandler(async (req, res) => {
+    const { company_id } = req.params;
+    const { page = 1, limit = 20, search = "", role = "" } = req.query;
+
+    try {
+      // Log para debug
+      logger.info("🔍 GET /users/company/:company_id - Parâmetros:", {
+        company_id,
+        page,
+        limit,
+        search,
+        role,
+      });
+
+      // Validar company_id
+      if (!company_id || isNaN(parseInt(company_id))) {
+        throw new ApiError(
+          400,
+          tc(req, "userController", "company.invalid_id")
+        );
+      }
+
+      let whereClause = "WHERE u.company_id = $1 AND u.deleted_at IS NULL";
+      let queryParams = [parseInt(company_id)];
+      let paramIndex = 2;
+
+      // Filtro de busca por nome ou email
+      if (search) {
+        whereClause += ` AND (LOWER(u.full_name) LIKE $${paramIndex} OR LOWER(u.email) LIKE $${paramIndex})`;
+        queryParams.push(`%${search.toLowerCase()}%`);
+        paramIndex++;
+      }
+
+      // Filtro por role
+      if (role) {
+        whereClause += ` AND u.user_role = $${paramIndex}`;
+        queryParams.push(role);
+        paramIndex++;
+      }
+
+      // Query para contar total de usuários
+      const countResult = await query(
+        `
+        SELECT COUNT(*) as total 
+        FROM polox.users u
+        ${whereClause}
+      `,
+        queryParams
+      );
+
+      const totalUsers = parseInt(countResult.rows[0].total);
+
+      // Query para buscar usuários com paginação
+      const offset = (page - 1) * limit;
+      const usersResult = await query(
+        `
+        SELECT 
+          u.id, u.full_name, u.email, u.user_role, u.company_id, u.profile_id, 
+          u.created_at, u.status, u.phone, u.user_position, u.department,
+          u.view_own_leads_only, u.last_login_at,
+          p.name as profile_name,
+          c.company_name
+        FROM polox.users u
+        LEFT JOIN polox.profiles p ON u.profile_id = p.id AND p.deleted_at IS NULL
+        LEFT JOIN polox.companies c ON u.company_id = c.id AND c.deleted_at IS NULL
+        ${whereClause}
+        ORDER BY u.created_at DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `,
+        [...queryParams, limit, offset]
+      );
+
+      // Formatar resposta
+      const users = usersResult.rows.map((user) => ({
+        id: String(user.id),
+        name: user.full_name,
+        role: user.user_role,
+        companyId: String(user.company_id),
+        profileId: user.profile_id ? String(user.profile_id) : null,
+        status: user.status,
+      }));
+
+      // Log de auditoria
+      auditLogger(tc(req, "userController", "audit.users_by_company_listed"), {
+        userId: req.user?.id,
+        companyId: company_id,
+        count: users.length,
+        ip: req.ip,
+      });
+
+      // Log de sucesso
+      logger.info("✅ GET /users/company/:company_id - Usuários encontrados:", {
+        companyId: company_id,
+        total: totalUsers,
+        returned: users.length,
+        withProfile: users.filter((u) => u.profileId).length,
+      });
+
+      res.json({
+        success: true,
+        message: tc(req, "userController", "company.list_success"),
+        data: {
+          users,
+          company: {
+            id: parseInt(company_id),
+            name: users[0]?.companyName || null,
+          },
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total: totalUsers,
+            pages: Math.ceil(totalUsers / limit),
+          },
+        },
+      });
+    } catch (error) {
+      logger.error("❌ GET /users/company/:company_id - Erro:", {
+        message: error.message,
+        stack: error.stack,
+        params: { company_id, page, limit, search, role },
+      });
+      throw error;
+    }
+  });
+
+  /**
    * 👤 GET USER BY ID - Obter usuário específico
    */
   static getUserById = asyncHandler(async (req, res) => {

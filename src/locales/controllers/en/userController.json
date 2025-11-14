@@ -33,8 +33,14 @@
   "change_password": {
     "success": "Password changed successfully"
   },
+  "company": {
+    "invalid_id": "Invalid company ID",
+    "list_success": "Company users listed successfully",
+    "not_found": "Company not found",
+    "no_users": "No users found for this company"
+  },
   "profile": {
-    "get_success": "Profile loaded successfully",
+    "get_success": "Profile retrieved successfully",
     "update_success": "Profile updated successfully",
     "not_found": "User not found"
   },
@@ -46,6 +52,7 @@
   },
   "audit": {
     "users_listed": "Users listed",
+    "users_by_company_listed": "Company users listed",
     "user_viewed": "User viewed",
     "user_updated": "User updated by administrator",
     "profile_viewed": "Profile viewed",
