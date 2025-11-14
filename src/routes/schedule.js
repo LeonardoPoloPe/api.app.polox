@@ -50,6 +50,7 @@ router.use(authenticateToken);
  *   schemas:
  *     ScheduleEvent:
  *       type: object
+ *       description: Schema de resposta de evento (inclui campos gerados automaticamente)
  *       required:
  *         - title
  *         - start_datetime
@@ -57,7 +58,12 @@ router.use(authenticateToken);
  *       properties:
  *         id:
  *           type: string
- *           description: ID único do evento
+ *           description: ID único do evento (gerado automaticamente)
+ *           readOnly: true
+ *         user_id:
+ *           type: integer
+ *           description: ID do usuário dono do evento (extraído do JWT automaticamente)
+ *           readOnly: true
  *         title:
  *           type: string
  *           minLength: 2
@@ -467,6 +473,12 @@ router.get("/events", ScheduleController.getEvents);
  * /schedule/events:
  *   post:
  *     summary: Criar evento na agenda
+ *     description: |
+ *       Cria um novo evento na agenda do usuário autenticado.
+ *
+ *       **ATENÇÃO:** NÃO envie `user_id` ou `id` no corpo da requisição!
+ *       - `user_id` é extraído automaticamente do token JWT
+ *       - `id` é gerado automaticamente pelo banco de dados
  *     tags: [Schedule]
  *     parameters:
  *       - $ref: '#/components/parameters/AcceptLanguage'
@@ -485,7 +497,71 @@ router.get("/events", ScheduleController.getEvents);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/ScheduleEvent'
+ *             type: object
+ *             required:
+ *               - title
+ *               - start_datetime
+ *               - end_datetime
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 255
+ *                 description: Título do evento
+ *               description:
+ *                 type: string
+ *                 maxLength: 1000
+ *                 description: Descrição do evento
+ *               start_datetime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Data e hora de início (ISO 8601)
+ *               end_datetime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Data e hora de fim (ISO 8601)
+ *               is_all_day:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Evento de dia inteiro
+ *               event_type:
+ *                 type: string
+ *                 enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service, out_of_office]
+ *                 default: meeting
+ *                 description: Tipo do evento (service = atendimento, out_of_office = indisponibilidade)
+ *               status:
+ *                 type: string
+ *                 enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
+ *                 default: scheduled
+ *                 description: Status do evento
+ *               event_location:
+ *                 type: string
+ *                 maxLength: 255
+ *                 description: Local físico do evento
+ *               meeting_link:
+ *                 type: string
+ *                 format: uri
+ *                 description: URL da reunião virtual
+ *               contato_id:
+ *                 type: integer
+ *                 description: ID do contato relacionado
+ *               timezone:
+ *                 type: string
+ *                 default: America/Sao_Paulo
+ *                 description: Fuso horário do evento
+ *               reminder_minutes:
+ *                 type: integer
+ *                 minimum: 0
+ *                 default: 15
+ *                 description: Minutos antes do evento para lembrete
+ *               is_recurring:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Indica se o evento é recorrente
+ *               recurrence_pattern:
+ *                 type: object
+ *                 nullable: true
+ *                 description: Padrão de recorrência (JSON)
  *           examples:
  *             reuniao_simples:
  *               summary: Reunião Simples
@@ -717,6 +793,12 @@ router.get("/events/:id", ScheduleController.show);
  * /schedule/events/{id}:
  *   put:
  *     summary: Atualizar evento
+ *     description: |
+ *       Atualiza um evento existente na agenda.
+ *
+ *       **ATENÇÃO:** NÃO envie `user_id` ou `id` no corpo da requisição!
+ *       - `user_id` não pode ser alterado
+ *       - `id` é passado na URL como parâmetro de rota
  *     tags: [Schedule]
  *     parameters:
  *       - $ref: '#/components/parameters/AcceptLanguage'
@@ -741,7 +823,47 @@ router.get("/events/:id", ScheduleController.show);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/ScheduleEvent'
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 255
+ *               description:
+ *                 type: string
+ *                 maxLength: 1000
+ *               start_datetime:
+ *                 type: string
+ *                 format: date-time
+ *               end_datetime:
+ *                 type: string
+ *                 format: date-time
+ *               is_all_day:
+ *                 type: boolean
+ *               event_type:
+ *                 type: string
+ *                 enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service, out_of_office]
+ *               status:
+ *                 type: string
+ *                 enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
+ *               event_location:
+ *                 type: string
+ *                 maxLength: 255
+ *               meeting_link:
+ *                 type: string
+ *                 format: uri
+ *               contato_id:
+ *                 type: integer
+ *               timezone:
+ *                 type: string
+ *               reminder_minutes:
+ *                 type: integer
+ *                 minimum: 0
+ *               is_recurring:
+ *                 type: boolean
+ *               recurrence_pattern:
+ *                 type: object
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: Evento atualizado com sucesso
