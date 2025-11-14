@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -39,16 +39,16 @@
  * ==========================================
  * 💼 ROTAS DE NEGOCIAÇÕES - PIPELINE DE VENDAS
  * ==========================================
- * 
+ *
  * Arquitetura: "Identidade vs. Intenção"
  * - Intenção (Deal): O QUE a pessoa quer comprar
  * - Tabela: polox.deals
  */
 
-const express = require('express');
-const DealController = require('../controllers/DealController');
-const { authenticateToken } = require('../middleware/auth');
-const { rateLimiter } = require('../middleware/rateLimiter');
+const express = require("express");
+const DealController = require("../controllers/DealController");
+const { authenticateToken } = require("../middleware/auth");
+const { rateLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
@@ -136,7 +136,7 @@ router.use(authenticateToken);
  *                   items:
  *                     $ref: '#/components/schemas/Deal'
  */
-router.get('/', DealController.list);
+router.get("/", DealController.list);
 
 /**
  * @swagger
@@ -170,7 +170,7 @@ router.get('/', DealController.list);
  *       200:
  *         description: Estatísticas do funil
  */
-router.get('/stats', DealController.getStats);
+router.get("/stats", DealController.getStats);
 
 /**
  * @swagger
@@ -217,7 +217,7 @@ router.get('/stats', DealController.getStats);
  *       404:
  *         description: Negociação não encontrada
  */
-router.get('/:id', DealController.show);
+router.get("/:id", DealController.show);
 
 /**
  * @swagger
@@ -273,10 +273,13 @@ router.get('/:id', DealController.show);
  *                 type: string
  *                 format: date
  *                 example: "2025-12-31"
- *               owner_id:
- *                 type: integer
- *               metadata:
- *                 type: object
+               owner_id:
+                 type: integer
+                 minimum: 1
+                 description: ID do usuário responsável (se 0 ou não informado, será null)
+                 example: 58
+               metadata:
+                 type: object
  *     responses:
  *       201:
  *         description: Negociação criada
@@ -285,7 +288,7 @@ router.get('/:id', DealController.show);
  *       404:
  *         description: Contato não encontrado
  */
-router.post('/', rateLimiter.general, DealController.create);
+router.post("/", rateLimiter.general, DealController.create);
 
 /**
  * @swagger
@@ -334,7 +337,7 @@ router.post('/', rateLimiter.general, DealController.create);
  *       404:
  *         description: Negociação não encontrada
  */
-router.put('/:id', DealController.update);
+router.put("/:id", DealController.update);
 
 /**
  * @swagger
@@ -368,7 +371,7 @@ router.put('/:id', DealController.update);
  *       200:
  *         description: Etapa atualizada
  */
-router.put('/:id/stage', DealController.updateStage);
+router.put("/:id/stage", DealController.updateStage);
 
 /**
  * @swagger
@@ -377,11 +380,11 @@ router.put('/:id/stage', DealController.updateStage);
  *     summary: Marcar negociação como GANHA ✅
  *     description: |
  *       IMPORTANTE: Conversão automática Lead → Cliente
- *       
+ *
  *       Executa transação atômica:
  *       1. UPDATE deals: closed_at=NOW(), closed_reason='won'
  *       2. UPDATE contacts: tipo='cliente', lifetime_value_cents+=valor
- *       
+ *
  *       Se o contato era lead, será automaticamente convertido para cliente!
  *     tags: [Deals]
  *     security:
@@ -399,7 +402,7 @@ router.put('/:id/stage', DealController.updateStage);
  *       404:
  *         description: Negociação não encontrada
  */
-router.put('/:id/win', DealController.markAsWon);
+router.put("/:id/win", DealController.markAsWon);
 
 /**
  * @swagger
@@ -430,7 +433,7 @@ router.put('/:id/win', DealController.markAsWon);
  *       200:
  *         description: Negociação marcada como perdida
  */
-router.put('/:id/lose', DealController.markAsLost);
+router.put("/:id/lose", DealController.markAsLost);
 
 /**
  * @swagger
@@ -452,7 +455,7 @@ router.put('/:id/lose', DealController.markAsLost);
  *       200:
  *         description: Negociação reaberta
  */
-router.put('/:id/reopen', DealController.reopen);
+router.put("/:id/reopen", DealController.reopen);
 
 /**
  * @swagger
@@ -474,7 +477,7 @@ router.put('/:id/reopen', DealController.reopen);
  *       200:
  *         description: Negociação excluída
  */
-router.delete('/:id', DealController.delete);
+router.delete("/:id", DealController.delete);
 
 /**
  * @swagger

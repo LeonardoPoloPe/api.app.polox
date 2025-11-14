@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,26 +22,26 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
 
-const { query, transaction } = require('../config/database');
-const { ApiError, ValidationError, NotFoundError } = require('../utils/errors');
+const { query, transaction } = require("../config/database");
+const { ApiError, ValidationError, NotFoundError } = require("../utils/errors");
 
 /**
  * Model para gerenciamento de negociações/deals (pipeline de vendas)
  * Tabela: polox.deals
- * 
+ *
  * Arquitetura: "Identidade vs. Intenção"
  * - Identidade (Contact): Quem a pessoa é
  * - Intenção (Deal): O que a pessoa quer comprar (esta tabela)
@@ -76,7 +76,7 @@ class Deal {
     const result = await query(sql, [id, companyId]);
 
     if (result.rows.length === 0) {
-      throw new NotFoundError('Deal not found');
+      throw new NotFoundError("Deal not found");
     }
 
     return result.rows[0];
@@ -96,13 +96,13 @@ class Deal {
       origem,
       status, // 'open' | 'won' | 'lost'
       search,
-      sort_by = 'created_at',
-      sort_order = 'DESC',
+      sort_by = "created_at",
+      sort_order = "DESC",
       limit = 50,
-      offset = 0
+      offset = 0,
     } = filters;
 
-    const conditions = ['n.company_id = $1', 'n.deleted_at IS NULL'];
+    const conditions = ["n.company_id = $1", "n.deleted_at IS NULL"];
     const params = [companyId];
     let paramIndex = 2;
 
@@ -130,13 +130,13 @@ class Deal {
       paramIndex++;
     }
 
-    if (status === 'open') {
-      conditions.push('n.closed_at IS NULL');
-    } else if (status === 'won') {
-      conditions.push('n.closed_at IS NOT NULL');
+    if (status === "open") {
+      conditions.push("n.closed_at IS NULL");
+    } else if (status === "won") {
+      conditions.push("n.closed_at IS NOT NULL");
       conditions.push(`n.etapa_funil = 'ganhos'`);
-    } else if (status === 'lost') {
-      conditions.push('n.closed_at IS NOT NULL');
+    } else if (status === "lost") {
+      conditions.push("n.closed_at IS NOT NULL");
       conditions.push(`n.etapa_funil = 'perdido'`);
     }
 
@@ -149,9 +149,16 @@ class Deal {
       paramIndex++;
     }
 
-    const allowedSortFields = ['created_at', 'updated_at', 'valor_total_cents', 'etapa_funil'];
-    const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
-    const sortDirection = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const allowedSortFields = [
+      "created_at",
+      "updated_at",
+      "valor_total_cents",
+      "etapa_funil",
+    ];
+    const sortField = allowedSortFields.includes(sort_by)
+      ? sort_by
+      : "created_at";
+    const sortDirection = sort_order.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     const sql = `
       SELECT 
@@ -167,7 +174,7 @@ class Deal {
       FROM polox.deals n
       INNER JOIN polox.contacts c ON n.contato_id = c.id
       LEFT JOIN polox.users u ON n.owner_id = u.id
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
       ORDER BY n.${sortField} ${sortDirection}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
@@ -187,31 +194,36 @@ class Deal {
       contato_id,
       owner_id = null,
       titulo,
-      etapa_funil = 'novo',
+      etapa_funil = "novo",
       valor_total_cents = 0,
-      origem = null
+      origem = null,
     } = data;
 
+    // Sanitizar owner_id: se for 0, null, undefined ou negativo, definir como null
+    const sanitizedOwnerId = owner_id && owner_id > 0 ? owner_id : null;
+
     if (!contato_id) {
-      throw new ValidationError('Contact ID is required');
+      throw new ValidationError("Contact ID is required");
     }
 
     if (!titulo || titulo.trim().length === 0) {
-      throw new ValidationError('Title is required');
+      throw new ValidationError("Title is required");
     }
 
-    if (typeof valor_total_cents !== 'number' || valor_total_cents < 0) {
-      throw new ValidationError('Total value must be a number >= 0');
+    if (typeof valor_total_cents !== "number" || valor_total_cents < 0) {
+      throw new ValidationError("Total value must be a number >= 0");
     }
 
     return await transaction(async (client) => {
       const contactCheck = await client.query(
-        'SELECT id, tipo FROM polox.contacts WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+        "SELECT id, tipo FROM polox.contacts WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL",
         [contato_id, companyId]
       );
 
       if (contactCheck.rows.length === 0) {
-        throw new NotFoundError('Contact not found or does not belong to this company');
+        throw new NotFoundError(
+          "Contact not found or does not belong to this company"
+        );
       }
 
       const insertQuery = `
@@ -235,11 +247,11 @@ class Deal {
       const result = await client.query(insertQuery, [
         companyId,
         contato_id,
-        owner_id,
+        sanitizedOwnerId,
         titulo,
         etapa_funil,
         valor_total_cents,
-        origem
+        origem,
       ]);
 
       return result.rows[0];
@@ -247,13 +259,7 @@ class Deal {
   }
 
   static async update(id, companyId, data) {
-    const {
-      titulo,
-      etapa_funil,
-      valor_total_cents,
-      origem,
-      owner_id
-    } = data;
+    const { titulo, etapa_funil, valor_total_cents, origem, owner_id } = data;
 
     const updates = [];
     const params = [id, companyId];
@@ -261,7 +267,7 @@ class Deal {
 
     if (titulo !== undefined) {
       if (!titulo || titulo.trim().length === 0) {
-        throw new ValidationError('Title cannot be empty');
+        throw new ValidationError("Title cannot be empty");
       }
       updates.push(`titulo = $${paramIndex}`);
       params.push(titulo);
@@ -275,8 +281,8 @@ class Deal {
     }
 
     if (valor_total_cents !== undefined) {
-      if (typeof valor_total_cents !== 'number' || valor_total_cents < 0) {
-        throw new ValidationError('Total value must be a number >= 0');
+      if (typeof valor_total_cents !== "number" || valor_total_cents < 0) {
+        throw new ValidationError("Total value must be a number >= 0");
       }
       updates.push(`valor_total_cents = $${paramIndex}`);
       params.push(valor_total_cents);
@@ -290,20 +296,22 @@ class Deal {
     }
 
     if (owner_id !== undefined) {
+      // Sanitizar owner_id: se for 0, null, undefined ou negativo, definir como null
+      const sanitizedOwnerId = owner_id && owner_id > 0 ? owner_id : null;
       updates.push(`owner_id = $${paramIndex}`);
-      params.push(owner_id);
+      params.push(sanitizedOwnerId);
       paramIndex++;
     }
 
     if (updates.length === 0) {
-      throw new ValidationError('No fields to update');
+      throw new ValidationError("No fields to update");
     }
 
-    updates.push('updated_at = NOW()');
+    updates.push("updated_at = NOW()");
 
     const sql = `
       UPDATE polox.deals
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL
       RETURNING *
     `;
@@ -311,7 +319,7 @@ class Deal {
     const result = await query(sql, params);
 
     if (result.rows.length === 0) {
-      throw new NotFoundError('Deal not found');
+      throw new NotFoundError("Deal not found");
     }
 
     return result.rows[0];
@@ -336,7 +344,7 @@ class Deal {
       const dealResult = await client.query(dealUpdateQuery, [id, companyId]);
 
       if (dealResult.rows.length === 0) {
-        throw new NotFoundError('Deal not found');
+        throw new NotFoundError("Deal not found");
       }
 
       const deal = dealResult.rows[0];
@@ -354,7 +362,7 @@ class Deal {
       await client.query(contactUpdateQuery, [
         deal.valor_total_cents,
         deal.contato_id,
-        companyId
+        companyId,
       ]);
 
       return deal;
@@ -373,10 +381,14 @@ class Deal {
       RETURNING *
     `;
 
-    const result = await query(sql, [id, companyId, reason || 'Não especificado']);
+    const result = await query(sql, [
+      id,
+      companyId,
+      reason || "Não especificado",
+    ]);
 
     if (result.rows.length === 0) {
-      throw new NotFoundError('Deal not found');
+      throw new NotFoundError("Deal not found");
     }
 
     return result.rows[0];
@@ -397,7 +409,7 @@ class Deal {
     const result = await query(sql, [id, companyId]);
 
     if (result.rows.length === 0) {
-      throw new NotFoundError('Deal not found');
+      throw new NotFoundError("Deal not found");
     }
 
     return result.rows[0];
@@ -414,7 +426,7 @@ class Deal {
     const result = await query(sql, [id, companyId]);
 
     if (result.rows.length === 0) {
-      throw new NotFoundError('Deal not found');
+      throw new NotFoundError("Deal not found");
     }
 
     return result.rows[0];
@@ -423,7 +435,7 @@ class Deal {
   static async count(companyId, filters = {}) {
     const { contato_id, owner_id, etapa_funil, origem, status } = filters;
 
-    const conditions = ['company_id = $1', 'deleted_at IS NULL'];
+    const conditions = ["company_id = $1", "deleted_at IS NULL"];
     const params = [companyId];
     let paramIndex = 2;
 
@@ -451,20 +463,20 @@ class Deal {
       paramIndex++;
     }
 
-    if (status === 'open') {
-      conditions.push('closed_at IS NULL');
-    } else if (status === 'won') {
-      conditions.push('closed_at IS NOT NULL');
+    if (status === "open") {
+      conditions.push("closed_at IS NULL");
+    } else if (status === "won") {
+      conditions.push("closed_at IS NOT NULL");
       conditions.push(`closed_reason = 'won'`);
-    } else if (status === 'lost') {
-      conditions.push('closed_at IS NOT NULL');
+    } else if (status === "lost") {
+      conditions.push("closed_at IS NOT NULL");
       conditions.push(`closed_reason = 'lost'`);
     }
 
     const sql = `
       SELECT COUNT(*) as total
       FROM polox.deals
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
     `;
 
     const result = await query(sql, params);
@@ -474,7 +486,7 @@ class Deal {
   static async getStats(companyId, filters = {}) {
     const { owner_id, etapa_funil, origem } = filters;
 
-    const conditions = ['company_id = $1', 'deleted_at IS NULL'];
+    const conditions = ["company_id = $1", "deleted_at IS NULL"];
     const params = [companyId];
     let paramIndex = 2;
 
@@ -515,7 +527,7 @@ class Deal {
           2
         ) as conversion_rate
       FROM polox.deals
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
     `;
 
     const result = await query(sql, params);

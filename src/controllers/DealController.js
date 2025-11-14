@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -44,7 +44,7 @@
  * Arquitetura: "Identidade vs. Intenção"
  * - Identidade (Contact): QUEM a pessoa é
  * - Intenção (Deal): O QUE a pessoa quer comprar (esta controller)
- * 
+ *
  * Features:
  * - Pipeline/funil de vendas
  * - Movimentação entre etapas
@@ -53,13 +53,18 @@
  * - Estatísticas e taxa de conversão
  */
 
-const Deal = require('../models/Deal');
-const Contact = require('../models/Contact');
-const { ApiError, asyncHandler, ValidationError, NotFoundError } = require('../utils/errors');
-const { successResponse, paginatedResponse } = require('../utils/response');
-const { tc } = require('../config/i18n');
-const { auditLogger } = require('../utils/logger');
-const Joi = require('joi');
+const Deal = require("../models/Deal");
+const Contact = require("../models/Contact");
+const {
+  ApiError,
+  asyncHandler,
+  ValidationError,
+  NotFoundError,
+} = require("../utils/errors");
+const { successResponse, paginatedResponse } = require("../utils/response");
+const { tc } = require("../config/i18n");
+const { auditLogger } = require("../utils/logger");
+const Joi = require("joi");
 
 class DealController {
   /**
@@ -68,27 +73,47 @@ class DealController {
   static createDealSchema = Joi.object({
     contato_id: Joi.number().integer().required(),
     titulo: Joi.string().min(3).max(255).required(),
-    descricao: Joi.string().allow(null, ''),
-    etapa_funil: Joi.string().max(50).default('novo'),
-    valor_total_cents: Joi.number().integer().min(0).default(0),
+    descricao: Joi.string().allow(null, ""),
+    etapa_funil: Joi.string().max(50).default("novo"),
+    valor_total_cents: Joi.alternatives()
+      .try(
+        Joi.number().integer().min(0),
+        Joi.string().custom((value, helpers) => {
+          const num = parseInt(value, 10);
+          if (isNaN(num) || num < 0) {
+            return helpers.error("any.invalid");
+          }
+          return num;
+        })
+      )
+      .default(0),
     probabilidade: Joi.number().integer().min(0).max(100).default(0),
     origem: Joi.string().max(100).allow(null),
     expected_close_date: Joi.date().iso().allow(null),
-    owner_id: Joi.number().integer().allow(null),
-    metadata: Joi.object().default({})
-  });
+    owner_id: Joi.number().integer().min(1).allow(null, 0),
+    metadata: Joi.object().default({}),
+  }).options({ stripUnknown: true });
 
   static updateDealSchema = Joi.object({
     titulo: Joi.string().min(3).max(255),
-    descricao: Joi.string().allow(null, ''),
+    descricao: Joi.string().allow(null, ""),
     etapa_funil: Joi.string().max(50),
-    valor_total_cents: Joi.number().integer().min(0),
+    valor_total_cents: Joi.alternatives().try(
+      Joi.number().integer().min(0),
+      Joi.string().custom((value, helpers) => {
+        const num = parseInt(value, 10);
+        if (isNaN(num) || num < 0) {
+          return helpers.error("any.invalid");
+        }
+        return num;
+      })
+    ),
     probabilidade: Joi.number().integer().min(0).max(100),
     origem: Joi.string().max(100).allow(null),
     expected_close_date: Joi.date().iso().allow(null),
-    owner_id: Joi.number().integer().allow(null),
-    metadata: Joi.object()
-  });
+    owner_id: Joi.number().integer().min(1).allow(null, 0),
+    metadata: Joi.object(),
+  }).options({ stripUnknown: true });
 
   /**
    * 📋 Listar negociações com filtros
@@ -106,7 +131,7 @@ class DealController {
       sort_by,
       sort_order,
       limit = 50,
-      offset = 0
+      offset = 0,
     } = req.query;
 
     const filters = {
@@ -119,7 +144,7 @@ class DealController {
       sort_by,
       sort_order,
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     };
 
     const deals = await Deal.list(companyId, filters);
@@ -128,17 +153,20 @@ class DealController {
       owner_id: filters.owner_id,
       etapa_funil,
       origem,
-      status
+      status,
     });
 
-    res.json(
-      paginatedResponse(
-        deals,
-        total,
-        parseInt(limit),
-        parseInt(offset),
-        tc(req, 'dealController', 'list.success')
-      )
+    return paginatedResponse(
+      res,
+      deals,
+      {
+        totalItems: total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+        totalPages: Math.ceil(total / parseInt(limit)),
+      },
+      tc(req, "dealController", "list.success")
     );
   });
 
@@ -153,10 +181,14 @@ class DealController {
     const deal = await Deal.findById(id, companyId);
 
     if (!deal) {
-      throw new NotFoundError(tc(req, 'dealController', 'show.not_found'));
+      throw new NotFoundError(tc(req, "dealController", "show.not_found"));
     }
 
-    res.json(successResponse(deal, tc(req, 'dealController', 'show.success')));
+    return successResponse(
+      res,
+      deal,
+      tc(req, "dealController", "show.success")
+    );
   });
 
   /**
@@ -169,7 +201,11 @@ class DealController {
 
     const deals = await Deal.listByContact(contactId, companyId);
 
-    res.json(successResponse(deals, tc(req, 'dealController', 'list.success')));
+    return successResponse(
+      res,
+      deals,
+      tc(req, "dealController", "list.success")
+    );
   });
 
   /**
@@ -181,36 +217,38 @@ class DealController {
     const userId = req.user.id;
 
     // Validação
-    const { error, value } = DealController.createDealSchema.validate(req.body, {
-      abortEarly: false
-    });
+    const { error, value } = DealController.createDealSchema.validate(req.body);
 
     if (error) {
-      const messages = error.details.map(d => d.message).join(', ');
+      const messages = error.details.map((d) => d.message).join(", ");
       throw new ValidationError(messages);
     }
 
     // Verificar se contato existe
     const contact = await Contact.findById(value.contato_id, companyId);
     if (!contact) {
-      throw new NotFoundError(tc(req, 'dealController', 'validation.contact_not_found'));
+      throw new NotFoundError(
+        tc(req, "dealController", "validation.contact_not_found")
+      );
     }
 
     // Criar negociação
     const deal = await Deal.create(companyId, value);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'dealController', 'audit.deal_created'),
+    auditLogger(tc(req, "dealController", "audit.deal_created"), {
       userId,
       companyId,
-      resourceType: 'deal',
+      resourceType: "deal",
       resourceId: deal.id,
-      changes: value
+      changes: value,
     });
 
-    res.status(201).json(
-      successResponse(deal, tc(req, 'dealController', 'create.success'))
+    return successResponse(
+      res,
+      deal,
+      tc(req, "dealController", "create.success"),
+      201
     );
   });
 
@@ -224,28 +262,29 @@ class DealController {
     const { id } = req.params;
 
     // Validação
-    const { error, value } = DealController.updateDealSchema.validate(req.body, {
-      abortEarly: false
-    });
+    const { error, value } = DealController.updateDealSchema.validate(req.body);
 
     if (error) {
-      const messages = error.details.map(d => d.message).join(', ');
+      const messages = error.details.map((d) => d.message).join(", ");
       throw new ValidationError(messages);
     }
 
     const deal = await Deal.update(id, companyId, value);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'dealController', 'audit.deal_updated'),
+    auditLogger(tc(req, "dealController", "audit.deal_updated"), {
       userId,
       companyId,
-      resourceType: 'deal',
+      resourceType: "deal",
       resourceId: id,
-      changes: value
+      changes: value,
     });
 
-    res.json(successResponse(deal, tc(req, 'dealController', 'update.success')));
+    return successResponse(
+      res,
+      deal,
+      tc(req, "dealController", "update.success")
+    );
   });
 
   /**
@@ -259,28 +298,33 @@ class DealController {
     const { etapa_funil } = req.body;
 
     if (!etapa_funil) {
-      throw new ValidationError(tc(req, 'dealController', 'validation.etapa_required'));
+      throw new ValidationError(
+        tc(req, "dealController", "validation.etapa_required")
+      );
     }
 
     const deal = await Deal.updateStage(id, companyId, etapa_funil);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'dealController', 'audit.deal_stage_updated'),
+    auditLogger(tc(req, "dealController", "audit.deal_stage_updated"), {
       userId,
       companyId,
-      resourceType: 'deal',
+      resourceType: "deal",
       resourceId: id,
-      changes: { etapa_funil }
+      changes: { etapa_funil },
     });
 
-    res.json(successResponse(deal, tc(req, 'dealController', 'stage.update_success')));
+    return successResponse(
+      res,
+      deal,
+      tc(req, "dealController", "stage.update_success")
+    );
   });
 
   /**
    * ✅ Marcar negociação como GANHA
    * PUT /api/deals/:id/win
-   * 
+   *
    * IMPORTANTE: Converte automaticamente Lead → Cliente
    * - UPDATE deals: closed_at=NOW(), closed_reason='won'
    * - UPDATE contacts: tipo='cliente', lifetime_value_cents+=valor
@@ -293,19 +337,18 @@ class DealController {
     const deal = await Deal.markAsWon(id, companyId);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'dealController', 'audit.deal_won'),
+    auditLogger(tc(req, "dealController", "audit.deal_won"), {
       userId,
       companyId,
-      resourceType: 'deal',
+      resourceType: "deal",
       resourceId: id,
       metadata: {
         valor_total_cents: deal.valor_total_cents,
-        contato_id: deal.contato_id
-      }
+        contato_id: deal.contato_id,
+      },
     });
 
-    res.json(successResponse(deal, tc(req, 'dealController', 'win.success')));
+    return successResponse(res, deal, tc(req, "dealController", "win.success"));
   });
 
   /**
@@ -321,16 +364,19 @@ class DealController {
     const deal = await Deal.markAsLost(id, companyId, reason);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'dealController', 'audit.deal_lost'),
+    auditLogger(tc(req, "dealController", "audit.deal_lost"), {
       userId,
       companyId,
-      resourceType: 'deal',
+      resourceType: "deal",
       resourceId: id,
-      metadata: { reason: reason || 'Not specified' }
+      metadata: { reason: reason || "Not specified" },
     });
 
-    res.json(successResponse(deal, tc(req, 'dealController', 'lose.success')));
+    return successResponse(
+      res,
+      deal,
+      tc(req, "dealController", "lose.success")
+    );
   });
 
   /**
@@ -345,15 +391,18 @@ class DealController {
     const deal = await Deal.reopen(id, companyId);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'dealController', 'audit.deal_reopened'),
+    auditLogger(tc(req, "dealController", "audit.deal_reopened"), {
       userId,
       companyId,
-      resourceType: 'deal',
-      resourceId: id
+      resourceType: "deal",
+      resourceId: id,
     });
 
-    res.json(successResponse(deal, tc(req, 'dealController', 'reopen.success')));
+    return successResponse(
+      res,
+      deal,
+      tc(req, "dealController", "reopen.success")
+    );
   });
 
   /**
@@ -368,15 +417,18 @@ class DealController {
     await Deal.softDelete(id, companyId);
 
     // Audit log
-    auditLogger.log({
-      action: tc(req, 'dealController', 'audit.deal_deleted'),
+    auditLogger(tc(req, "dealController", "audit.deal_deleted"), {
       userId,
       companyId,
-      resourceType: 'deal',
-      resourceId: id
+      resourceType: "deal",
+      resourceId: id,
     });
 
-    res.json(successResponse(null, tc(req, 'dealController', 'delete.success')));
+    return successResponse(
+      res,
+      null,
+      tc(req, "dealController", "delete.success")
+    );
   });
 
   /**
@@ -390,10 +442,14 @@ class DealController {
     const stats = await Deal.getStats(companyId, {
       owner_id: owner_id ? parseInt(owner_id) : undefined,
       etapa_funil,
-      origem
+      origem,
     });
 
-    res.json(successResponse(stats, tc(req, 'dealController', 'stats.success')));
+    return successResponse(
+      res,
+      stats,
+      tc(req, "dealController", "stats.success")
+    );
   });
 }
 
