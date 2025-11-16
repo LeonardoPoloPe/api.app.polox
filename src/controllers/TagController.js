@@ -37,18 +37,19 @@
 
 const Joi = require("joi");
 const Tag = require("../models/Tag");
-const { asyncHandler } = require("../middlewares/asyncHandler");
 const {
   successResponse,
   paginatedResponse,
-} = require("../utils/responseHelpers");
+} = require("../utils/response");
+// Unifica import de asyncHandler e erros (origem correta: utils/errors)
 const {
+  asyncHandler,
   ValidationError,
   NotFoundError,
   ApiError,
 } = require("../utils/errors");
-const { auditLogger } = require("../utils/auditLogger");
-const { tc } = require("../utils/translationCache");
+const { auditLogger } = require("../utils/logger");
+const { tc } = require("../config/i18n");
 
 /**
  * ========================================
@@ -520,14 +521,75 @@ class TagController {
   // Método removido: getByCategory - coluna category não existe no banco real
 
   /**
+   * ➕ Adicionar tags a uma entidade
+   * POST /api/tags/entity/:entity_type/:entity_id
+   */
+  static addTagsToEntity = asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId;
+    const userId = req.user.id;
+    const { entity_type, entity_id } = req.params;
+    const { tag_ids = [] } = req.body;
+
+    // Validação
+    const validEntityTypes = [
+      'contacts', 'suppliers', 'products', 'sales', 'tickets', 
+      'events', 'financial_transactions'
+    ];
+
+    if (!validEntityTypes.includes(entity_type)) {
+      throw new ValidationError(
+        tc(req, "tagController", "add_tags.invalid_entity_type", {
+          valid: validEntityTypes.join(', ')
+        })
+      );
+    }
+
+    if (!Array.isArray(tag_ids) || tag_ids.length === 0) {
+      throw new ValidationError(tc(req, "tagController", "add_tags.empty_tag_ids"));
+    }
+
+    let added = 0;
+    const errors = [];
+
+    // Adicionar cada tag
+    for (const tagId of tag_ids) {
+      try {
+        await Tag.addToEntity(parseInt(tagId), entity_type, parseInt(entity_id), companyId);
+        added++;
+      } catch (error) {
+        errors.push(`Tag ${tagId}: ${error.message}`);
+      }
+    }
+
+    // Audit log
+    auditLogger("tags_added_to_entity", {
+      userId,
+      companyId,
+      resourceType: "tag_association",
+      metadata: { entity_type, entity_id, tag_ids, added, errors_count: errors.length },
+    });
+
+    return successResponse(
+      res,
+      { added, errors },
+      tc(req, "tagController", "add_tags.success"),
+      201
+    );
+  });
+
+  /**
    * 🔧 Sincronizar tags de uma entidade
-   * PUT /api/tags/sync-entity
+   * PUT /api/tags/entity/:entity_type/:entity_id
+   * (também usado em PUT /api/tags/sync-entity para compatibilidade)
    */
   static syncEntityTags = asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
     const userId = req.user.id;
     
-    const { entity_type, entity_id, tag_ids = [] } = req.body;
+    // Aceita parâmetros via body (sync-entity) ou params (entity/:type/:id)
+    const entity_type = req.params.entity_type || req.body.entity_type;
+    const entity_id = req.params.entity_id || req.body.entity_id;
+    const { tag_ids = [] } = req.body;
 
     // Validação básica
     if (!entity_type || !entity_id) {

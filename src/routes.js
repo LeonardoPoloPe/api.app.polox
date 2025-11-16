@@ -65,6 +65,7 @@ const analyticsRoutes = require("./routes/analytics");
 const usersRoutes = require("./routes/users");
 const profileRoutes = require("./routes/profiles"); // 🆕 Perfis de Acesso
 const menuRoutes = require("./routes/menus"); // 🆕 Menus Hierárquicos
+const tagsRoutes = require("./routes/tags"); // 🏷️ Sistema de Tags
 
 const router = express.Router();
 
@@ -424,6 +425,8 @@ router.use("/notifications", notificationsRoutes);
 // 📅 ROTAS DE AGENDAMENTOS
 // ==========================================
 router.use("/schedule", scheduleRoutes);
+// 🏷️ ROTAS DE TAGS
+router.use("/tags", tagsRoutes);
 
 // ==========================================
 // 🏭 ROTAS DE FORNECEDORES

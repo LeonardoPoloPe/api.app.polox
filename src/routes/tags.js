@@ -37,13 +37,13 @@
 
 const express = require("express");
 const TagController = require("../controllers/TagController");
-const { authenticate } = require("../middlewares/auth");
-const { rateLimiter } = require("../middlewares/rateLimiter");
+const { authenticateToken } = require("../middleware/auth");
+const { rateLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
 // Aplicar autenticação em todas as rotas
-router.use(authenticate);
+router.use(authenticateToken);
 
 /**
  * ========================================
@@ -57,13 +57,13 @@ router.use(authenticate);
 
 /**
  * @swagger
- * /api/tags/most-used:
+ * /tags/most-used:
  *   get:
  *     summary: Tags mais utilizadas
  *     description: Retorna as tags mais utilizadas da empresa, opcionalmente filtradas por tipo de entidade
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: limit
@@ -116,13 +116,13 @@ router.get("/most-used", TagController.getMostUsed);
 
 /**
  * @swagger
- * /api/tags/stats:
+ * /tags/stats:
  *   get:
  *     summary: Estatísticas gerais das tags
  *     description: Retorna estatísticas completas sobre o uso de tags na empresa
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Estatísticas das tags
@@ -166,13 +166,13 @@ router.get("/stats", TagController.getStats);
 
 /**
  * @swagger
- * /api/tags/stats/categories:
+ * /tags/stats/categories:
  *   get:
  *     summary: Estatísticas por categoria
  *     description: Retorna estatísticas agrupadas por categoria de tags
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Estatísticas por categoria
@@ -206,13 +206,13 @@ router.get("/stats/categories", TagController.getStatsByCategory);
 
 /**
  * @swagger
- * /api/tags/suggestions:
+ * /tags/suggestions:
  *   get:
  *     summary: Sugestões de tags
  *     description: Busca sugestões de tags baseadas em um texto de entrada
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: text
@@ -262,13 +262,13 @@ router.get("/suggestions", TagController.getSuggestions);
 
 /**
  * @swagger
- * /api/tags/sync-entity:
+ * /tags/sync-entity:
  *   put:
  *     summary: Sincronizar tags de uma entidade
  *     description: Remove todas as tags atuais de uma entidade e associa as novas tags fornecidas
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -320,13 +320,13 @@ router.put("/sync-entity", TagController.syncEntityTags);
 
 /**
  * @swagger
- * /api/tags/create-system-tags:
+ * /tags/create-system-tags:
  *   post:
  *     summary: Criar tags do sistema
  *     description: Cria as tags padrão do sistema para a empresa (apenas se não existirem)
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     responses:
  *       201:
  *         description: Tags do sistema criadas com sucesso
@@ -349,13 +349,13 @@ router.post("/create-system-tags", TagController.createSystemTags);
 
 /**
  * @swagger
- * /api/tags/find-or-create:
+ * /tags/find-or-create:
  *   post:
  *     summary: Buscar ou criar tags por nomes
  *     description: Busca tags existentes pelos nomes fornecidos e opcionalmente cria as que não existem
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -400,13 +400,13 @@ router.post("/find-or-create", TagController.findOrCreateByNames);
 
 /**
  * @swagger
- * /api/tags:
+ * /tags:
  *   get:
  *     summary: Listar tags
  *     description: Lista todas as tags da empresa com filtros e paginação
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
@@ -482,7 +482,7 @@ router.post("/find-or-create", TagController.findOrCreateByNames);
  *     description: Cria uma nova tag para a empresa
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -535,17 +535,17 @@ router.post("/find-or-create", TagController.findOrCreateByNames);
  *                   $ref: '#/components/schemas/Tag'
  */
 router.get("/", TagController.list);
-router.post("/", rateLimiter({ windowMs: 15 * 60 * 1000, max: 20 }), TagController.create);
+router.post("/", rateLimiter.general, TagController.create);
 
 /**
  * @swagger
- * /api/tags/{id}:
+ * /tags/{id}:
  *   get:
  *     summary: Buscar tag por ID
  *     description: Retorna uma tag específica pelo seu ID
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -575,7 +575,7 @@ router.post("/", rateLimiter({ windowMs: 15 * 60 * 1000, max: 20 }), TagControll
  *     description: Atualiza os dados de uma tag existente
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -629,7 +629,7 @@ router.post("/", rateLimiter({ windowMs: 15 * 60 * 1000, max: 20 }), TagControll
  *     description: Exclui uma tag (soft delete) e remove todas as suas associações
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -661,13 +661,13 @@ router.delete("/:id", TagController.delete);
 
 /**
  * @swagger
- * /api/tags/{id}/toggle:
+ * /tags/{id}/toggle:
  *   patch:
  *     summary: Ativar/Desativar tag
  *     description: Altera o status ativo/inativo de uma tag
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -721,13 +721,13 @@ router.patch("/:id/toggle", TagController.toggleActive);
 
 /**
  * @swagger
- * /api/tags/{id}/entities:
+ * /tags/{id}/entities:
  *   post:
  *     summary: Associar tag a entidade
  *     description: Associa uma tag a uma entidade específica (contato, produto, etc.)
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -786,7 +786,7 @@ router.patch("/:id/toggle", TagController.toggleActive);
  *     description: Remove a associação de uma tag com uma entidade
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -831,7 +831,7 @@ router.patch("/:id/toggle", TagController.toggleActive);
  *     description: Lista todas as entidades que possuem uma tag específica
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -897,13 +897,13 @@ router.get("/:id/entities", TagController.getTaggedEntities);
 
 /**
  * @swagger
- * /api/tags/entity/{entity_type}/{entity_id}:
+ * /tags/entity/{entity_type}/{entity_id}:
  *   get:
  *     summary: Buscar tags de uma entidade
  *     description: Retorna todas as tags associadas a uma entidade específica
  *     tags: [Tags]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: entity_type
@@ -951,6 +951,148 @@ router.get("/:id/entities", TagController.getTaggedEntities);
  *                         format: date-time
  */
 router.get("/entity/:entity_type/:entity_id", TagController.getEntityTags);
+
+/**
+ * @swagger
+ * /tags/entity/{entity_type}/{entity_id}:
+ *   post:
+ *     summary: Adicionar tag a uma entidade
+ *     description: Associa uma ou mais tags a uma entidade específica (ex. lead "quente", "urgente")
+ *     tags: [Tags]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: entity_type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [contacts, suppliers, products, sales, tickets, events, financial_transactions]
+ *         description: Tipo da entidade
+ *       - in: path
+ *         name: entity_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID da entidade
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - tag_ids
+ *             properties:
+ *               tag_ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: IDs das tags para associar
+ *                 example: [1, 2, 3]
+ *           examples:
+ *             lead_quente:
+ *               summary: Lead quente e urgente
+ *               value:
+ *                 tag_ids: [5, 8]
+ *     responses:
+ *       201:
+ *         description: Tags associadas com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     added:
+ *                       type: integer
+ *                     errors:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ */
+router.post("/entity/:entity_type/:entity_id", TagController.addTagsToEntity);
+
+/**
+ * @swagger
+ * /tags/entity/{entity_type}/{entity_id}:
+ *   put:
+ *     summary: Substituir tags de uma entidade
+ *     description: Substitui todas as tags atuais por novas tags (ex. atualizar lead de "frio" para "quente, urgente")
+ *     tags: [Tags]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: entity_type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [contacts, suppliers, products, sales, tickets, events, financial_transactions]
+ *         description: Tipo da entidade
+ *       - in: path
+ *         name: entity_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID da entidade
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - tag_ids
+ *             properties:
+ *               tag_ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: IDs das tags para substituir (vazio remove todas)
+ *                 example: [5, 8]
+ *           examples:
+ *             atualizar_lead:
+ *               summary: Atualizar status do lead
+ *               value:
+ *                 tag_ids: [5, 8, 12]
+ *             remover_todas:
+ *               summary: Remover todas as tags
+ *               value:
+ *                 tag_ids: []
+ *     responses:
+ *       200:
+ *         description: Tags atualizadas com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     removed:
+ *                       type: integer
+ *                     added:
+ *                       type: integer
+ *                     errors:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ */
+router.put("/entity/:entity_type/:entity_id", TagController.syncEntityTags);
 
 // Rota removida: /category/:category - campo category não existe no banco real
 
