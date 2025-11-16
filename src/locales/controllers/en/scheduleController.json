@@ -84,6 +84,13 @@
   "stats": {
     "success": "Event statistics retrieved successfully"
   },
+  "move": {
+    "success": "Event moved successfully",
+    "successWithConflicts": "Event moved successfully (conflicts detected)",
+    "validationError": "Invalid data for moving event",
+    "eventLocked": "Cannot move this event: event has been completed or cancelled",
+    "forbidden": "You don't have permission to move this event"
+  },
   "event_types": {
     "meeting": "Meeting",
     "call": "Call",
@@ -99,5 +106,17 @@
     "site_visit": "Site Visit",
     "service": "Service",
     "out_of_office": "Out of Office"
+  },
+  "event_status": {
+    "pending": "Pending",
+    "scheduled": "Scheduled",
+    "confirmed": "Confirmed",
+    "rescheduled": "Rescheduled",
+    "in_progress": "In Progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "no_show": "No Show",
+    "blocked": "Blocked",
+    "waitlist": "Waitlist"
   }
 }

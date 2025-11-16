@@ -48,23 +48,6 @@ router.use(authenticateToken);
  * @swagger
  * components:
  *   schemas:
- *     UpdateStatusRequest:
- *       type: object
- *       description: Payload para atualizar status do evento
- *       additionalProperties: false
- *       required:
- *         - status
- *       properties:
- *         status:
- *           type: string
- *           enum: [pending, scheduled, confirmed, rescheduled, in_progress, completed, cancelled, no_show, blocked, waitlist]
- *           description: Novo status do evento
- *           example: "confirmed"
- *         notes:
- *           type: string
- *           maxLength: 500
- *           description: Observações sobre a mudança de status (opcional)
- *           example: "Cliente confirmou presença por telefone"
  *     ScheduleEvent:
  *       type: object
  *       description: Schema de resposta de evento (inclui campos gerados automaticamente)
@@ -109,20 +92,9 @@ router.use(authenticateToken);
  *           description: Tipo do evento
  *         status:
  *           type: string
- *           enum: [pending, scheduled, confirmed, rescheduled, in_progress, completed, cancelled, no_show, blocked, waitlist]
- *           default: pending
- *           description: |
- *             Status do evento:
- *             - pending: Aguardando aprovação/revisão (padrão)
- *             - scheduled: Agendado
- *             - confirmed: Confirmado pelo cliente
- *             - rescheduled: Reagendado
- *             - in_progress: Em andamento
- *             - completed: Concluído
- *             - cancelled: Cancelado
- *             - no_show: Não compareceu
- *             - blocked: Horário bloqueado
- *             - waitlist: Lista de espera
+ *           enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
+ *           default: scheduled
+ *           description: Status do evento
  *         event_location:
  *           type: string
  *           maxLength: 255
@@ -219,9 +191,9 @@ router.use(authenticateToken);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [pending, scheduled, confirmed, rescheduled, in_progress, completed, cancelled, no_show, blocked, waitlist]
+ *           enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
  *         description: Filtrar por status
- *         example: "confirmed"
+ *         example: "scheduled"
  *       - in: query
  *         name: search
  *         schema:
@@ -411,6 +383,576 @@ router.get(
 
 /**
  * @swagger
+ * /schedule/events/{id}/move:
+ *   patch:
+ *     summary: Mover evento (alterar apenas data/hora)
+ *     description: >
+ *       Endpoint otimizado para movimentação de eventos (drag-and-drop).
+ *       Atualiza apenas start_datetime e end_datetime, preservando todos os outros campos.
+ *       Muito mais performático que PUT /events/{id} para operações de calendário.
+ *       
+ *       **Vantagens:**
+ *       - Payload mínimo (apenas 2 campos vs 10+)
+ *       - Validação focada em conflitos de horário
+ *       - Performance otimizada para drag-and-drop
+ *       - Auditoria específica para movimentações
+ *       - Verificação opcional de conflitos
+ *       
+ *       **Regras de negócio:**
+ *       - Apenas o criador do evento pode mover
+ *       - Eventos `completed` ou `cancelled` não podem ser movidos
+ *       - Se `check_conflicts=true`, retorna avisos mas não bloqueia
+ *     tags: [Schedule]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do evento a ser movido
+ *         example: 123
+ *       - in: query
+ *         name: check_conflicts
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Se true, verifica conflitos de horário com outros eventos do usuário
+ *         example: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - start_datetime
+ *               - end_datetime
+ *             properties:
+ *               start_datetime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Nova data/hora de início (ISO 8601)
+ *                 example: "2025-11-20T14:00:00Z"
+ *               end_datetime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Nova data/hora de término (ISO 8601, deve ser maior que start_datetime)
+ *                 example: "2025-11-20T15:00:00Z"
+ *           examples:
+ *             moveSemConflitos:
+ *               summary: Mover sem verificar conflitos
+ *               value:
+ *                 start_datetime: "2025-11-20T14:00:00Z"
+ *                 end_datetime: "2025-11-20T15:00:00Z"
+ *             moveComConflitos:
+ *               summary: Mover com verificação de conflitos
+ *               description: Use query param ?check_conflicts=true
+ *               value:
+ *                 start_datetime: "2025-11-20T14:00:00Z"
+ *                 end_datetime: "2025-11-20T15:00:00Z"
+ *     responses:
+ *       200:
+ *         description: Evento movido com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Evento movido com sucesso"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 123
+ *                     title:
+ *                       type: string
+ *                       example: "Reunião de Planejamento"
+ *                     start_datetime:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-20T14:00:00Z"
+ *                     end_datetime:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-20T15:00:00Z"
+ *                     timezone:
+ *                       type: string
+ *                       example: "America/Sao_Paulo"
+ *                     event_type:
+ *                       type: string
+ *                       example: "meeting"
+ *                     status:
+ *                       type: string
+ *                       example: "confirmed"
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-15T14:30:00Z"
+ *                     conflicts:
+ *                       type: array
+ *                       description: Apenas presente se check_conflicts=true e houver conflitos
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 456
+ *                           title:
+ *                             type: string
+ *                             example: "Outro Evento"
+ *                           start_datetime:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-20T14:30:00Z"
+ *                           end_datetime:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-20T15:30:00Z"
+ *                           overlap_minutes:
+ *                             type: integer
+ *                             example: 30
+ *             examples:
+ *               sucessoSimples:
+ *                 summary: Sucesso sem conflitos
+ *                 value:
+ *                   success: true
+ *                   message: "Evento movido com sucesso"
+ *                   data:
+ *                     id: 123
+ *                     title: "Reunião de Planejamento"
+ *                     start_datetime: "2025-11-20T14:00:00Z"
+ *                     end_datetime: "2025-11-20T15:00:00Z"
+ *                     timezone: "America/Sao_Paulo"
+ *                     event_type: "meeting"
+ *                     status: "confirmed"
+ *                     updated_at: "2025-11-15T14:30:00Z"
+ *               sucessoComConflitos:
+ *                 summary: Sucesso com aviso de conflitos
+ *                 value:
+ *                   success: true
+ *                   message: "Evento movido com sucesso (conflitos detectados)"
+ *                   data:
+ *                     id: 123
+ *                     title: "Reunião de Planejamento"
+ *                     start_datetime: "2025-11-20T14:00:00Z"
+ *                     end_datetime: "2025-11-20T15:00:00Z"
+ *                     timezone: "America/Sao_Paulo"
+ *                     event_type: "meeting"
+ *                     status: "confirmed"
+ *                     updated_at: "2025-11-15T14:30:00Z"
+ *                     conflicts:
+ *                       - id: 456
+ *                         title: "Outro Evento"
+ *                         start_datetime: "2025-11-20T14:30:00Z"
+ *                         end_datetime: "2025-11-20T15:30:00Z"
+ *                         overlap_minutes: 30
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Dados inválidos"
+ *                 code:
+ *                   type: string
+ *                   example: "VALIDATION_ERROR"
+ *                 errors:
+ *                   type: object
+ *                   properties:
+ *                     start_datetime:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Data de início deve ser anterior à data de término"]
+ *                     end_datetime:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Data obrigatória"]
+ *       403:
+ *         description: Acesso negado ou evento bloqueado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Não é possível mover este evento"
+ *                 code:
+ *                   type: string
+ *                   example: "EVENT_LOCKED"
+ *                 reason:
+ *                   type: string
+ *                   example: "Evento já foi concluído ou cancelado"
+ *             examples:
+ *               eventoCompleto:
+ *                 summary: Evento já concluído
+ *                 value:
+ *                   success: false
+ *                   message: "Não é possível mover este evento"
+ *                   code: "EVENT_LOCKED"
+ *                   reason: "Evento já foi concluído ou cancelado"
+ *               semPermissao:
+ *                 summary: Sem permissão para mover
+ *                 value:
+ *                   success: false
+ *                   message: "Você não tem permissão para mover este evento"
+ *                   code: "FORBIDDEN"
+ *       404:
+ *         description: Evento não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Evento não encontrado"
+ *                 code:
+ *                   type: string
+ *                   example: "EVENT_NOT_FOUND"
+ */
+router.patch("/events/:id/move", ScheduleController.moveEvent);
+
+/**
+ * @swagger
+ * /schedule/events/{id}/resize:
+ *   patch:
+ *     summary: Redimensionar evento (alterar duração)
+ *     description: >
+ *       Alias para /move. Aceita os mesmos parâmetros.
+ *       Útil para operações de resize no calendário.
+ *     tags: [Schedule]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: check_conflicts
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required:
+ *               - start_datetime
+ *               - end_datetime
+ *             properties:
+ *               start_datetime:
+ *                 type: string
+ *                 format: date-time
+ *               end_datetime:
+ *                 type: string
+ *                 format: date-time
+ *           example:
+ *             start_datetime: "2025-11-20T14:00:00Z"
+ *             end_datetime: "2025-11-20T16:00:00Z"
+ *     responses:
+ *       200:
+ *         description: Evento redimensionado
+ *       400:
+ *         description: Dados inválidos
+ *       403:
+ *         description: Sem permissão
+ *       404:
+ *         description: Não encontrado
+ */
+router.patch("/events/:id/resize", ScheduleController.moveEvent);
+
+/**
+ * @swagger
+ * /schedule/events:
+ *   get:
+ *     summary: Listar eventos da agenda (endpoint legado)
+
+/**
+ * @swagger
+ * /schedule/events:
+
+/**
+ * @swagger
+ * /schedule/events/{id}/move:
+ *   patch:
+ *     summary: Mover evento (alterar apenas data/hora)
+ *     description: >
+ *       Endpoint otimizado para movimentação de eventos (drag-and-drop).
+ *       Atualiza apenas start_datetime e end_datetime, preservando todos os outros campos.
+ *       Muito mais performático que PUT /events/{id} para operações de calendário.
+ *       
+ *       **Vantagens:**
+ *       - Payload mínimo (apenas 2 campos vs 10+)
+ *       - Validação focada em conflitos de horário
+ *       - Performance otimizada para drag-and-drop
+ *       - Auditoria específica para movimentações
+ *       - Verificação opcional de conflitos
+ *       
+ *       **Regras de negócio:**
+ *       - Apenas o criador do evento pode mover
+ *       - Eventos `completed` ou `cancelled` não podem ser movidos
+ *       - Se `check_conflicts=true`, retorna avisos mas não bloqueia
+ *     tags: [Schedule]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do evento a ser movido
+ *         example: 123
+ *       - in: query
+ *         name: check_conflicts
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Se true, verifica conflitos de horário com outros eventos do usuário
+ *         example: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - start_datetime
+ *               - end_datetime
+ *             properties:
+ *               start_datetime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Nova data/hora de início (ISO 8601)
+ *                 example: "2025-11-20T14:00:00Z"
+ *               end_datetime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Nova data/hora de término (ISO 8601, deve ser maior que start_datetime)
+ *                 example: "2025-11-20T15:00:00Z"
+ *           examples:
+ *             moveSemConflitos:
+ *               summary: Mover sem verificar conflitos
+ *               value:
+ *                 start_datetime: "2025-11-20T14:00:00Z"
+ *                 end_datetime: "2025-11-20T15:00:00Z"
+ *             moveComConflitos:
+ *               summary: Mover com verificação de conflitos
+ *               description: Use query param ?check_conflicts=true
+ *               value:
+ *                 start_datetime: "2025-11-20T14:00:00Z"
+ *                 end_datetime: "2025-11-20T15:00:00Z"
+ *     responses:
+ *       200:
+ *         description: Evento movido com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Evento movido com sucesso"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 123
+ *                     title:
+ *                       type: string
+ *                       example: "Reunião de Planejamento"
+ *                     start_datetime:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-20T14:00:00Z"
+ *                     end_datetime:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-20T15:00:00Z"
+ *                     timezone:
+ *                       type: string
+ *                       example: "America/Sao_Paulo"
+ *                     event_type:
+ *                       type: string
+ *                       example: "meeting"
+ *                     status:
+ *                       type: string
+ *                       example: "confirmed"
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-15T14:30:00Z"
+ *                     conflicts:
+ *                       type: array
+ *                       description: Apenas presente se check_conflicts=true e houver conflitos
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 456
+ *                           title:
+ *                             type: string
+ *                             example: "Outro Evento"
+ *                           start_datetime:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-20T14:30:00Z"
+ *                           end_datetime:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2025-11-20T15:30:00Z"
+ *                           overlap_minutes:
+ *                             type: integer
+ *                             example: 30
+ *             examples:
+ *               sucessoSimples:
+ *                 summary: Sucesso sem conflitos
+ *                 value:
+ *                   success: true
+ *                   message: "Evento movido com sucesso"
+ *                   data:
+ *                     id: 123
+ *                     title: "Reunião de Planejamento"
+ *                     start_datetime: "2025-11-20T14:00:00Z"
+ *                     end_datetime: "2025-11-20T15:00:00Z"
+ *                     timezone: "America/Sao_Paulo"
+ *                     event_type: "meeting"
+ *                     status: "confirmed"
+ *                     updated_at: "2025-11-15T14:30:00Z"
+ *               sucessoComConflitos:
+ *                 summary: Sucesso com aviso de conflitos
+ *                 value:
+ *                   success: true
+ *                   message: "Evento movido com sucesso (conflitos detectados)"
+ *                   data:
+ *                     id: 123
+ *                     title: "Reunião de Planejamento"
+ *                     start_datetime: "2025-11-20T14:00:00Z"
+ *                     end_datetime: "2025-11-20T15:00:00Z"
+ *                     timezone: "America/Sao_Paulo"
+ *                     event_type: "meeting"
+ *                     status: "confirmed"
+ *                     updated_at: "2025-11-15T14:30:00Z"
+ *                     conflicts:
+ *                       - id: 456
+ *                         title: "Outro Evento"
+ *                         start_datetime: "2025-11-20T14:30:00Z"
+ *                         end_datetime: "2025-11-20T15:30:00Z"
+ *                         overlap_minutes: 30
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Dados inválidos"
+ *                 code:
+ *                   type: string
+ *                   example: "VALIDATION_ERROR"
+ *                 errors:
+ *                   type: object
+ *                   properties:
+ *                     start_datetime:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Data de início deve ser anterior à data de término"]
+ *                     end_datetime:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Data obrigatória"]
+ *       403:
+ *         description: Acesso negado ou evento bloqueado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Não é possível mover este evento"
+ *                 code:
+ *                   type: string
+ *                   example: "EVENT_LOCKED"
+ *                 reason:
+ *                   type: string
+ *                   example: "Evento já foi concluído ou cancelado"
+ *             examples:
+ *               eventoCompleto:
+ *                 summary: Evento já concluído
+ *                 value:
+ *                   success: false
+ *                   message: "Não é possível mover este evento"
+ *                   code: "EVENT_LOCKED"
+ *                   reason: "Evento já foi concluído ou cancelado"
+ *               semPermissao:
+ *                 summary: Sem permissão para mover
+ *                 value:
+ *                   success: false
+ *                   message: "Você não tem permissão para mover este evento"
+ *                   code: "FORBIDDEN"
+ *       404:
+ *         description: Evento não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Evento não encontrado"
+ *                 code:
+ *                   type: string
+ *                   example: "EVENT_NOT_FOUND"
+ */
+
+/* Lines 383-967 omitted */
+
+/**
+ * @swagger
  * /schedule/events:
  *   get:
  *     summary: Listar eventos da agenda (endpoint legado)
@@ -559,8 +1101,8 @@ router.get("/events", ScheduleController.getEvents);
  *                 description: Tipo do evento (service = atendimento, out_of_office = indisponibilidade)
  *               status:
  *                 type: string
- *                 enum: [pending, scheduled, confirmed, rescheduled, in_progress, completed, cancelled, no_show, blocked, waitlist]
- *                 default: pending
+ *                 enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
+ *                 default: scheduled
  *                 description: Status do evento
  *               event_location:
  *                 type: string
@@ -873,7 +1415,7 @@ router.get("/events/:id", ScheduleController.show);
  *                 enum: [meeting, call, task, reminder, event, appointment, demo, proposal, follow_up, onboarding, block_time, site_visit, service, out_of_office]
  *               status:
  *                 type: string
- *                 enum: [pending, scheduled, confirmed, rescheduled, in_progress, completed, cancelled, no_show, blocked, waitlist]
+ *                 enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
  *               event_location:
  *                 type: string
  *                 maxLength: 255
@@ -930,140 +1472,41 @@ router.delete("/events/:id", ScheduleController.delete);
 /**
  * @swagger
  * /schedule/events/{id}/status:
- *   patch:
+ *   put:
  *     summary: Alterar status do evento
- *     description: >
- *       Endpoint otimizado para alteração de status de eventos.
- *       Atualiza apenas o campo status, preservando todos os outros dados.
- *       
- *       **Novos Status Disponíveis:**
- *       - **pending**: Aguardando aprovação/revisão
- *       - **scheduled**: Agendado
- *       - **confirmed**: Confirmado pelo cliente/participante
- *       - **rescheduled**: Reagendado para nova data/hora
- *       - **in_progress**: Em andamento
- *       - **completed**: Concluído
- *       - **cancelled**: Cancelado
- *       - **no_show**: Cliente não compareceu
- *       - **blocked**: Horário bloqueado (indisponível para agendamento)
- *       - **waitlist**: Cliente em lista de espera
  *     tags: [Schedule]
  *     parameters:
- *       - $ref: '#/components/parameters/AcceptLanguage'
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *         description: ID do evento
- *         example: 123
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateStatusRequest'
- *           examples:
- *             confirmar:
- *               summary: Confirmar evento
- *               value:
- *                 status: "confirmed"
- *                 notes: "Cliente confirmou presença por telefone"
- *             cancelar:
- *               summary: Cancelar evento
- *               value:
- *                 status: "cancelled"
- *                 notes: "Cliente solicitou cancelamento"
- *             reagendar:
- *               summary: Marcar como reagendado
- *               value:
- *                 status: "rescheduled"
- *                 notes: "Reagendado para próxima semana"
- *             bloquear:
- *               summary: Bloquear horário
- *               value:
- *                 status: "blocked"
- *                 notes: "Horário reservado para manutenção"
- *             waitlist:
- *               summary: Adicionar à lista de espera
- *               value:
- *                 status: "waitlist"
- *                 notes: "Cliente na fila aguardando vaga"
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
+ *                 description: Novo status do evento
+ *               notes:
+ *                 type: string
+ *                 description: Observações sobre a mudança de status
  *     responses:
  *       200:
  *         description: Status atualizado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Status do evento atualizado com sucesso"
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 123
- *                     title:
- *                       type: string
- *                       example: "Reunião de Planejamento"
- *                     status:
- *                       type: string
- *                       example: "confirmed"
- *                     start_datetime:
- *                       type: string
- *                       format: date-time
- *                       example: "2025-11-20T14:00:00Z"
- *                     end_datetime:
- *                       type: string
- *                       format: date-time
- *                       example: "2025-11-20T15:00:00Z"
- *                     event_type:
- *                       type: string
- *                       example: "meeting"
- *                     updated_at:
- *                       type: string
- *                       format: date-time
- *                       example: "2025-11-15T14:30:00Z"
  *       400:
  *         description: Status inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "Status inválido"
- *                 code:
- *                   type: string
- *                   example: "VALIDATION_ERROR"
  *       404:
  *         description: Evento não encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "Evento não encontrado"
- *                 code:
- *                   type: string
- *                   example: "EVENT_NOT_FOUND"
  */
-router.patch("/events/:id/status", ScheduleController.updateStatus);
+router.put("/events/:id/status", ScheduleController.updateStatus);
 
 /**
  * @swagger

@@ -84,6 +84,13 @@
   "stats": {
     "success": "Estatísticas de eventos obtidas com sucesso"
   },
+  "move": {
+    "success": "Evento movido com sucesso",
+    "successWithConflicts": "Evento movido com sucesso (conflitos detectados)",
+    "validationError": "Dados inválidos para mover evento",
+    "eventLocked": "Não é possível mover este evento: evento já foi concluído ou cancelado",
+    "forbidden": "Você não tem permissão para mover este evento"
+  },
   "event_types": {
     "meeting": "Reunião",
     "call": "Ligação",
@@ -99,5 +106,17 @@
     "site_visit": "Visita ao Local",
     "service": "Atendimento",
     "out_of_office": "Indisponibilidade"
+  },
+  "event_status": {
+    "pending": "Pendente",
+    "scheduled": "Agendado",
+    "confirmed": "Confirmado",
+    "rescheduled": "Reagendado",
+    "in_progress": "Em Andamento",
+    "completed": "Concluído",
+    "cancelled": "Cancelado",
+    "no_show": "Não compareceu",
+    "blocked": "Bloqueado",
+    "waitlist": "Lista de Espera"
   }
 }

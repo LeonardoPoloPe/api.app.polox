@@ -164,14 +164,18 @@ class ScheduleController {
       .default("meeting"),
     status: Joi.string()
       .valid(
+        "pending",
         "scheduled",
         "confirmed",
+        "rescheduled",
         "in_progress",
         "completed",
         "cancelled",
-        "no_show"
+        "no_show",
+        "blocked",
+        "waitlist"
       )
-      .default("scheduled"),
+      .default("pending"),
     event_location: Joi.string().max(255).allow("", null),
     meeting_link: Joi.string().uri().allow("", null),
     contato_id: Joi.number().integer().allow(null),
@@ -204,12 +208,16 @@ class ScheduleController {
       "out_of_office"
     ),
     status: Joi.string().valid(
+      "pending",
       "scheduled",
       "confirmed",
+      "rescheduled",
       "in_progress",
       "completed",
       "cancelled",
-      "no_show"
+      "no_show",
+      "blocked",
+      "waitlist"
     ),
     event_location: Joi.string().max(255).allow("", null),
     meeting_link: Joi.string().uri().allow("", null),
@@ -223,10 +231,31 @@ class ScheduleController {
       value.start_datetime &&
       value.end_datetime &&
       new Date(value.end_datetime) <= new Date(value.start_datetime)
-    ) {
-      return helpers.error("date.greater");
-    }
+    ) {/* Lines 227-228 omitted */}
     return value;
+  });
+
+  static moveEventSchema = Joi.object({
+    start_datetime: Joi.date().required(),
+    end_datetime: Joi.date().greater(Joi.ref("start_datetime")).required(),
+  });
+
+  static updateStatusSchema = Joi.object({
+    status: Joi.string()
+      .valid(
+        "pending",
+        "scheduled",
+        "confirmed",
+        "rescheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "no_show",
+        "blocked",
+        "waitlist"
+      )
+      .required(),
+    notes: Joi.string().max(500).allow("", null),
   });
 
   /**
@@ -702,24 +731,102 @@ class ScheduleController {
 
   /**
    * 🔄 Alterar status do evento
-   * PUT /api/schedule/events/:id/status
+   * PATCH /api/schedule/events/:id/status
    */
   static updateStatus = asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
     const userId = req.user.id;
     const { id } = req.params;
-    const { status, notes } = req.body;
 
-    const validStatuses = [
-      "scheduled",
-      "confirmed",
-      "in_progress",
-      "completed",
-      "cancelled",
-      "no_show",
-    ];
-    if (!status || !validStatuses.includes(status)) {
-      throw new ValidationError("Status inválido");
+    // Validação
+    const { error, value } = ScheduleController.updateStatusSchema.validate(
+      req.body,
+      { abortEarly: false }
+    );
+
+    if (error) {
+      throw new ValidationError(
+        tc(req, "scheduleController", "validation.invalid_status"),
+        error.details
+      );
+    }
+
+    const { status, notes } = value;
+
+    // Verificar se evento existe
+    const existingEvent = await query(
+      "SELECT * FROM polox.events WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL",
+      [id, companyId]
+    );
+
+    if (existingEvent.rows.length === 0) {
+      throw new NotFoundError(tc(req, "scheduleController", "show.notFound"));
+    }
+
+    const event = existingEvent.rows[0];
+
+    // Atualizar status
+    const result = await query(
+      `UPDATE polox.events 
+       SET status = $1, updated_at = NOW() 
+       WHERE id = $2 AND company_id = $3 
+       RETURNING 
+         id::integer as id,
+         title,
+         status,
+         start_datetime,
+         end_datetime,
+         event_type,
+         updated_at`,
+      [status, id, companyId]
+    );
+
+    const updatedEvent = result.rows[0];
+
+    // Audit log
+    auditLogger({
+      action: `Status do evento alterado: ${event.status} → ${status}${
+        notes ? ` - ${notes}` : ""
+      }`,
+      userId,
+      companyId,
+      resourceType: "event",
+      resourceId: id,
+      changes: {
+        old_status: event.status,
+        new_status: status,
+        notes: notes || null,
+      },
+    });
+
+    return successResponse(
+      res,
+      updatedEvent,
+      tc(req, "scheduleController", "updateStatus.success")
+    );
+  });
+
+  /**
+   * 🔄 Mover evento (alterar apenas data/hora)
+   * PATCH /api/schedule/events/:id/move
+   */
+  static moveEvent = asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId;
+    const userId = req.user.id;
+    const { id } = req.params;
+    const checkConflicts = req.query.check_conflicts === "true";
+
+    // Validação
+    const { error, value } = ScheduleController.moveEventSchema.validate(
+      req.body,
+      { abortEarly: false }
+    );
+
+    if (error) {
+      throw new ValidationError(
+        tc(req, "scheduleController", "move.validationError"),
+        error.details
+      );
     }
 
     // Verificar se evento existe
@@ -729,32 +836,101 @@ class ScheduleController {
     );
 
     if (existingEvent.rows.length === 0) {
-      throw new NotFoundError("Evento não encontrado");
+      throw new NotFoundError(tc(req, "scheduleController", "show.notFound"));
     }
 
-    // Atualizar status
-    const result = await query(
-      "UPDATE polox.events SET status = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3 RETURNING *",
-      [status, id, companyId]
-    );
+    const event = existingEvent.rows[0];
 
-    const updatedEvent = result.rows[0];
+    // Verificar permissão (só o criador pode mover)
+    if (event.user_id !== userId) {
+      throw new ApiError(
+        tc(req, "scheduleController", "update.forbidden"),
+        403
+      );
+    }
+
+    // Verificar se evento pode ser movido (não pode estar completed ou cancelled)
+    if (event.status === "completed" || event.status === "cancelled") {
+      throw new ApiError(
+        tc(req, "scheduleController", "move.eventLocked"),
+        403
+      );
+    }
+
+    // Verificar conflitos se solicitado
+    let conflicts = [];
+    if (checkConflicts) {
+      conflicts = await ScheduleController.checkConflicts(
+        companyId,
+        value.start_datetime,
+        value.end_datetime,
+        userId,
+        id
+      );
+    }
+
+    // Atualizar apenas as datas do evento
+    const updateQuery = `
+      UPDATE polox.events
+      SET 
+        start_datetime = $1,
+        end_datetime = $2,
+        updated_at = NOW()
+      WHERE id = $3 AND company_id = $4 AND deleted_at IS NULL
+      RETURNING 
+        id::integer as id,
+        title,
+        start_datetime,
+        end_datetime,
+        timezone,
+        event_type,
+        status,
+        updated_at
+    `;
+
+    const result = await query(updateQuery, [
+      value.start_datetime,
+      value.end_datetime,
+      id,
+      companyId,
+    ]);
+
+    const movedEvent = result.rows[0];
 
     // Audit log
     auditLogger({
-      action: `Status do evento alterado para: ${status}${
-        notes ? ` - ${notes}` : ""
-      }`,
+      action: "Evento movido",
       userId,
       companyId,
       resourceType: "event",
       resourceId: id,
+      changes: {
+        old_start: event.start_datetime,
+        old_end: event.end_datetime,
+        new_start: value.start_datetime,
+        new_end: value.end_datetime,
+      },
     });
+
+    // Preparar resposta
+    const responseData = {
+      ...movedEvent,
+    };
+
+    // Se houver conflitos, adicionar ao response
+    if (conflicts.length > 0) {
+      responseData.conflicts = conflicts;
+      return successResponse(
+        res,
+        responseData,
+        tc(req, "scheduleController", "move.successWithConflicts")
+      );
+    }
 
     return successResponse(
       res,
-      updatedEvent,
-      tc(req, "scheduleController", "updateStatus.success")
+      responseData,
+      tc(req, "scheduleController", "move.success")
     );
   });
 
