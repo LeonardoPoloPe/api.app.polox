@@ -96,7 +96,6 @@ class ContactController {
     state: Joi.string().allow(null),
     zip_code: Joi.string().allow(null),
     owner_id: Joi.number().integer().allow(null),
-    company_id: Joi.number().integer().allow(null),
     temperature: Joi.string().valid("frio", "morno", "quente").allow(null),
   }).or("email", "phone", "document");
 
@@ -125,7 +124,6 @@ class ContactController {
     zip_code: Joi.string().allow(null),
     owner_id: Joi.number().integer().allow(null),
     lifetime_value_cents: Joi.number().integer().min(0),
-    company_id: Joi.number().integer().allow(null),
     temperature: Joi.string().valid("frio", "morno", "quente").allow(null),
   });
 
@@ -146,7 +144,6 @@ class ContactController {
       sort_order,
       limit = 50,
       offset = 0,
-      company_id,
     } = req.query;
 
     const filters = {
@@ -160,14 +157,12 @@ class ContactController {
       sort_order,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      company_id: company_id ? parseInt(company_id) : undefined,
     };
 
     const contacts = await Contact.list(companyId, filters);
     const total = await Contact.count(companyId, {
       tipo,
       owner_id,
-      company_id,
       numerotelefone,
     });
 
@@ -713,21 +708,8 @@ class ContactController {
    * Para a Extensão WhatsApp buscar rapidamente um contato
    */
   static searchContact = asyncHandler(async (req, res) => {
-    const { phone, email, document, company_id } = req.query;
-
-    // company_id agora é obrigatório no endpoint de busca
-    if (!company_id) {
-      throw new ValidationError(
-        tc(req, "contactController", "search.company_id_required")
-      );
-    }
-    const parsedCompanyId = parseInt(company_id, 10);
-    if (Number.isNaN(parsedCompanyId) || parsedCompanyId <= 0) {
-      throw new ValidationError(
-        tc(req, "contactController", "search.company_id_invalid")
-      );
-    }
-    const effectiveCompanyId = parsedCompanyId;
+    const companyId = req.user.companyId;
+    const { phone, email, document } = req.query;
 
     if (!phone && !email && !document) {
       throw new ValidationError(
@@ -742,16 +724,16 @@ class ContactController {
     // Buscar contato por qualquer dos identificadores (prioridade: phone com variantes -> email -> document)
     let contact = null;
     if (phone) {
-      contact = await Contact.findByPhoneVariants(effectiveCompanyId, phone);
+      contact = await Contact.findByPhoneVariants(companyId, phone);
     }
 
     if (!contact && email) {
-      contact = await Contact.findMinimalByEmail(effectiveCompanyId, email);
+      contact = await Contact.findMinimalByEmail(companyId, email);
     }
 
     if (!contact && document) {
       contact = await Contact.findMinimalByDocument(
-        effectiveCompanyId,
+        companyId,
         document
       );
     }

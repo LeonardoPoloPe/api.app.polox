@@ -62,7 +62,12 @@ router.use(authenticateToken);
  * /contacts:
  *   get:
  *     summary: Listar contatos (leads + clientes)
- *     description: Lista todos os contatos com filtros e paginação
+ *     description: |
+ *       Lista todos os contatos com filtros e paginação.
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Não é necessário (nem possível) passar o company_id como parâmetro.
+ *       O sistema garante isolamento multi-tenant automático.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
@@ -84,12 +89,6 @@ router.use(authenticateToken);
  *         schema:
  *           type: integer
  *         description: Filtrar por responsável
- *       - in: query
- *         name: company_id
- *         schema:
- *           type: integer
- *         description: Filtrar por empresa específica
- *         example: 25
  *       - in: query
  *         name: search
  *         schema:
@@ -282,8 +281,11 @@ router.get("/simplified", ContactController.getSimplifiedList);
  *   get:
  *     summary: 🔍 Buscar contato por identificador
  *     description: |
- *       Busca rápida por phone/email/document
- *       **Para Extensão WhatsApp**: verificar se contato já existe
+ *       Busca rápida por phone/email/document.
+ *       **Para Extensão WhatsApp**: verificar se contato já existe.
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Isolamento multi-tenant automático - usuário só busca contatos da própria empresa.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
@@ -298,13 +300,6 @@ router.get("/simplified", ContactController.getSimplifiedList);
  *           - Remove caracteres não numéricos automaticamente
  *           - Se não começar com 55, também busca pela variante com 55 prefixado
  *           - Se começar com 55, também busca pela variante sem 55
- *       - in: query
- *         name: company_id
- *         schema:
- *           type: integer
- *         description: ID da empresa a ser usada na busca (obrigatório)
- *         required: true
- *         example: 25
  *       - in: query
  *         name: email
  *         schema:
@@ -367,7 +362,11 @@ router.get("/search", ContactController.searchContact);
  * /contacts/stats:
  *   get:
  *     summary: Estatísticas de contatos
- *     description: Retorna estatísticas gerais (total, leads, clientes, taxa de conversão)
+ *     description: |
+ *       Retorna estatísticas gerais (total, leads, clientes, taxa de conversão).
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Estatísticas apenas da empresa do usuário autenticado.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
@@ -400,6 +399,9 @@ router.get("/stats", ContactController.getStats);
  *       - Se encontrar deletado: restaura e retorna
  *       - Se não encontrar: cria novo
  *       (Útil para integração WhatsApp)
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Não envie company_id no body - ele será ignorado.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
@@ -582,7 +584,11 @@ router.post(
  * /contacts/{id}:
  *   get:
  *     summary: Buscar contato por ID
- *     description: Retorna detalhes completos de um contato
+ *     description: |
+ *       Retorna detalhes completos de um contato.
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Isolamento multi-tenant automático.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
@@ -607,7 +613,12 @@ router.get("/:id", ContactController.show);
  * /contacts:
  *   post:
  *     summary: Criar novo contato
- *     description: Cria um novo contato (lead ou cliente)
+ *     description: |
+ *       Cria um novo contato (lead ou cliente).
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Não envie company_id no body - ele será ignorado.
+ *       O contato será criado automaticamente na empresa do usuário autenticado.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
@@ -684,7 +695,12 @@ router.post("/", rateLimiter.general, ContactController.create);
  * /contacts/{id}:
  *   put:
  *     summary: Atualizar contato
- *     description: Atualiza dados de um contato existente
+ *     description: |
+ *       Atualiza dados de um contato existente.
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Não envie company_id no body - ele será ignorado.
+ *       Isolamento multi-tenant automático.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
@@ -795,6 +811,9 @@ router.put("/:id", ContactController.update);
  *     summary: Atualizar apenas o status do contato
  *     description: |
  *       Altera apenas o status do contato sem modificar outros campos.
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Isolamento multi-tenant automático.
  *       Útil para mudanças rápidas no funil de vendas.
  *     tags: [Contacts]
  *     security:
@@ -858,7 +877,11 @@ router.patch("/:id/status", ContactController.updateStatus);
  * /contacts/{id}/convert:
  *   post:
  *     summary: Converter Lead em Cliente (manual)
- *     description: Converte manualmente um lead para cliente (tipo='lead' → tipo='cliente')
+ *     description: |
+ *       Converte manualmente um lead para cliente (tipo='lead' → tipo='cliente').
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Isolamento multi-tenant automático.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
@@ -885,7 +908,11 @@ router.post("/:id/convert", ContactController.convertToClient);
  * /contacts/{id}:
  *   delete:
  *     summary: Excluir contato (soft delete)
- *     description: Exclusão lógica do contato (deleted_at = NOW())
+ *     description: |
+ *       Exclusão lógica do contato (deleted_at = NOW()).
+ *       
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Isolamento multi-tenant automático.
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
