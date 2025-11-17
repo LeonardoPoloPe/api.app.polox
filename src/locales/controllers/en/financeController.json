@@ -8,6 +8,8 @@
     "description_max": "Description cannot exceed 255 characters",
     "category_name_required": "Category name is required",
     "category_exists": "Category with this name already exists",
+    "category_not_found": "Category not found",
+    "category_in_use": "Category cannot be deleted as it has linked transactions",
     "transaction_not_found": "Transaction not found",
     "no_fields_to_update": "No fields to update",
     "invalid_data": "Invalid financial data"
@@ -57,5 +59,11 @@
   },
   "createCategory": {
     "success": "Financial category created successfully"
+  },
+  "updateCategory": {
+    "success": "Financial category updated successfully"
+  },
+  "deleteCategory": {
+    "success": "Financial category deleted successfully"
   }
 }

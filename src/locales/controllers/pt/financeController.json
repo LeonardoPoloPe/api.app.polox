@@ -8,6 +8,8 @@
     "description_max": "Descrição não pode exceder 255 caracteres",
     "category_name_required": "Nome da categoria é obrigatório",
     "category_exists": "Categoria com este nome já existe",
+    "category_not_found": "Categoria não encontrada",
+    "category_in_use": "Categoria não pode ser excluída pois possui transações vinculadas",
     "transaction_not_found": "Transação não encontrada",
     "no_fields_to_update": "Nenhum campo para atualizar",
     "invalid_data": "Dados financeiros inválidos"
@@ -57,5 +59,11 @@
   },
   "createCategory": {
     "success": "Categoria financeira criada com sucesso"
+  },
+  "updateCategory": {
+    "success": "Categoria financeira atualizada com sucesso"
+  },
+  "deleteCategory": {
+    "success": "Categoria financeira excluída com sucesso"
   }
 }

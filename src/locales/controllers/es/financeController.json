@@ -8,6 +8,8 @@
     "description_max": "La descripción no puede exceder 255 caracteres",
     "category_name_required": "El nombre de la categoría es obligatorio",
     "category_exists": "Ya existe una categoría con este nombre",
+    "category_not_found": "Categoría no encontrada",
+    "category_in_use": "La categoría no puede ser eliminada porque tiene transacciones vinculadas",
     "transaction_not_found": "Transacción no encontrada",
     "no_fields_to_update": "No hay campos para actualizar",
     "invalid_data": "Datos financieros inválidos"
@@ -57,5 +59,11 @@
   },
   "createCategory": {
     "success": "Categoría financiera creada con éxito"
+  },
+  "updateCategory": {
+    "success": "Categoría financiera actualizada con éxito"
+  },
+  "deleteCategory": {
+    "success": "Categoría financiera eliminada con éxito"
   }
 }

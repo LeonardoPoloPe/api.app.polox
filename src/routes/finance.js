@@ -1208,6 +1208,174 @@ router.post('/categories', FinanceController.createCategory);
 
 /**
  * @swagger
+ * /finance/categories/{id}:
+ *   put:
+ *     summary: Atualizar categoria financeira
+ *     description: |
+ *       Atualiza os dados de uma categoria financeira existente.
+ *       
+ *       **Validações realizadas:**
+ *       - Categoria deve existir e pertencer à empresa
+ *       - Nome não pode conflitar com outra categoria existente
+ *       - Tipo deve ser válido (income, expense, both)
+ *       - Parent_id deve ser UUID válido se fornecido
+ *       
+ *       **Observações:**
+ *       - Não é possível alterar o company_id
+ *       - Transações já vinculadas não são afetadas
+ *       - Atualização do tipo pode afetar filtros e relatórios
+ *     tags: [Finance]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID da categoria (UUID)
+ *         example: "60ddbaa2-407d-4c6a-ad6b-a2e57710a559"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 example: "Vendas Online"
+ *               description:
+ *                 type: string
+ *                 maxLength: 255
+ *                 example: "Receitas de vendas através da loja online"
+ *               type:
+ *                 type: string
+ *                 enum: [income, expense, both]
+ *                 default: both
+ *                 example: "income"
+ *               parent_id:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 example: null
+ *               is_active:
+ *                 type: boolean
+ *                 default: true
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Categoria atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/FinancialCategory'
+ *                 message:
+ *                   type: string
+ *             example:
+ *               success: true
+ *               data:
+ *                 id: "60ddbaa2-407d-4c6a-ad6b-a2e57710a559"
+ *                 name: "Vendas Online"
+ *                 description: "Receitas de vendas através da loja online"
+ *                 type: "income"
+ *                 parent_id: null
+ *                 is_active: true
+ *                 company_id: 25
+ *                 updated_at: "2025-11-17T03:00:00Z"
+ *               message: "Categoria atualizada com sucesso"
+ *       400:
+ *         description: Dados inválidos ou categoria com nome já existe
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Já existe uma categoria com este nome"
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Categoria não encontrada"
+ *       401:
+ *         description: Não autenticado
+ *   delete:
+ *     summary: Excluir categoria financeira
+ *     description: |
+ *       Realiza exclusão lógica (soft delete) de uma categoria financeira.
+ *       
+ *       **Validações realizadas:**
+ *       - Categoria deve existir e pertencer à empresa
+ *       - Categoria não pode ter transações vinculadas
+ *       - Exclusão é lógica (soft delete), mantém registro histórico
+ *       
+ *       **Importante:**
+ *       - Categorias com transações não podem ser excluídas
+ *       - Para desativar, use PUT com `is_active: false`
+ *       - Exclusão não pode ser revertida via API
+ *       
+ *       **Alternativas se categoria estiver em uso:**
+ *       1. Desativar categoria (PUT com is_active: false)
+ *       2. Reclassificar transações para outra categoria
+ *       3. Excluir transações antes (se apropriado)
+ *     tags: [Finance]
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID da categoria (UUID)
+ *         example: "60ddbaa2-407d-4c6a-ad6b-a2e57710a559"
+ *     responses:
+ *       200:
+ *         description: Categoria excluída com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *             example:
+ *               success: true
+ *               message: "Categoria excluída com sucesso"
+ *       400:
+ *         description: Categoria está sendo usada por transações
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Categoria não pode ser excluída pois possui transações vinculadas"
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Categoria não encontrada"
+ *       401:
+ *         description: Não autenticado
+ */
+router.put('/categories/:id', FinanceController.updateCategory);
+router.delete('/categories/:id', FinanceController.deleteCategory);
+
+/**
+ * @swagger
  * /finance/cash-flow:
  *   get:
  *     summary: Relatório de fluxo de caixa

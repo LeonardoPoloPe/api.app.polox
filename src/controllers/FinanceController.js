@@ -818,6 +818,103 @@ class FinanceController {
     });
   });
 
+  // Atualizar categoria financeira
+  static updateCategory = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { error, value } = FinanceController.createCategorySchema.validate(req.body);
+    if (error) throw new ApiError(400, tc(req, 'financeController', 'validation.invalid_data'));
+
+    const categoryData = value;
+
+    // Verificar se categoria existe
+    const existingCategory = await query(
+      'SELECT * FROM financial_categories WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      [id, req.user.companyId]
+    );
+
+    if (existingCategory.rows.length === 0) {
+      throw new ApiError(404, tc(req, 'financeController', 'validation.category_not_found'));
+    }
+
+    // Verificar se novo nome já existe (se foi alterado)
+    if (categoryData.name !== existingCategory.rows[0].name) {
+      const nameCheck = await query(
+        'SELECT id FROM financial_categories WHERE name = $1 AND company_id = $2 AND id != $3 AND deleted_at IS NULL',
+        [categoryData.name, req.user.companyId, id]
+      );
+
+      if (nameCheck.rows.length > 0) {
+        throw new ApiError(400, tc(req, 'financeController', 'validation.category_exists'));
+      }
+    }
+
+    const updateCategoryQuery = `
+      UPDATE financial_categories 
+      SET name = $1, 
+          description = $2, 
+          type = $3, 
+          parent_id = $4, 
+          is_active = $5,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6 AND company_id = $7 AND deleted_at IS NULL
+      RETURNING *
+    `;
+
+    const updatedCategoryResult = await query(updateCategoryQuery, [
+      categoryData.name,
+      categoryData.description,
+      categoryData.type,
+      categoryData.parent_id,
+      categoryData.is_active,
+      id,
+      req.user.companyId
+    ]);
+
+    const updatedCategory = updatedCategoryResult.rows[0];
+
+    return res.status(200).json({
+      success: true,
+      data: updatedCategory,
+      message: tc(req, 'financeController', 'updateCategory.success')
+    });
+  });
+
+  // Excluir categoria financeira (soft delete)
+  static deleteCategory = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Verificar se categoria existe
+    const existingCategory = await query(
+      'SELECT * FROM financial_categories WHERE id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      [id, req.user.companyId]
+    );
+
+    if (existingCategory.rows.length === 0) {
+      throw new ApiError(404, tc(req, 'financeController', 'validation.category_not_found'));
+    }
+
+    // Verificar se categoria está sendo usada
+    const transactionsCheck = await query(
+      'SELECT COUNT(*) as count FROM financial_transactions WHERE category_id = $1 AND company_id = $2 AND deleted_at IS NULL',
+      [id, req.user.companyId]
+    );
+
+    if (parseInt(transactionsCheck.rows[0].count) > 0) {
+      throw new ApiError(400, tc(req, 'financeController', 'validation.category_in_use'));
+    }
+
+    // Soft delete
+    await query(
+      'UPDATE financial_categories SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 AND company_id = $2',
+      [id, req.user.companyId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: tc(req, 'financeController', 'deleteCategory.success')
+    });
+  });
+
   // DRE Simplificada (Demonstração de Resultado)
   static getProfitLoss = asyncHandler(async (req, res) => {
     const { period = 'month', year, month } = req.query;
