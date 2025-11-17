@@ -277,6 +277,219 @@ router.get("/simplified", ContactController.getSimplifiedList);
 
 /**
  * @swagger
+ * /contacts/kanban/summary:
+ *   get:
+ *     summary: 📊 Kanban - Resumo inicial de todas as raias
+ *     description: |
+ *       Retorna resumo do Kanban com contagem e primeiros leads de cada raia.
+ *       
+ *       **Otimizado para 60k+ leads:**
+ *       - Retorna apenas os primeiros N leads de cada raia (padrão: 10)
+ *       - Inclui contagem total de cada raia para exibir badges
+ *       - Performance: ~100-200ms mesmo com 60k+ registros
+ *       
+ *       **Uso:**
+ *       - Renderização inicial do Kanban
+ *       - Atualização após drag & drop
+ *       - Refresh após criação/edição de lead
+ *       
+ *       **Raias retornadas:**
+ *       - novo
+ *       - em_contato
+ *       - qualificado
+ *       - proposta_enviada
+ *       - em_negociacao
+ *       - fechado
+ *       - perdido
+ *     tags: [Contacts, Kanban]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Quantidade de leads por raia
+ *       - in: query
+ *         name: owner_id
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por responsável (opcional)
+ *     responses:
+ *       200:
+ *         description: Resumo do Kanban
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     novo:
+ *                       type: object
+ *                       properties:
+ *                         count:
+ *                           type: integer
+ *                           example: 89
+ *                         leads:
+ *                           type: array
+ *                           maxItems: 10
+ *                           items:
+ *                             $ref: '#/components/schemas/ContactKanban'
+ *                     em_contato:
+ *                       type: object
+ *                       properties:
+ *                         count:
+ *                           type: integer
+ *                           example: 73
+ *                         leads:
+ *                           type: array
+ *                           maxItems: 10
+ *                           items:
+ *                             $ref: '#/components/schemas/ContactKanban'
+ *             example:
+ *               success: true
+ *               message: "Resumo do Kanban carregado com sucesso"
+ *               data:
+ *                 novo:
+ *                   count: 89
+ *                   leads:
+ *                     - id: 1234
+ *                       nome: "João Silva"
+ *                       email: "joao@example.com"
+ *                       phone: "5511999999999"
+ *                       status: "novo"
+ *                       temperature: "quente"
+ *                       score: 85
+ *                       owner_id: 10
+ *                       origem: "whatsapp"
+ *                       deals_count: 2
+ *                       created_at: "2025-11-15T10:30:00Z"
+ *                 em_contato:
+ *                   count: 73
+ *                   leads: []
+ *                 qualificado:
+ *                   count: 45
+ *                   leads: []
+ */
+router.get("/kanban/summary", ContactController.getKanbanSummary);
+
+/**
+ * @swagger
+ * /contacts/kanban/status/{status}:
+ *   get:
+ *     summary: 📊 Kanban - Carregar mais leads de uma raia específica
+ *     description: |
+ *       Paginação de leads dentro de uma raia específica do Kanban.
+ *       
+ *       **Uso:**
+ *       - Botão "Carregar mais" no final de cada raia
+ *       - Scroll infinito (opcional)
+ *       - Busca dentro de uma raia
+ *       
+ *       **Performance:**
+ *       - Usa índice no campo `status` para query rápida
+ *       - Paginação eficiente com LIMIT/OFFSET
+ *       - Retorna indicador `hasMore` para controle do botão
+ *     tags: [Contacts, Kanban]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: status
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - novo
+ *             - em_contato
+ *             - qualificado
+ *             - proposta_enviada
+ *             - em_negociacao
+ *             - fechado
+ *             - perdido
+ *         description: Status da raia do Kanban
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Quantidade de leads a carregar
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 0
+ *         description: Offset para paginação (usar nextOffset da resposta anterior)
+ *       - in: query
+ *         name: owner_id
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por responsável (opcional)
+ *     responses:
+ *       200:
+ *         description: Lista de leads da raia
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     leads:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/ContactKanban'
+ *                     total:
+ *                       type: integer
+ *                       description: Total de leads nesta raia
+ *                     hasMore:
+ *                       type: boolean
+ *                       description: Se há mais leads para carregar
+ *                     currentOffset:
+ *                       type: integer
+ *                     nextOffset:
+ *                       type: integer
+ *                       nullable: true
+ *                       description: Offset para próxima página (null se não houver mais)
+ *             example:
+ *               success: true
+ *               message: "Leads da raia carregados com sucesso"
+ *               data:
+ *                 leads:
+ *                   - id: 1235
+ *                     nome: "Maria Santos"
+ *                     status: "novo"
+ *                 total: 89
+ *                 hasMore: true
+ *                 currentOffset: 10
+ *                 nextOffset: 20
+ *       400:
+ *         description: Status inválido ou parâmetros incorretos
+ */
+router.get("/kanban/status/:status", ContactController.getKanbanLaneLeads);
+
+/**
+ * @swagger
  * /contacts/search:
  *   get:
  *     summary: 🔍 Buscar contato por identificador
@@ -1143,6 +1356,53 @@ router.get(
  *         updated_at:
  *           type: string
  *           format: date-time
+ *     ContactKanban:
+ *       type: object
+ *       description: Versão simplificada do Contact para visualização em Kanban
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1234
+ *         nome:
+ *           type: string
+ *           example: "João Silva"
+ *         email:
+ *           type: string
+ *           example: "joao@example.com"
+ *         phone:
+ *           type: string
+ *           example: "5511999999999"
+ *         status:
+ *           type: string
+ *           enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido]
+ *           example: "novo"
+ *         temperature:
+ *           type: string
+ *           enum: [frio, morno, quente]
+ *           example: "quente"
+ *         score:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 100
+ *           example: 85
+ *         owner_id:
+ *           type: integer
+ *           example: 10
+ *         origem:
+ *           type: string
+ *           example: "whatsapp"
+ *         deals_count:
+ *           type: integer
+ *           description: Quantidade de negociações ativas deste lead
+ *           example: 2
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-11-15T10:30:00Z"
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-11-16T14:20:00Z"
  */
 
 module.exports = router;

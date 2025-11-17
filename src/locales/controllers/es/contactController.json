@@ -51,6 +51,13 @@
   "stats": {
     "success": "Estadísticas cargadas con éxito"
   },
+  "kanban": {
+    "summary_success": "Resumen del Kanban cargado con éxito",
+    "lane_success": "Leads del carril cargados con éxito",
+    "invalid_status": "Estado inválido. Valores permitidos: {{valid}}",
+    "invalid_limit": "El límite debe estar entre 1 y 50",
+    "invalid_offset": "El offset debe ser >= 0"
+  },
   "audit": {
     "contact_created": "Contacto creado",
     "contact_updated": "Contacto actualizado",

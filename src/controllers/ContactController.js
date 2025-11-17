@@ -774,6 +774,106 @@ class ContactController {
       tc(req, "contactController", "stats.success")
     );
   });
+
+  /**
+   * 📊 KANBAN: Resumo inicial (todas as raias)
+   * GET /api/contacts/kanban/summary
+   * 
+   * Retorna:
+   * - Contagem total de cada raia
+   * - Primeiros 10 leads de cada raia
+   * - Perfeito para renderização inicial do Kanban
+   */
+  static getKanbanSummary = asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId;
+    const { limit = 10, owner_id } = req.query;
+
+    const ownerId = owner_id ? parseInt(owner_id) : null;
+    const leadsPerLane = parseInt(limit);
+
+    // Validar limite
+    if (leadsPerLane < 1 || leadsPerLane > 50) {
+      throw new ValidationError(
+        tc(req, "contactController", "kanban.invalid_limit")
+      );
+    }
+
+    const summary = await Contact.getKanbanSummary(
+      companyId,
+      leadsPerLane,
+      ownerId
+    );
+
+    return successResponse(
+      res,
+      summary,
+      tc(req, "contactController", "kanban.summary_success")
+    );
+  });
+
+  /**
+   * 📊 KANBAN: Carregar mais leads de uma raia específica
+   * GET /api/contacts/kanban/status/:status
+   * 
+   * Para o botão "Carregar mais" no final de cada raia
+   * Exemplo: GET /contacts/kanban/status/novo?limit=10&offset=10
+   */
+  static getKanbanLaneLeads = asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId;
+    const { status } = req.params;
+    const { limit = 10, offset = 0, owner_id } = req.query;
+
+    // Validar status
+    const validStatuses = [
+      'novo',
+      'em_contato',
+      'qualificado',
+      'proposta_enviada',
+      'em_negociacao',
+      'fechado',
+      'perdido'
+    ];
+
+    if (!validStatuses.includes(status)) {
+      throw new ValidationError(
+        tc(req, "contactController", "kanban.invalid_status", {
+          valid: validStatuses.join(", ")
+        })
+      );
+    }
+
+    // Validar limites
+    const limitNum = parseInt(limit);
+    const offsetNum = parseInt(offset);
+
+    if (limitNum < 1 || limitNum > 50) {
+      throw new ValidationError(
+        tc(req, "contactController", "kanban.invalid_limit")
+      );
+    }
+
+    if (offsetNum < 0) {
+      throw new ValidationError(
+        tc(req, "contactController", "kanban.invalid_offset")
+      );
+    }
+
+    const ownerId = owner_id ? parseInt(owner_id) : null;
+
+    const result = await Contact.getKanbanLaneLeads(
+      companyId,
+      status,
+      limitNum,
+      offsetNum,
+      ownerId
+    );
+
+    return successResponse(
+      res,
+      result,
+      tc(req, "contactController", "kanban.lane_success")
+    );
+  });
 }
 
 module.exports = ContactController;

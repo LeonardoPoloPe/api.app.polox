@@ -1240,6 +1240,182 @@ class Contact {
     const result = await query(sql, [companyId]);
     return result.rows[0];
   }
+
+  /**
+   * 📊 KANBAN: Resumo inicial de todas as raias
+   * Retorna contagem + primeiros registros de cada status
+   * @param {number} companyId - ID da empresa
+   * @param {number} limit - Limite de leads por raia (padrão: 10)
+   * @param {number|null} ownerId - Filtrar por responsável (opcional)
+   * @returns {Promise<Object>} Objeto com dados por status
+   */
+  static async getKanbanSummary(companyId, limit = 10, ownerId = null) {
+    const statuses = [
+      'novo',
+      'em_contato', 
+      'qualificado',
+      'proposta_enviada',
+      'em_negociacao',
+      'fechado',
+      'perdido'
+    ];
+
+    const ownerFilter = ownerId ? 'AND owner_id = $3' : '';
+    const params = ownerId ? [companyId, limit, ownerId] : [companyId, limit];
+
+    // Query otimizada: uma única consulta usando LATERAL JOIN
+    const sql = `
+      WITH status_counts AS (
+        SELECT 
+          status,
+          COUNT(*) as total_count
+        FROM polox.contacts
+        WHERE company_id = $1 
+          AND tipo = 'lead'
+          AND deleted_at IS NULL
+          ${ownerFilter}
+        GROUP BY status
+      )
+      SELECT 
+        sc.status,
+        sc.total_count,
+        (
+          SELECT json_agg(lead_data ORDER BY c.created_at DESC)
+          FROM (
+            SELECT 
+              c.id,
+              c.nome,
+              c.email,
+              c.phone,
+              c.status,
+              c.temperature,
+              c.score,
+              c.owner_id,
+              c.lead_source as origem,
+              c.created_at,
+              c.updated_at,
+              (
+                SELECT COUNT(*) 
+                FROM polox.deals d 
+                WHERE d.contato_id = c.id AND d.deleted_at IS NULL
+              ) as deals_count
+            FROM polox.contacts c
+            WHERE c.company_id = $1
+              AND c.tipo = 'lead'
+              AND c.status = sc.status
+              AND c.deleted_at IS NULL
+              ${ownerFilter}
+            ORDER BY c.created_at DESC
+            LIMIT $2
+          ) c
+        ) as leads
+      FROM status_counts sc
+      ORDER BY 
+        CASE sc.status
+          WHEN 'novo' THEN 1
+          WHEN 'em_contato' THEN 2
+          WHEN 'qualificado' THEN 3
+          WHEN 'proposta_enviada' THEN 4
+          WHEN 'em_negociacao' THEN 5
+          WHEN 'fechado' THEN 6
+          WHEN 'perdido' THEN 7
+        END
+    `;
+
+    const result = await query(sql, params);
+    
+    // Formatar resposta: garantir que todos os status apareçam (mesmo com count 0)
+    const summary = {};
+    statuses.forEach(status => {
+      summary[status] = {
+        count: 0,
+        leads: []
+      };
+    });
+
+    // Preencher com dados do banco
+    result.rows.forEach(row => {
+      summary[row.status] = {
+        count: parseInt(row.total_count, 10),
+        leads: row.leads || []
+      };
+    });
+
+    return summary;
+  }
+
+  /**
+   * 📊 KANBAN: Buscar mais leads de uma raia específica (paginação)
+   * @param {number} companyId - ID da empresa
+   * @param {string} status - Status da raia
+   * @param {number} limit - Limite de registros
+   * @param {number} offset - Offset para paginação
+   * @param {number|null} ownerId - Filtrar por responsável (opcional)
+   * @returns {Promise<Object>} { leads: [], total: number, hasMore: boolean }
+   */
+  static async getKanbanLaneLeads(companyId, status, limit = 10, offset = 0, ownerId = null) {
+    const ownerFilter = ownerId ? 'AND owner_id = $5' : '';
+    const params = ownerId 
+      ? [companyId, status, limit, offset, ownerId]
+      : [companyId, status, limit, offset];
+
+    // Buscar leads da raia
+    const leadsSQL = `
+      SELECT 
+        c.id,
+        c.nome,
+        c.email,
+        c.phone,
+        c.status,
+        c.temperature,
+        c.score,
+        c.owner_id,
+        c.lead_source as origem,
+        c.created_at,
+        c.updated_at,
+        (
+          SELECT COUNT(*) 
+          FROM polox.deals d 
+          WHERE d.contato_id = c.id AND d.deleted_at IS NULL
+        ) as deals_count
+      FROM polox.contacts c
+      WHERE c.company_id = $1
+        AND c.tipo = 'lead'
+        AND c.status = $2
+        AND c.deleted_at IS NULL
+        ${ownerFilter}
+      ORDER BY c.created_at DESC
+      LIMIT $3 OFFSET $4
+    `;
+
+    // Contar total
+    const countSQL = `
+      SELECT COUNT(*) as total
+      FROM polox.contacts
+      WHERE company_id = $1
+        AND tipo = 'lead'
+        AND status = $2
+        AND deleted_at IS NULL
+        ${ownerFilter}
+    `;
+
+    const [leadsResult, countResult] = await Promise.all([
+      query(leadsSQL, params),
+      query(countSQL, ownerId ? [companyId, status, ownerId] : [companyId, status])
+    ]);
+
+    const total = parseInt(countResult.rows[0].total, 10);
+    const leads = leadsResult.rows;
+    const hasMore = (offset + limit) < total;
+
+    return {
+      leads,
+      total,
+      hasMore,
+      currentOffset: offset,
+      nextOffset: hasMore ? offset + limit : null
+    };
+  }
 }
 
 module.exports = Contact;
