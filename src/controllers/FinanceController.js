@@ -61,7 +61,7 @@ class FinanceController {
         'any.required': 'Descrição é obrigatória',
         'string.max': 'Descrição não pode exceder 255 caracteres'
       }),
-    category_id: Joi.number().integer().positive(),
+    category_id: Joi.string().uuid(),
     category_name: Joi.string().max(100),
     payment_method: Joi.string().max(100).allow(''),
     reference_id: Joi.string(),
@@ -79,7 +79,7 @@ class FinanceController {
     type: Joi.string().valid('income', 'expense'),
     amount: Joi.number().positive(),
     description: Joi.string().max(255),
-    category_id: Joi.number().integer().positive(),
+    category_id: Joi.string().uuid(),
     category_name: Joi.string().max(100),
     payment_method: Joi.string().max(100).allow(''),
     reference_id: Joi.string(),
@@ -100,7 +100,7 @@ class FinanceController {
       }),
     description: Joi.string().max(255).allow('').default(''),
     type: Joi.string().valid('income', 'expense', 'both').default('both'),
-    parent_id: Joi.number().integer().positive(),
+    parent_id: Joi.string().uuid(),
     is_active: Joi.boolean().default(true)
   });
 
@@ -287,7 +287,7 @@ class FinanceController {
 
     if (req.query.category_id) {
       whereClause += ` AND ft.category_id = $${++paramCount}`;
-      queryParams.push(parseInt(req.query.category_id));
+      queryParams.push(req.query.category_id);
     }
 
     if (req.query.date_from) {
