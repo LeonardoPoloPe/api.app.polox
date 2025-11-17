@@ -277,6 +277,15 @@ async function insertDealsBatch(deals) {
 
 async function main() {
   console.log('🚀 Iniciando seed com ChatGPT...\n');
+  
+  // Validar API Key
+  if (!CONFIG.OPENAI_API_KEY) {
+    console.error('❌ ERRO: OPENAI_API_KEY não configurada!');
+    console.error('   Configure a variável de ambiente OPENAI_API_KEY no arquivo .env');
+    console.error('   Obtenha sua chave em: https://platform.openai.com/api-keys\n');
+    process.exit(1);
+  }
+  
   console.log('📊 Configurações:');
   console.log(`   - Database: ${CONFIG.DATABASE}`);
   console.log(`   - Company ID: ${CONFIG.COMPANY_ID}`);

@@ -14,7 +14,27 @@ Cria:
 
 **Total: ~26.000 registros inseridos**
 
-### 2. `test-performance.js`
+### 2. `seed-contacts-chatgpt.js`
+**Popula o banco com dados realistas usando ChatGPT**
+
+⚠️ **Requer:** Chave da API OpenAI (variável `OPENAI_API_KEY` no `.env`)
+
+Cria dados mais realistas usando IA:
+- Nomes brasileiros genuínos
+- Emails únicos e variados
+- Telefones com DDDs reais
+- Endereços de cidades brasileiras
+- Descrições de deals profissionais
+
+**Configuração necessária:**
+```bash
+# No arquivo .env
+OPENAI_API_KEY=sk-your-openai-api-key-here
+```
+
+Obtenha sua chave em: https://platform.openai.com/api-keys
+
+### 3. `test-performance.js`
 **Testa performance de endpoints críticos**
 
 Simula carga real com múltiplas requisições:
