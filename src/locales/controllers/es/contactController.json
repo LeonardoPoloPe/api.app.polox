@@ -54,15 +54,20 @@
   "kanban": {
     "summary_success": "Resumen del Kanban cargado con éxito",
     "lane_success": "Leads del carril cargados con éxito",
+    "position_updated": "Posición del lead actualizada con éxito",
     "invalid_status": "Estado inválido. Valores permitidos: {{valid}}",
     "invalid_limit": "El límite debe estar entre 1 y 50",
-    "invalid_offset": "El offset debe ser >= 0"
+    "invalid_offset": "El offset debe ser >= 0",
+    "invalid_position": "La posición debe ser un número entero >= 1",
+    "target_required": "ID del contacto de referencia (targetContactId) es obligatorio",
+    "invalid_drop_position": "La posición de soltar debe ser 'before' o 'after'"
   },
   "audit": {
     "contact_created": "Contacto creado",
     "contact_updated": "Contacto actualizado",
     "contact_deleted": "Contacto eliminado",
     "lead_converted": "Lead convertido a cliente",
-    "contact_restored": "Contacto restaurado"
+    "contact_restored": "Contacto restaurado",
+    "kanban_updated": "Posición del lead actualizada en Kanban"
   }
 }

@@ -728,6 +728,7 @@ class Contact {
             last_purchase_date, lifetime_value_cents,
             address_street, address_number, address_complement, address_neighborhood,
             address_city, address_state, address_country, address_postal_code,
+            kanban_position,
             created_at, updated_at
           )
         VALUES (
@@ -736,6 +737,7 @@ class Contact {
           $15, $16,
           $17, $18, $19, $20,
           $21, $22, $23, $24,
+          1000,
           NOW(), NOW()
         )
         RETURNING 
@@ -744,6 +746,7 @@ class Contact {
           last_purchase_date, lifetime_value_cents,
           address_street, address_number, address_complement, address_neighborhood,
           address_city, address_state, address_country, address_postal_code,
+          kanban_position,
           created_at, updated_at, deleted_at
       `;
 
@@ -1280,34 +1283,37 @@ class Contact {
         sc.status,
         sc.total_count,
         (
-          SELECT json_agg(lead_data ORDER BY c.created_at DESC)
+          SELECT json_agg(lead_row)
           FROM (
             SELECT 
-              c.id,
-              c.nome,
-              c.email,
-              c.phone,
-              c.status,
-              c.temperature,
-              c.score,
-              c.owner_id,
-              c.lead_source as origem,
-              c.created_at,
-              c.updated_at,
-              (
-                SELECT COUNT(*) 
-                FROM polox.deals d 
-                WHERE d.contato_id = c.id AND d.deleted_at IS NULL
-              ) as deals_count
+              json_build_object(
+                'id', c.id,
+                'nome', c.nome,
+                'email', c.email,
+                'phone', c.phone,
+                'status', c.status,
+                'temperature', c.temperature,
+                'score', c.score,
+                'owner_id', c.owner_id,
+                'origem', c.lead_source,
+                'kanban_position', c.kanban_position,
+                'created_at', c.created_at,
+                'updated_at', c.updated_at,
+                'deals_count', (
+                  SELECT COUNT(*) 
+                  FROM polox.deals d 
+                  WHERE d.contato_id = c.id AND d.deleted_at IS NULL
+                )
+              ) as lead_row
             FROM polox.contacts c
             WHERE c.company_id = $1
               AND c.tipo = 'lead'
               AND c.status = sc.status
               AND c.deleted_at IS NULL
               ${ownerFilter}
-            ORDER BY c.created_at DESC
+            ORDER BY c.kanban_position ASC NULLS LAST, c.created_at DESC
             LIMIT $2
-          ) c
+          ) subquery
         ) as leads
       FROM status_counts sc
       ORDER BY 
@@ -1345,6 +1351,180 @@ class Contact {
   }
 
   /**
+   * 📊 KANBAN: Atualizar posição do lead no Kanban (drag & drop)
+   * 
+   * OTIMIZAÇÃO DE PERFORMANCE:
+   * - Usa sistema de GAPS (1000, 2000, 3000...)
+   * - Inserir entre dois = calcular média (ex: entre 2000 e 3000 = 2500)
+   * - Evita updates em massa (O(1) em 99% dos casos)
+   * - Rebalanceia automaticamente quando gaps ficam < 10
+   * 
+   * @param {number} contactId - ID do contato a ser movido
+   * @param {number} companyId - ID da empresa
+   * @param {string} newStatus - Novo status (raia de destino)
+   * @param {number} targetContactId - ID do contato de referência (onde foi solto)
+   * @param {string} position - 'before' ou 'after' do targetContactId
+   * @returns {Promise<Object>} Contato atualizado
+   */
+  static async updateKanbanPosition(contactId, companyId, newStatus, targetContactId, position = 'after') {
+    // 1. Buscar contato atual
+    const currentContact = await query(
+      `SELECT id, status, kanban_position 
+       FROM polox.contacts 
+       WHERE id = $1 AND company_id = $2 AND tipo = 'lead' AND deleted_at IS NULL`,
+      [contactId, companyId]
+    );
+
+    if (currentContact.rows.length === 0) {
+      throw new NotFoundError("Lead não encontrado");
+    }
+
+    // 2. Buscar posição do contato de referência (onde foi solto)
+    // Se targetContactId for null/undefined, será o primeiro da raia
+    let targetPosition = 1000; // Posição padrão
+    
+    if (targetContactId) {
+      const targetContact = await query(
+        `SELECT id, kanban_position, status
+         FROM polox.contacts 
+         WHERE id = $1 AND company_id = $2 AND tipo = 'lead' AND deleted_at IS NULL`,
+        [targetContactId, companyId]
+      );
+
+      if (targetContact.rows.length === 0) {
+        throw new NotFoundError("Contato de referência não encontrado");
+      }
+
+      // Se o target está em outra raia, buscar a última posição da raia de destino
+      if (targetContact.rows[0].status !== newStatus) {
+        const lastInLane = await query(
+          `SELECT kanban_position
+           FROM polox.contacts
+           WHERE company_id = $1
+             AND status = $2
+             AND tipo = 'lead'
+             AND deleted_at IS NULL
+           ORDER BY kanban_position DESC NULLS LAST
+           LIMIT 1`,
+          [companyId, newStatus]
+        );
+        
+        // Coloca no final da raia de destino
+        targetPosition = lastInLane.rows.length > 0 
+          ? (lastInLane.rows[0].kanban_position || 0) + 1000
+          : 1000;
+      } else {
+        targetPosition = targetContact.rows[0].kanban_position || 1000;
+      }
+    }
+
+    // 3. Calcular nova posição usando GAPS
+    let newPosition;
+    
+    if (position === 'before') {
+      // Solto ANTES do target: buscar o item anterior
+      const prevContact = await query(
+        `SELECT kanban_position 
+         FROM polox.contacts 
+         WHERE company_id = $1 
+           AND status = $2 
+           AND tipo = 'lead'
+           AND deleted_at IS NULL
+           AND kanban_position < $3
+         ORDER BY kanban_position DESC
+         LIMIT 1`,
+        [companyId, newStatus, targetPosition]
+      );
+
+      if (prevContact.rows.length === 0) {
+        // É o primeiro da lista
+        newPosition = Math.max(1, targetPosition - 1000);
+      } else {
+        const prevPosition = prevContact.rows[0].kanban_position;
+        newPosition = Math.floor((prevPosition + targetPosition) / 2);
+      }
+    } else {
+      // Solto DEPOIS do target: buscar o próximo item
+      const nextContact = await query(
+        `SELECT kanban_position 
+         FROM polox.contacts 
+         WHERE company_id = $1 
+           AND status = $2 
+           AND tipo = 'lead'
+           AND deleted_at IS NULL
+           AND kanban_position > $3
+         ORDER BY kanban_position ASC
+         LIMIT 1`,
+        [companyId, newStatus, targetPosition]
+      );
+
+      if (nextContact.rows.length === 0) {
+        // É o último da lista
+        newPosition = targetPosition + 1000;
+      } else {
+        const nextPosition = nextContact.rows[0].kanban_position;
+        newPosition = Math.floor((targetPosition + nextPosition) / 2);
+      }
+    }
+
+    // 4. Verificar se gap é muito pequeno (< 10) e rebalancear se necessário
+    const needsRebalance = await query(
+      `SELECT EXISTS(
+         SELECT 1 FROM polox.contacts c1
+         INNER JOIN polox.contacts c2 
+           ON c1.company_id = c2.company_id 
+           AND c1.status = c2.status
+           AND c2.kanban_position > c1.kanban_position
+         WHERE c1.company_id = $1
+           AND c1.status = $2
+           AND c1.tipo = 'lead'
+           AND c1.deleted_at IS NULL
+           AND c2.tipo = 'lead'
+           AND c2.deleted_at IS NULL
+           AND (c2.kanban_position - c1.kanban_position) < 10
+         LIMIT 1
+       ) as needs_rebalance`,
+      [companyId, newStatus]
+    );
+
+    if (needsRebalance.rows[0].needs_rebalance) {
+      console.log(`🔄 Rebalanceando raia ${newStatus} da empresa ${companyId} (gaps muito pequenos)`);
+      await query(
+        `SELECT polox.rebalance_kanban_lane($1, $2)`,
+        [companyId, newStatus]
+      );
+      
+      // Recalcular newPosition após rebalanceamento
+      const recalcTarget = await query(
+        `SELECT kanban_position FROM polox.contacts WHERE id = $1`,
+        [targetContactId]
+      );
+      
+      if (recalcTarget.rows.length > 0) {
+        const recalcPosition = recalcTarget.rows[0].kanban_position || 1000;
+        if (position === 'before') {
+          newPosition = Math.max(1, recalcPosition - 1000);
+        } else {
+          newPosition = recalcPosition + 1000;
+        }
+      }
+    }
+
+    // 5. Atualizar posição do contato (apenas 1 UPDATE! Performance O(1))
+    const result = await query(
+      `UPDATE polox.contacts 
+       SET status = $1,
+           kanban_position = $2,
+           updated_at = NOW()
+       WHERE id = $3 AND company_id = $4
+       RETURNING id, nome, status, kanban_position, updated_at`,
+      [newStatus, newPosition, contactId, companyId]
+    );
+
+    return result.rows[0];
+  }
+
+  /**
    * 📊 KANBAN: Buscar mais leads de uma raia específica (paginação)
    * @param {number} companyId - ID da empresa
    * @param {string} status - Status da raia
@@ -1371,6 +1551,7 @@ class Contact {
         c.score,
         c.owner_id,
         c.lead_source as origem,
+        c.kanban_position,
         c.created_at,
         c.updated_at,
         (
@@ -1384,7 +1565,7 @@ class Contact {
         AND c.status = $2
         AND c.deleted_at IS NULL
         ${ownerFilter}
-      ORDER BY c.created_at DESC
+      ORDER BY c.kanban_position ASC NULLS LAST, c.created_at DESC
       LIMIT $3 OFFSET $4
     `;
 

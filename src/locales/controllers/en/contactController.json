@@ -54,15 +54,20 @@
   "kanban": {
     "summary_success": "Kanban summary loaded successfully",
     "lane_success": "Lane leads loaded successfully",
+    "position_updated": "Lead position updated successfully",
     "invalid_status": "Invalid status. Allowed values: {{valid}}",
     "invalid_limit": "Limit must be between 1 and 50",
-    "invalid_offset": "Offset must be >= 0"
+    "invalid_offset": "Offset must be >= 0",
+    "invalid_position": "Position must be an integer >= 1",
+    "target_required": "Target contact ID (targetContactId) is required",
+    "invalid_drop_position": "Drop position must be 'before' or 'after'"
   },
   "audit": {
     "contact_created": "Contact created",
     "contact_updated": "Contact updated",
     "contact_deleted": "Contact deleted",
     "lead_converted": "Lead converted to client",
-    "contact_restored": "Contact restored"
+    "contact_restored": "Contact restored",
+    "kanban_updated": "Lead position updated in Kanban"
   }
 }

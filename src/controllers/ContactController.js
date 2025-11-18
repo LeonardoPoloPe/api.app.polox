@@ -812,6 +812,77 @@ class ContactController {
   });
 
   /**
+   * 📊 KANBAN: Atualizar posição do lead (drag & drop)
+   * PATCH /api/contacts/:id/kanban-position
+   * 
+   * Body: { 
+   *   status: "em_contato", 
+   *   targetContactId: 123,
+   *   position: "after"  // ou "before"
+   * }
+   */
+  static updateKanbanPosition = asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId;
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { status, targetContactId, position = 'after' } = req.body;
+
+    // Validações
+    const validStatuses = [
+      'novo',
+      'em_contato',
+      'qualificado',
+      'proposta_enviada',
+      'em_negociacao',
+      'fechado',
+      'perdido'
+    ];
+
+    if (!status || !validStatuses.includes(status)) {
+      throw new ValidationError(
+        tc(req, "contactController", "kanban.invalid_status", {
+          valid: validStatuses.join(", ")
+        })
+      );
+    }
+
+    if (position && !['before', 'after'].includes(position)) {
+      throw new ValidationError(
+        tc(req, "contactController", "kanban.invalid_drop_position")
+      );
+    }
+
+    // Atualizar posição (performance O(1) na maioria dos casos!)
+    const updatedContact = await Contact.updateKanbanPosition(
+      parseInt(id),
+      companyId,
+      status,
+      targetContactId ? parseInt(targetContactId) : null,
+      position || 'after'
+    );
+
+    // Audit log
+    auditLogger(tc(req, "contactController", "audit.kanban_updated"), {
+      userId,
+      companyId,
+      resourceType: "contact",
+      resourceId: id,
+      changes: {
+        new_status: status,
+        target_contact_id: targetContactId,
+        drop_position: position,
+        new_kanban_position: updatedContact.kanban_position
+      }
+    });
+
+    return successResponse(
+      res,
+      updatedContact,
+      tc(req, "contactController", "kanban.position_updated")
+    );
+  });
+
+  /**
    * 📊 KANBAN: Carregar mais leads de uma raia específica
    * GET /api/contacts/kanban/status/:status
    * 

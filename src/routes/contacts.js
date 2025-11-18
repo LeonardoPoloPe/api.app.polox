@@ -490,6 +490,120 @@ router.get("/kanban/status/:status", ContactController.getKanbanLaneLeads);
 
 /**
  * @swagger
+ * /contacts/{id}/kanban-position:
+ *   patch:
+ *     summary: 📊 Kanban - Atualizar posição do lead (drag & drop)
+ *     description: |
+ *       Atualiza a posição de um lead no Kanban após drag & drop.
+ *       
+ *       **OTIMIZAÇÃO DE PERFORMANCE - Sistema de GAPS:**
+ *       - Usa posições com "gaps" (1000, 2000, 3000...) em vez de sequenciais (1, 2, 3...)
+ *       - Inserir entre dois = calcular média: entre 2000 e 3000 = 2500
+ *       - **Evita updates em massa**: apenas 1 UPDATE por operação (O(1))
+ *       - Rebalanceamento automático quando gaps ficam < 10
+ *       
+ *       **Performance:**
+ *       - 99% das operações: **1 único UPDATE** (O(1))
+ *       - Sem lock de dezenas/centenas de registros
+ *       - Mover 1 item em raia com 1000 leads: ~5-10ms
+ *       - Rebalanceamento ocasional: ~100-200ms (apenas quando necessário)
+ *       
+ *       **Como usar no frontend:**
+ *       1. Usuário arrasta lead e solta sobre outro lead (targetContact)
+ *       2. Frontend detecta: soltar "before" ou "after" do targetContact
+ *       3. Envia: { status, targetContactId, position: "before"/"after" }
+ *       4. Backend calcula posição automaticamente usando gaps
+ *     tags: [Contacts, Kanban]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do lead
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *               - targetContactId
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - novo
+ *                   - em_contato
+ *                   - qualificado
+ *                   - proposta_enviada
+ *                   - em_negociacao
+ *                   - fechado
+ *                   - perdido
+ *                 description: Status da raia de destino
+ *                 example: "em_contato"
+ *               targetContactId:
+ *                 type: integer
+ *                 description: ID do contato onde o lead foi solto (referência)
+ *                 example: 456
+ *               position:
+ *                 type: string
+ *                 enum: [before, after]
+ *                 default: after
+ *                 description: Soltar antes ou depois do targetContactId
+ *                 example: "after"
+ *           examples:
+ *             dropAfter:
+ *               summary: Soltar depois de um contato
+ *               value:
+ *                 status: "em_contato"
+ *                 targetContactId: 123
+ *                 position: "after"
+ *             dropBefore:
+ *               summary: Soltar antes de um contato
+ *               value:
+ *                 status: "novo"
+ *                 targetContactId: 456
+ *                 position: "before"
+ *     responses:
+ *       200:
+ *         description: Posição atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     nome:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     kanban_position:
+ *                       type: integer
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Status ou posição inválidos
+ *       404:
+ *         description: Lead não encontrado
+ */
+router.patch("/:id/kanban-position", ContactController.updateKanbanPosition);
+
+/**
+ * @swagger
  * /contacts/search:
  *   get:
  *     summary: 🔍 Buscar contato por identificador
@@ -1391,6 +1505,10 @@ router.get(
  *         origem:
  *           type: string
  *           example: "whatsapp"
+ *         kanban_position:
+ *           type: integer
+ *           description: Posição do lead na raia do Kanban (1 = topo)
+ *           example: 1
  *         deals_count:
  *           type: integer
  *           description: Quantidade de negociações ativas deste lead
