@@ -64,7 +64,7 @@ router.use(authenticateToken);
  *     summary: Listar contatos (leads + clientes)
  *     description: |
  *       Lista todos os contatos com filtros e paginação.
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Não é necessário (nem possível) passar o company_id como parâmetro.
  *       O sistema garante isolamento multi-tenant automático.
@@ -172,22 +172,22 @@ router.get("/", ContactController.list);
  *     summary: 📋 Listar contatos simplificados
  *     description: |
  *       Lista contatos com apenas os campos essenciais para melhor performance.
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Não é necessário (nem possível) passar o company_id como parâmetro.
- *       
+ *
  *       **Campos retornados:**
  *       - id (string)
  *       - company_id (string) - da empresa do usuário autenticado
  *       - tipo (lead/cliente)
  *       - nome
- *       
+ *
  *       **Ideal para:**
  *       - Autocompletes e selects
  *       - Listagens rápidas
  *       - Aplicações móveis
  *       - Widgets e dashboards
- *       
+ *
  *       **Segurança:**
  *       - Isolamento multi-tenant automático
  *       - Usuário só vê contatos da própria empresa
@@ -282,17 +282,17 @@ router.get("/simplified", ContactController.getSimplifiedList);
  *     summary: 📊 Kanban - Resumo inicial de todas as raias
  *     description: |
  *       Retorna resumo do Kanban com contagem e primeiros leads de cada raia.
- *       
+ *
  *       **Otimizado para 60k+ leads:**
  *       - Retorna apenas os primeiros N leads de cada raia (padrão: 10)
  *       - Inclui contagem total de cada raia para exibir badges
  *       - Performance: ~100-200ms mesmo com 60k+ registros
- *       
+ *
  *       **Uso:**
  *       - Renderização inicial do Kanban
  *       - Atualização após drag & drop
  *       - Refresh após criação/edição de lead
- *       
+ *
  *       **Raias retornadas:**
  *       - novo
  *       - em_contato
@@ -391,12 +391,12 @@ router.get("/kanban/summary", ContactController.getKanbanSummary);
  *     summary: 📊 Kanban - Carregar mais leads de uma raia específica
  *     description: |
  *       Paginação de leads dentro de uma raia específica do Kanban.
- *       
+ *
  *       **Uso:**
  *       - Botão "Carregar mais" no final de cada raia
  *       - Scroll infinito (opcional)
  *       - Busca dentro de uma raia
- *       
+ *
  *       **Performance:**
  *       - Usa índice no campo `status` para query rápida
  *       - Paginação eficiente com LIMIT/OFFSET
@@ -495,19 +495,19 @@ router.get("/kanban/status/:status", ContactController.getKanbanLaneLeads);
  *     summary: 📊 Kanban - Atualizar posição do lead (drag & drop)
  *     description: |
  *       Atualiza a posição de um lead no Kanban após drag & drop.
- *       
+ *
  *       **OTIMIZAÇÃO DE PERFORMANCE - Sistema de GAPS:**
  *       - Usa posições com "gaps" (1000, 2000, 3000...) em vez de sequenciais (1, 2, 3...)
  *       - Inserir entre dois = calcular média: entre 2000 e 3000 = 2500
  *       - **Evita updates em massa**: apenas 1 UPDATE por operação (O(1))
  *       - Rebalanceamento automático quando gaps ficam < 10
- *       
+ *
  *       **Performance:**
  *       - 99% das operações: **1 único UPDATE** (O(1))
  *       - Sem lock de dezenas/centenas de registros
  *       - Mover 1 item em raia com 1000 leads: ~5-10ms
  *       - Rebalanceamento ocasional: ~100-200ms (apenas quando necessário)
- *       
+ *
  *       **Como usar no frontend:**
  *       1. Usuário arrasta lead e solta sobre outro lead (targetContact)
  *       2. Frontend detecta: soltar "before" ou "after" do targetContact
@@ -610,7 +610,7 @@ router.patch("/:id/kanban-position", ContactController.updateKanbanPosition);
  *     description: |
  *       Busca rápida por phone/email/document.
  *       **Para Extensão WhatsApp**: verificar se contato já existe.
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Isolamento multi-tenant automático - usuário só busca contatos da própria empresa.
  *     tags: [Contacts]
@@ -691,7 +691,7 @@ router.get("/search", ContactController.searchContact);
  *     summary: Estatísticas de contatos
  *     description: |
  *       Retorna estatísticas gerais (total, leads, clientes, taxa de conversão).
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Estatísticas apenas da empresa do usuário autenticado.
  *     tags: [Contacts]
@@ -726,7 +726,7 @@ router.get("/stats", ContactController.getStats);
  *       - Se encontrar deletado: restaura e retorna
  *       - Se não encontrar: cria novo
  *       (Útil para integração WhatsApp)
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Não envie company_id no body - ele será ignorado.
  *     tags: [Contacts]
@@ -913,7 +913,7 @@ router.post(
  *     summary: Buscar contato por ID
  *     description: |
  *       Retorna detalhes completos de um contato.
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Isolamento multi-tenant automático.
  *     tags: [Contacts]
@@ -942,7 +942,7 @@ router.get("/:id", ContactController.show);
  *     summary: Criar novo contato
  *     description: |
  *       Cria um novo contato (lead ou cliente).
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Não envie company_id no body - ele será ignorado.
  *       O contato será criado automaticamente na empresa do usuário autenticado.
@@ -980,7 +980,7 @@ router.get("/:id", ContactController.show);
  *                 default: lead
  *               status:
  *                 type: string
- *                 enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido]
+ *                 enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido, descartado]
  *                 default: novo
  *                 description: "Status do contato no pipeline de vendas"
  *               origem:
@@ -1024,7 +1024,7 @@ router.post("/", rateLimiter.general, ContactController.create);
  *     summary: Atualizar contato
  *     description: |
  *       Atualiza dados de um contato existente.
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Não envie company_id no body - ele será ignorado.
  *       Isolamento multi-tenant automático.
@@ -1064,7 +1064,7 @@ router.post("/", rateLimiter.general, ContactController.create);
  *                 example: "lead"
  *               status:
  *                 type: string
- *                 enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido]
+ *                 enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido, descartado]
  *                 description: "Status do contato no pipeline de vendas"
  *                 example: "proposta_enviada"
  *               origem:
@@ -1138,7 +1138,7 @@ router.put("/:id", ContactController.update);
  *     summary: Atualizar apenas o status do contato
  *     description: |
  *       Altera apenas o status do contato sem modificar outros campos.
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Isolamento multi-tenant automático.
  *       Útil para mudanças rápidas no funil de vendas.
@@ -1206,7 +1206,7 @@ router.patch("/:id/status", ContactController.updateStatus);
  *     summary: Converter Lead em Cliente (manual)
  *     description: |
  *       Converte manualmente um lead para cliente (tipo='lead' → tipo='cliente').
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Isolamento multi-tenant automático.
  *     tags: [Contacts]
@@ -1237,7 +1237,7 @@ router.post("/:id/convert", ContactController.convertToClient);
  *     summary: Excluir contato (soft delete)
  *     description: |
  *       Exclusão lógica do contato (deleted_at = NOW()).
- *       
+ *
  *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
  *       Isolamento multi-tenant automático.
  *     tags: [Contacts]
@@ -1488,7 +1488,7 @@ router.get(
  *           example: "5511999999999"
  *         status:
  *           type: string
- *           enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido]
+ *           enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido, descartado]
  *           example: "novo"
  *         temperature:
  *           type: string

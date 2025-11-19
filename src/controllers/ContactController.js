@@ -84,7 +84,8 @@ class ContactController {
         "proposta_enviada",
         "em_negociacao",
         "fechado",
-        "perdido"
+        "perdido",
+        "descartado"
       )
       .default("novo"),
     origem: Joi.string().max(100).allow(null),
@@ -112,7 +113,8 @@ class ContactController {
       "proposta_enviada",
       "em_negociacao",
       "fechado",
-      "perdido"
+      "perdido",
+      "descartado"
     ),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()),
@@ -188,20 +190,14 @@ class ContactController {
   static getSimplifiedList = asyncHandler(async (req, res) => {
     // Usa company_id do token JWT automaticamente
     const companyId = req.user.companyId;
-    const {
-      tipo,
-      owner_id,
-      search,
-      limit = 50,
-      offset = 0,
-    } = req.query;
+    const { tipo, owner_id, search, limit = 50, offset = 0 } = req.query;
 
     const filters = {
       tipo,
       owner_id: owner_id ? parseInt(owner_id) : undefined,
       search,
-      sort_by: 'created_at',
-      sort_order: 'DESC',
+      sort_by: "created_at",
+      sort_order: "DESC",
       limit: parseInt(limit),
       offset: parseInt(offset),
     };
@@ -264,11 +260,12 @@ class ContactController {
     const companyId = req.user.companyId;
     const userId = req.user.id;
 
-    // Validação
+    // Validação - stripUnknown: true remove campos não permitidos (ex: company_id)
     const { error, value } = ContactController.createContactSchema.validate(
       req.body,
       {
         abortEarly: false,
+        stripUnknown: true,
       }
     );
 
@@ -311,11 +308,12 @@ class ContactController {
     const userId = req.user.id;
     const { id } = req.params;
 
-    // Validação
+    // Validação - stripUnknown: true remove campos não permitidos (ex: company_id)
     const { error, value } = ContactController.updateContactSchema.validate(
       req.body,
       {
         abortEarly: false,
+        stripUnknown: true,
       }
     );
 
@@ -361,6 +359,7 @@ class ContactController {
       "em_negociacao",
       "fechado",
       "perdido",
+      "descartado",
     ];
 
     if (!status) {
@@ -732,10 +731,7 @@ class ContactController {
     }
 
     if (!contact && document) {
-      contact = await Contact.findMinimalByDocument(
-        companyId,
-        document
-      );
+      contact = await Contact.findMinimalByDocument(companyId, document);
     }
 
     if (!contact) {
@@ -778,7 +774,7 @@ class ContactController {
   /**
    * 📊 KANBAN: Resumo inicial (todas as raias)
    * GET /api/contacts/kanban/summary
-   * 
+   *
    * Retorna:
    * - Contagem total de cada raia
    * - Primeiros 10 leads de cada raia
@@ -814,9 +810,9 @@ class ContactController {
   /**
    * 📊 KANBAN: Atualizar posição do lead (drag & drop)
    * PATCH /api/contacts/:id/kanban-position
-   * 
-   * Body: { 
-   *   status: "em_contato", 
+   *
+   * Body: {
+   *   status: "em_contato",
    *   targetContactId: 123,
    *   position: "after"  // ou "before"
    * }
@@ -825,28 +821,29 @@ class ContactController {
     const companyId = req.user.companyId;
     const userId = req.user.id;
     const { id } = req.params;
-    const { status, targetContactId, position = 'after' } = req.body;
+    const { status, targetContactId, position = "after" } = req.body;
 
     // Validações
     const validStatuses = [
-      'novo',
-      'em_contato',
-      'qualificado',
-      'proposta_enviada',
-      'em_negociacao',
-      'fechado',
-      'perdido'
+      "novo",
+      "em_contato",
+      "qualificado",
+      "proposta_enviada",
+      "em_negociacao",
+      "fechado",
+      "perdido",
+      "descartado",
     ];
 
     if (!status || !validStatuses.includes(status)) {
       throw new ValidationError(
         tc(req, "contactController", "kanban.invalid_status", {
-          valid: validStatuses.join(", ")
+          valid: validStatuses.join(", "),
         })
       );
     }
 
-    if (position && !['before', 'after'].includes(position)) {
+    if (position && !["before", "after"].includes(position)) {
       throw new ValidationError(
         tc(req, "contactController", "kanban.invalid_drop_position")
       );
@@ -858,7 +855,7 @@ class ContactController {
       companyId,
       status,
       targetContactId ? parseInt(targetContactId) : null,
-      position || 'after'
+      position || "after"
     );
 
     // Audit log
@@ -871,8 +868,8 @@ class ContactController {
         new_status: status,
         target_contact_id: targetContactId,
         drop_position: position,
-        new_kanban_position: updatedContact.kanban_position
-      }
+        new_kanban_position: updatedContact.kanban_position,
+      },
     });
 
     return successResponse(
@@ -885,7 +882,7 @@ class ContactController {
   /**
    * 📊 KANBAN: Carregar mais leads de uma raia específica
    * GET /api/contacts/kanban/status/:status
-   * 
+   *
    * Para o botão "Carregar mais" no final de cada raia
    * Exemplo: GET /contacts/kanban/status/novo?limit=10&offset=10
    */
@@ -896,19 +893,20 @@ class ContactController {
 
     // Validar status
     const validStatuses = [
-      'novo',
-      'em_contato',
-      'qualificado',
-      'proposta_enviada',
-      'em_negociacao',
-      'fechado',
-      'perdido'
+      "novo",
+      "em_contato",
+      "qualificado",
+      "proposta_enviada",
+      "em_negociacao",
+      "fechado",
+      "perdido",
+      "descartado",
     ];
 
     if (!validStatuses.includes(status)) {
       throw new ValidationError(
         tc(req, "contactController", "kanban.invalid_status", {
-          valid: validStatuses.join(", ")
+          valid: validStatuses.join(", "),
         })
       );
     }
