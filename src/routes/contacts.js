@@ -277,6 +277,94 @@ router.get("/simplified", ContactController.getSimplifiedList);
 
 /**
  * @swagger
+ * /contacts/check-duplicity:
+ *   get:
+ *     summary: Verificar duplicidade de contato (email/phone/document)
+ *     description: |
+ *       Verifica se já existe um contato na empresa autenticada (multi-tenant seguro) usando email, telefone ou documento.
+ *       O `company_id` é obtido automaticamente do token JWT.
+ *       Retorna uma resposta "gorda" para o front decidir entre modal de bloqueio ou reativação.
+ *
+ *       Regras:
+ *       - type=phone: busca variações (com/sem +55) automaticamente
+ *       - type=email: busca por email exato (case-insensitive se implementado no modelo)
+ *       - type=document: busca documento exato
+ *
+ *       Exemplo de resposta quando existe:
+ *       {
+ *         "exists": true,
+ *         "contact": {
+ *           "id": 150,
+ *           "name": "Danielle Bergnaum",
+ *           "type": "cliente",
+ *           "status": "fechado",
+ *           "owner_id": 5,
+ *           "owner_name": "Leonardo Polo"
+ *         }
+ *       }
+ *
+ *       Exemplo quando NÃO existe:
+ *       {
+ *         "exists": false,
+ *         "contact": null
+ *       }
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: query
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [phone, email, document]
+ *         description: Tipo do identificador a consultar
+ *       - in: query
+ *         name: value
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Valor do identificador (telefone/email/documento)
+ *     responses:
+ *       200:
+ *         description: Resultado da verificação de duplicidade
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 exists:
+ *                   type: boolean
+ *                   example: true
+ *                 contact:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 150
+ *                     name:
+ *                       type: string
+ *                       example: "Danielle Bergnaum"
+ *                     type:
+ *                       type: string
+ *                       enum: [lead, cliente]
+ *                       example: "cliente"
+ *                     status:
+ *                       type: string
+ *                       example: "fechado"
+ *                     owner_id:
+ *                       type: integer
+ *                       example: 5
+ *                     owner_name:
+ *                       type: string
+ *                       example: "Leonardo Polo"
+ */
+router.get("/check-duplicity", ContactController.checkDuplicity);
+
+/**
+ * @swagger
  * /contacts/kanban/summary:
  *   get:
  *     summary: 📊 Kanban - Resumo inicial de todas as raias

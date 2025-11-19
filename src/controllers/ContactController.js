@@ -65,6 +65,7 @@ const { successResponse, paginatedResponse } = require("../utils/response");
 const { tc } = require("../config/i18n");
 const { auditLogger } = require("../utils/logger");
 const Joi = require("joi");
+const User = require("../models/User");
 
 class ContactController {
   /**
@@ -942,6 +943,81 @@ class ContactController {
       result,
       tc(req, "contactController", "kanban.lane_success")
     );
+  });
+
+  /**
+   * 🔍 Verificar duplicidade de contato (email/phone/document)
+   * GET /api/contacts/check-duplicity?type=phone&value=5511999999999
+   *
+   * Resposta:
+   * {
+   *   "exists": true,
+   *   "contact": {
+   *      "id": 150,
+   *      "name": "Danielle",
+   *      "type": "cliente", // lead|cliente
+   *      "status": "fechado",
+   *      "owner_id": 5,
+   *      "owner_name": "Leonardo Polo"
+   *   }
+   * }
+   */
+  static checkDuplicity = asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId; // Sempre do token (multi-tenant seguro)
+    const { type, value } = req.query;
+
+    // Validação simples
+    const allowedTypes = ["phone", "email", "document"];
+    if (!type || !allowedTypes.includes(type)) {
+      throw new ValidationError(
+        tc(req, "contactController", "duplicity.invalid_type", {
+          valid: allowedTypes.join(", "),
+        })
+      );
+    }
+    if (!value || String(value).trim().length === 0) {
+      throw new ValidationError(
+        tc(req, "contactController", "duplicity.value_required")
+      );
+    }
+
+    let contact = null;
+    if (type === "phone") {
+      contact = await Contact.findByPhoneVariants(companyId, value);
+    } else if (type === "email") {
+      contact = await Contact.findMinimalByEmail(companyId, value);
+    } else if (type === "document") {
+      contact = await Contact.findMinimalByDocument(companyId, value);
+    }
+
+    if (!contact) {
+      return res.json({ exists: false, contact: null });
+    }
+
+    // Buscar nome do owner se disponível
+    let ownerName = null;
+    if (contact.owner_id) {
+      try {
+        const owner = await User.findById(contact.owner_id, companyId);
+        if (owner) {
+          ownerName = owner.name || owner.nome || owner.full_name || null;
+        }
+      } catch (e) {
+        ownerName = null; // Silencia falha de owner
+      }
+    }
+
+    return res.json({
+      exists: true,
+      contact: {
+        id: contact.id,
+        name: contact.name || contact.nome,
+        type: contact.tipo,
+        status: contact.status,
+        owner_id: contact.owner_id || null,
+        owner_name: ownerName,
+      },
+    });
   });
 }
 
