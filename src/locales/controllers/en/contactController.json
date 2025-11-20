@@ -48,6 +48,11 @@
     "phone_or_email_required": "Phone or email is required to find/create contact",
     "name_required": "Name is required to create new contact"
   },
+  "autocomplete": {
+    "success": "Search completed successfully",
+    "query_too_short": "Search term must be at least 2 characters",
+    "no_results": "No contacts found"
+  },
   "stats": {
     "success": "Statistics loaded successfully"
   },

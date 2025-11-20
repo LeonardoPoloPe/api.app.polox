@@ -365,6 +365,171 @@ router.get("/check-duplicity", ContactController.checkDuplicity);
 
 /**
  * @swagger
+ * /contacts/autocomplete:
+ *   get:
+ *     summary: 🔍 Autocomplete - Busca rápida de contatos (paginado)
+ *     description: |
+ *       Endpoint otimizado para autocomplete/typeahead de contatos.
+ *       Busca por nome, email ou telefone simultaneamente com suporte a paginação.
+ *
+ *       **IMPORTANTE:** O company_id é obtido automaticamente do token JWT.
+ *       Não é necessário (nem possível) passar o company_id como parâmetro.
+ *       O sistema garante isolamento multi-tenant automático.
+ *
+ *       **Performance:**
+ *       - Query otimizada com ILIKE indexado
+ *       - Retorna apenas campos essenciais (7 campos)
+ *       - Ordenação por relevância (começa com > contém)
+ *       - Limite máximo: 50 resultados por página
+ *       - Paginação eficiente com OFFSET/LIMIT
+ *
+ *       **Busca inteligente:**
+ *       - Se o termo parece telefone (8+ dígitos), busca também em phone
+ *       - Remove caracteres especiais do telefone automaticamente
+ *       - Suporta busca parcial (mínimo 2 caracteres)
+ *
+ *       **Uso típico:**
+ *       - Campos de busca no frontend (typeahead)
+ *       - Seleção de contatos em formulários
+ *       - Vincular contatos a deals/notas
+ *       - Scroll infinito com paginação
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/AcceptLanguage'
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *           minLength: 2
+ *         description: Termo de busca (nome, email ou telefone)
+ *         example: "maria"
+ *       - in: query
+ *         name: tipo
+ *         schema:
+ *           type: string
+ *           enum: [lead, cliente]
+ *         description: Filtrar por tipo de contato (opcional)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Número máximo de resultados por página
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 0
+ *         description: Número de registros a pular (para paginação)
+ *     responses:
+ *       200:
+ *         description: Lista paginada de contatos encontrados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Busca realizada com sucesso"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 150
+ *                       nome:
+ *                         type: string
+ *                         example: "Maria Silva"
+ *                       email:
+ *                         type: string
+ *                         example: "maria@email.com"
+ *                       phone:
+ *                         type: string
+ *                         example: "11999999999"
+ *                       status:
+ *                         type: string
+ *                         example: "novo"
+ *                       temperature:
+ *                         type: string
+ *                         enum: [frio, morno, quente]
+ *                         example: "quente"
+ *                       tipo:
+ *                         type: string
+ *                         enum: [lead, cliente]
+ *                         example: "lead"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                       description: Página atual
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 5
+ *                       description: Total de páginas disponíveis
+ *                     totalItems:
+ *                       type: integer
+ *                       example: 42
+ *                       description: Total de contatos encontrados
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                       description: Registros por página
+ *                     hasNextPage:
+ *                       type: boolean
+ *                       example: true
+ *                       description: Se há próxima página
+ *                     hasPreviousPage:
+ *                       type: boolean
+ *                       example: false
+ *                       description: Se há página anterior
+ *             example:
+ *               success: true
+ *               message: "Busca realizada com sucesso"
+ *               data:
+ *                 - id: 150
+ *                   nome: "Maria Silva Santos"
+ *                   email: "maria.silva@email.com"
+ *                   phone: "11999887766"
+ *                   status: "em_contato"
+ *                   temperature: "quente"
+ *                   tipo: "lead"
+ *                 - id: 89
+ *                   nome: "Maria Oliveira"
+ *                   email: "maria.oliveira@example.com"
+ *                   phone: "11988776655"
+ *                   status: "novo"
+ *                   temperature: "frio"
+ *                   tipo: "lead"
+ *               pagination:
+ *                 page: 1
+ *                 totalPages: 5
+ *                 totalItems: 42
+ *                 limit: 10
+ *                 hasNextPage: true
+ *                 hasPreviousPage: false
+ *       400:
+ *         description: Termo de busca muito curto (mínimo 2 caracteres)
+ *       401:
+ *         description: Token não fornecido ou inválido
+ */
+router.get("/autocomplete", ContactController.autocomplete);
+
+/**
+ * @swagger
  * /contacts/kanban/summary:
  *   get:
  *     summary: 📊 Kanban - Resumo inicial de todas as raias

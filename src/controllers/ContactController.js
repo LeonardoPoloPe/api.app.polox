@@ -753,6 +753,117 @@ class ContactController {
   });
 
   /**
+   * 🔍 AUTOCOMPLETE: Busca rápida de contatos (com paginação)
+   * GET /api/contacts/autocomplete?q=nome&tipo=lead&limit=10&offset=0
+   * 
+   * Busca otimizada para campos de autocomplete no frontend.
+   * Pesquisa por nome, email ou telefone simultaneamente.
+   * 
+   * Retorna: id, nome, email, phone, status, temperature com paginação
+   */
+  static autocomplete = asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId;
+    const { q, tipo, limit = 10, offset = 0 } = req.query;
+
+    // Validar parâmetro de busca
+    if (!q || q.trim().length < 2) {
+      throw new ValidationError(
+        tc(req, "contactController", "autocomplete.query_too_short")
+      );
+    }
+
+    const searchTerm = q.trim();
+    const searchLimit = Math.min(parseInt(limit), 50); // Máximo 50 resultados
+    const searchOffset = Math.max(parseInt(offset), 0); // Mínimo 0
+
+    // Construir query otimizada - company_id já vem do token JWT
+    const conditions = ["company_id = $1", "deleted_at IS NULL"];
+    const params = [companyId];
+    let paramIndex = 2;
+
+    // Filtro por tipo (lead/cliente) se fornecido
+    if (tipo && ["lead", "cliente"].includes(tipo)) {
+      conditions.push(`tipo = $${paramIndex}`);
+      params.push(tipo);
+      paramIndex++;
+    }
+
+    // Busca em nome, email OU telefone
+    // Remove caracteres especiais do telefone para busca
+    const phoneDigits = searchTerm.replace(/\D/g, "");
+    
+    if (phoneDigits.length >= 8) {
+      // Se parece com telefone (8+ dígitos), busca em todos os campos
+      conditions.push(`(
+        nome ILIKE $${paramIndex} OR
+        email ILIKE $${paramIndex} OR
+        phone LIKE $${paramIndex + 1}
+      )`);
+      params.push(`%${searchTerm}%`, `%${phoneDigits}%`);
+      paramIndex += 2;
+    } else {
+      // Busca normal em nome e email
+      conditions.push(`(
+        nome ILIKE $${paramIndex} OR
+        email ILIKE $${paramIndex}
+      )`);
+      params.push(`%${searchTerm}%`);
+      paramIndex++;
+    }
+
+    // Query COUNT para paginação
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM polox.contacts
+      WHERE ${conditions.join(" AND ")}
+    `;
+    
+    const countResult = await Contact.query(countSql, params);
+    const total = parseInt(countResult.rows[0].total);
+
+    // Query otimizada - apenas campos necessários
+    const sql = `
+      SELECT 
+        id,
+        nome,
+        email,
+        phone,
+        status,
+        temperature,
+        tipo
+      FROM polox.contacts
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY 
+        CASE 
+          WHEN nome ILIKE $${paramIndex} THEN 1  -- Começa com o termo
+          WHEN email ILIKE $${paramIndex} THEN 2
+          ELSE 3
+        END,
+        nome ASC
+      LIMIT $${paramIndex + 1}
+      OFFSET $${paramIndex + 2}
+    `;
+
+    params.push(`${searchTerm}%`, searchLimit, searchOffset);
+
+    const result = await Contact.query(sql, params);
+
+    return paginatedResponse(
+      res,
+      result.rows,
+      {
+        page: Math.floor(searchOffset / searchLimit) + 1,
+        totalPages: Math.ceil(total / searchLimit),
+        totalItems: total,
+        limit: searchLimit,
+        hasNextPage: searchOffset + searchLimit < total,
+        hasPreviousPage: searchOffset > 0,
+      },
+      tc(req, "contactController", "autocomplete.success")
+    );
+  });
+
+  /**
    * �📊 Estatísticas de contatos
    * GET /api/contacts/stats
    */
