@@ -2,34 +2,11 @@ service: api-app-polox
 
 frameworkVersion: "3"
 
-# Configurações de empacotamento para reduzir tamanho
+# Configurações de empacotamento otimizadas com esbuild
 package:
+  individually: false
   patterns:
-    - "!node_modules/.aws-sam/**"
-    - "!.aws-sam/**"
-    - "!.serverless/**"
-    - "!.git/**"
-    - "!docs/**"
-    - "!tests/**"
-    - "!testes-internos/**"
-    - "!scripts/**"
-    - "!migrations/**"
-    - "!sql/**"
-    - "!*.md"
-    - "!.env*"
-    - "!.DS_Store"
-    - "!*.log"
-    - "!coverage/**"
-    - "!.nyc_output/**"
-    - "!jest.config.json"
-    - "!template.yaml"
-    - "!serverless-simple.yml"
-    - "!node_modules/@types/**"
-    - "!node_modules/jest/**"
-    - "!node_modules/supertest/**"
-    - "!node_modules/nodemon/**"
-    - "src/**"
-    - "package.json"
+    - "!**"  # Excluir tudo, esbuild vai fazer o bundle
 
 provider:
   name: aws
@@ -61,6 +38,23 @@ provider:
     SENTRY_RELEASE: "api-polox@${self:provider.stage}-v1.0.0"
 
 custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: false
+    exclude:
+      - aws-sdk
+    external:
+      - pg-native
+      - i18next-fs-backend
+      - '@sentry/node'
+    target: node18
+    platform: node
+    concurrency: 10
+    packager: npm
+    packagePath: package.json
+    keepOutputDirectory: false
+
   dbConfig:
     dev:
       dbName: app_polox_dev
@@ -79,6 +73,7 @@ custom:
     ignoreJWTSignature: true
 
 plugins:
+  - serverless-esbuild
   - serverless-offline
   - serverless-dotenv-plugin
 

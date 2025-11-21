@@ -1,0 +1,82 @@
+# .serverlessignore
+# Arquivos e diretórios que devem ser ignorados no deploy
+
+# Documentação
+docs/**
+*.md
+README*
+
+# Testes
+tests/**
+tests-curl-sh/**
+testes-internos/**
+coverage/**
+.nyc_output/**
+jest.config.json
+**/*.test.js
+**/*.spec.js
+
+# Scripts e SQL
+scripts/**
+migrations/**
+sql/**
+
+# AWS e Deploy
+.aws-sam/**
+.serverless/**
+samconfig.toml
+template.yaml
+serverless-simple.yml
+
+# Git
+.git/**
+.github/**
+.gitignore
+
+# Ambiente e Configuração
+.env*
+!.env.production
+*.log
+.DS_Store
+.watchmanconfig
+
+# Node modules específicos (só precisa do runtime)
+node_modules/.cache/**
+node_modules/.pnpm/.cache/**
+node_modules/**/*.map
+node_modules/**/*.md
+node_modules/**/*.markdown
+node_modules/**/README*
+node_modules/**/CHANGELOG*
+node_modules/**/LICENSE*
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/example/**
+node_modules/**/examples/**
+node_modules/**/docs/**
+node_modules/**/.github/**
+node_modules/**/.vscode/**
+node_modules/**/*.ts
+!node_modules/**/**.d.ts
+
+# DevDependencies (não precisamos no Lambda)
+node_modules/@types/**
+node_modules/jest/**
+node_modules/supertest/**
+node_modules/nodemon/**
+node_modules/@faker-js/**
+node_modules/serverless/**
+node_modules/serverless-*/**
+
+# AWS SDK desnecessário no Lambda (já está disponível)
+node_modules/aws-sdk/**
+
+# Build artifacts
+*.lock
+pnpm-lock.yaml
+package-lock.json
+
+# Outros
+replace-passwords.txt
+test-*.ps1
+PROTECAO_IMPLEMENTADA.md
