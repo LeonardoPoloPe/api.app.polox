@@ -1,0 +1,10 @@
+{
+  "name": "api-app-polox",
+  "version": "1.0.0",
+  "description": "Packaged externals for api-app-polox",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "i18next-fs-backend": "^2.6.0"
+  }
+}
