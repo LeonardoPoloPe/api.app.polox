@@ -637,6 +637,7 @@ class Contact {
       document_type = null,
       company_name = null,
       status = "novo",
+      loss_reason = null,
       tipo = "lead",
       owner_id = null,
       lead_source = null,
@@ -720,11 +721,36 @@ class Contact {
     }
 
     return await transaction(async (client) => {
+      // Validate status value (application-level)
+      const allowedStatuses = [
+        "novo",
+        "em_contato",
+        "qualificado",
+        "perdido",
+        "descartado",
+      ];
+      const normalizedStatus = (status || "novo").toString().toLowerCase();
+      if (!allowedStatuses.includes(normalizedStatus)) {
+        throw new ValidationError(
+          "Status inválido. Permitidos: novo, em_contato, qualificado, perdido, descartado"
+        );
+      }
+
+      // Validar loss_reason quando status é perdido ou descartado
+      if (
+        ["perdido", "descartado"].includes(normalizedStatus) &&
+        (!loss_reason || loss_reason.trim().length === 0)
+      ) {
+        throw new ValidationError(
+          "Motivo de perda/descarte é obrigatório quando status = perdido ou descartado"
+        );
+      }
+
       // 1. Criar contato
       const insertQuery = `
         INSERT INTO polox.contacts (
             company_id, owner_id, tipo, nome, email, phone, document_number, document_type,
-            company_name, status, lead_source, first_contact_at, score, temperature,
+            company_name, status, loss_reason, lead_source, first_contact_at, score, temperature,
             last_purchase_date, lifetime_value_cents,
             address_street, address_number, address_complement, address_neighborhood,
             address_city, address_state, address_country, address_postal_code,
@@ -733,37 +759,22 @@ class Contact {
           )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8,
-          $9, $10, $11, $12, $13, $14,
-          $15, $16,
-          $17, $18, $19, $20,
-          $21, $22, $23, $24,
+          $9, $10, $11, $12, $13, $14, $15,
+          $16, $17,
+          $18, $19, $20, $21,
+          $22, $23, $24, $25,
           1000,
           NOW(), NOW()
         )
         RETURNING 
           id, company_id, owner_id, tipo, nome, email, phone, document_number, document_type,
-          company_name, status, lead_source, first_contact_at, score, temperature,
+          company_name, status, loss_reason, lead_source, first_contact_at, score, temperature,
           last_purchase_date, lifetime_value_cents,
           address_street, address_number, address_complement, address_neighborhood,
           address_city, address_state, address_country, address_postal_code,
           kanban_position,
           created_at, updated_at, deleted_at
       `;
-
-      // Validate status value (application-level)
-      const allowedStatuses = [
-        "novo",
-        "em_contato",
-        "qualificado",
-        "proposta_enviada",
-        "em_negociacao",
-        "fechado",
-        "perdido",
-      ];
-      const normalizedStatus = (status || "novo").toString().toLowerCase();
-      if (!allowedStatuses.includes(normalizedStatus)) {
-        throw new ValidationError("Status inválido");
-      }
 
       const result = await client.query(insertQuery, [
         companyId,
@@ -776,6 +787,7 @@ class Contact {
         document_type,
         company_name,
         normalizedStatus,
+        loss_reason,
         lead_source,
         first_contact_at,
         score,
@@ -880,6 +892,7 @@ class Contact {
       document_type,
       company_name,
       status,
+      loss_reason,
       owner_id,
       lead_source,
       score,
@@ -961,17 +974,34 @@ class Contact {
         "novo",
         "em_contato",
         "qualificado",
-        "proposta_enviada",
-        "em_negociacao",
-        "fechado",
         "perdido",
+        "descartado",
       ];
       const normalizedStatus = status.toString().toLowerCase();
       if (!allowedStatuses.includes(normalizedStatus)) {
-        throw new ValidationError("Status inválido");
+        throw new ValidationError(
+          "Status inválido. Permitidos: novo, em_contato, qualificado, perdido, descartado"
+        );
       }
+
+      // Validar loss_reason quando status é perdido ou descartado
+      if (
+        ["perdido", "descartado"].includes(normalizedStatus) &&
+        (!loss_reason || loss_reason.trim().length === 0)
+      ) {
+        throw new ValidationError(
+          "Motivo de perda/descarte é obrigatório quando status = perdido ou descartado"
+        );
+      }
+
       updates.push(`status = $${paramIndex}`);
       params.push(normalizedStatus);
+      paramIndex++;
+    }
+
+    if (loss_reason !== undefined) {
+      updates.push(`loss_reason = $${paramIndex}`);
+      params.push(loss_reason);
       paramIndex++;
     }
 

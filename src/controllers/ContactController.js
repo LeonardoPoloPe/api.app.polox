@@ -78,17 +78,17 @@ class ContactController {
     document: Joi.string().max(20).allow(null, ""),
     tipo: Joi.string().valid("lead", "cliente").default("lead"),
     status: Joi.string()
-      .valid(
-        "novo",
-        "em_contato",
-        "qualificado",
-        "proposta_enviada",
-        "em_negociacao",
-        "fechado",
-        "perdido",
-        "descartado"
-      )
+      .valid("novo", "em_contato", "qualificado", "perdido", "descartado")
       .default("novo"),
+    loss_reason: Joi.string().allow(null, "").when("status", {
+      is: Joi.string().valid("perdido", "descartado"),
+      then: Joi.string().required().min(3).messages({
+        "string.empty": "Motivo de perda/descarte é obrigatório",
+        "any.required": "Motivo de perda/descarte é obrigatório",
+        "string.min": "Motivo deve ter no mínimo 3 caracteres",
+      }),
+      otherwise: Joi.string().allow(null, ""),
+    }),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()).default([]),
     interests: Joi.array().items(Joi.number().integer().positive()).default([]),
@@ -111,12 +111,18 @@ class ContactController {
       "novo",
       "em_contato",
       "qualificado",
-      "proposta_enviada",
-      "em_negociacao",
-      "fechado",
       "perdido",
       "descartado"
     ),
+    loss_reason: Joi.string().allow(null, "").when("status", {
+      is: Joi.string().valid("perdido", "descartado"),
+      then: Joi.string().required().min(3).messages({
+        "string.empty": "Motivo de perda/descarte é obrigatório",
+        "any.required": "Motivo de perda/descarte é obrigatório",
+        "string.min": "Motivo deve ter no mínimo 3 caracteres",
+      }),
+      otherwise: Joi.string().allow(null, ""),
+    }),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()),
     interests: Joi.array().items(Joi.number().integer().positive()),
@@ -349,16 +355,13 @@ class ContactController {
     const companyId = req.user.companyId;
     const userId = req.user.id;
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, loss_reason } = req.body;
 
     // Validação do status
     const validStatuses = [
       "novo",
       "em_contato",
       "qualificado",
-      "proposta_enviada",
-      "em_negociacao",
-      "fechado",
       "perdido",
       "descartado",
     ];
@@ -377,6 +380,16 @@ class ContactController {
       );
     }
 
+    // Validar loss_reason quando status é perdido ou descartado
+    if (
+      ["perdido", "descartado"].includes(status) &&
+      (!loss_reason || loss_reason.trim().length === 0)
+    ) {
+      throw new ValidationError(
+        "Motivo de perda/descarte é obrigatório quando status = perdido ou descartado"
+      );
+    }
+
     // Verificar se contato existe
     const existingContact = await Contact.findById(id, companyId);
     if (!existingContact) {
@@ -385,9 +398,10 @@ class ContactController {
       );
     }
 
-    // Atualizar apenas o status
+    // Atualizar status e loss_reason
     const updatedContact = await Contact.update(id, companyId, {
       status: status,
+      loss_reason: loss_reason || null,
     });
 
     // Audit log
@@ -400,6 +414,7 @@ class ContactController {
       changes: {
         old_status: existingContact.status,
         new_status: status,
+        loss_reason: loss_reason || null,
       },
     });
 

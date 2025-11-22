@@ -461,6 +461,11 @@ router.get("/check-duplicity", ContactController.checkDuplicity);
  *                       status:
  *                         type: string
  *                         example: "novo"
+ *                       loss_reason:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Motivo de perda/descarte (obrigatório se status = perdido ou descartado)
+ *                         example: null
  *                       temperature:
  *                         type: string
  *                         enum: [frio, morno, quente]
@@ -550,10 +555,8 @@ router.get("/autocomplete", ContactController.autocomplete);
  *       - novo
  *       - em_contato
  *       - qualificado
- *       - proposta_enviada
- *       - em_negociacao
- *       - fechado
  *       - perdido
+ *       - descartado
  *     tags: [Contacts, Kanban]
  *     security:
  *       - bearerAuth: []
@@ -668,10 +671,8 @@ router.get("/kanban/summary", ContactController.getKanbanSummary);
  *             - novo
  *             - em_contato
  *             - qualificado
- *             - proposta_enviada
- *             - em_negociacao
- *             - fechado
  *             - perdido
+ *             - descartado
  *         description: Status da raia do Kanban
  *       - in: query
  *         name: limit
@@ -793,10 +794,8 @@ router.get("/kanban/status/:status", ContactController.getKanbanLaneLeads);
  *                   - novo
  *                   - em_contato
  *                   - qualificado
- *                   - proposta_enviada
- *                   - em_negociacao
- *                   - fechado
  *                   - perdido
+ *                   - descartado
  *                 description: Status da raia de destino
  *                 example: "em_contato"
  *               targetContactId:
@@ -1233,9 +1232,13 @@ router.get("/:id", ContactController.show);
  *                 default: lead
  *               status:
  *                 type: string
- *                 enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido, descartado]
+ *                 enum: [novo, em_contato, qualificado, perdido, descartado]
  *                 default: novo
- *                 description: "Status do contato no pipeline de vendas"
+ *                 description: "Fase de TRIAGEM do lead (identidade). Para negociações use a tabela Deal (intenção)"
+ *               loss_reason:
+ *                 type: string
+ *                 description: "Obrigatório quando status = perdido ou descartado. Motivo da perda/descarte do lead"
+ *                 example: "Sem budget no momento"
  *               origem:
  *                 type: string
  *                 example: "site"
@@ -1317,9 +1320,13 @@ router.post("/", rateLimiter.general, ContactController.create);
  *                 example: "lead"
  *               status:
  *                 type: string
- *                 enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido, descartado]
- *                 description: "Status do contato no pipeline de vendas"
- *                 example: "proposta_enviada"
+ *                 enum: [novo, em_contato, qualificado, perdido, descartado]
+ *                 description: "Fase de TRIAGEM do lead (identidade). Para negociações use a tabela Deal (intenção)"
+ *                 example: "qualificado"
+ *               loss_reason:
+ *                 type: string
+ *                 description: "Obrigatório quando status = perdido ou descartado. Motivo da perda/descarte do lead"
+ *                 example: "Cliente optou por concorrente"
  *               origem:
  *                 type: string
  *                 example: "whatsapp"
@@ -1421,12 +1428,14 @@ router.put("/:id", ContactController.update);
  *                   - novo
  *                   - em_contato
  *                   - qualificado
- *                   - proposta_enviada
- *                   - em_negociacao
- *                   - fechado
  *                   - perdido
+ *                   - descartado
  *                 description: Novo status do contato
  *                 example: "qualificado"
+ *               loss_reason:
+ *                 type: string
+ *                 description: Motivo de perda/descarte (obrigatório se status = perdido ou descartado)
+ *                 example: "Cliente decidiu não prosseguir"
  *     responses:
  *       200:
  *         description: Status do contato atualizado com sucesso
@@ -1690,6 +1699,13 @@ router.get(
  *         tipo:
  *           type: string
  *           enum: [lead, cliente]
+ *         status:
+ *           type: string
+ *           enum: [novo, em_contato, qualificado, perdido, descartado]
+ *         loss_reason:
+ *           type: string
+ *           nullable: true
+ *           description: Motivo de perda/descarte (obrigatório se status = perdido ou descartado)
  *         origem:
  *           type: string
  *         owner_id:
@@ -1741,8 +1757,13 @@ router.get(
  *           example: "5511999999999"
  *         status:
  *           type: string
- *           enum: [novo, em_contato, qualificado, proposta_enviada, em_negociacao, fechado, perdido, descartado]
+ *           enum: [novo, em_contato, qualificado, perdido, descartado]
  *           example: "novo"
+ *         loss_reason:
+ *           type: string
+ *           nullable: true
+ *           description: Motivo de perda/descarte (obrigatório se status = perdido ou descartado)
+ *           example: null
  *         temperature:
  *           type: string
  *           enum: [frio, morno, quente]
