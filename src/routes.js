@@ -72,7 +72,7 @@ const router = express.Router();
 // ==========================================
 // 📚 CONFIGURAÇÃO DO SWAGGER
 // ==========================================
-if (process.env.NODE_ENV !== "production") {
+if (process.env.ENABLE_SWAGGER === "true") {
   try {
     const swaggerUi = require("swagger-ui-express");
     const swaggerJsdoc = require("swagger-jsdoc");
