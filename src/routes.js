@@ -114,7 +114,11 @@ const router = express.Router();
  *                 payload:
  *                   type: object
  */
-router.post("/micros/send-notification", MicrosController.sendNotification);
+router.post(
+  "/micros/send-notification",
+  authenticateToken,
+  MicrosController.sendNotification
+);
 
 // ==========================================
 // 📚 CONFIGURAÇÃO DO SWAGGER
