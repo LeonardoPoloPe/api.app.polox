@@ -35,8 +35,27 @@
  * ============================================================================
  */
 
+const fastGlob = require("fast-glob");
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
+
+// =================================================================
+// 2. Definir os padrões de busca e usar fastGlob
+// O sync() é crucial e garante que a lista de arquivos seja gerada
+// antes de swaggerJsdoc() ser executado.
+// =================================================================
+const files = fastGlob.sync(
+  [
+    "./src/routes.js",
+    "./src/routes/**/*.js",
+    "./src/controllers/**/*.js",
+    "./src/handler.js",
+  ],
+  {
+    cwd: process.cwd(),
+    absolute: false,
+  }
+);
 
 // Configuração do Swagger/OpenAPI
 const swaggerOptions = {
@@ -1145,12 +1164,7 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: [
-    "./src/routes.js",
-    "./src/routes/*.js",
-    "./src/controllers/*.js",
-    "./src/handler.js",
-  ],
+  apis: [...files],
 };
 
 // Gera a especificação Swagger

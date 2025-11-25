@@ -6,7 +6,25 @@ frameworkVersion: "3"
 package:
   individually: false
   patterns:
-    - "!**"  # Excluir tudo, esbuild vai fazer o bundle
+    - "!**"
+
+    # Inclusões críticas para o Swagger e Rotas
+    - "src/routes/**"
+    - "src/controllers/**"
+    - "src/handler.js"
+    - "src/routes.js"
+    - "src/models/**" # Inclui modelos como database.js
+    - "src/middleware/**" # Inclui middlewares como auth.js
+    - "src/utils/**" # Inclui utilitários como logger.js
+    - "swagger.js"
+
+    # 💡 CORREÇÃO CRÍTICA DO ERRO 500: Incluir arquivos de tradução para i18n
+    - "src/locales/**"
+    - "src/config/**" # 💡 CRÍTICO: Correção do erro atual (database.js, i18n.js, etc.)
+
+    # Inclusões de metadados
+    - "package.json"
+    - "package-lock.json"
 
 provider:
   name: aws
@@ -47,7 +65,41 @@ custom:
     external:
       - pg-native
       - i18next-fs-backend
-      - '@sentry/node'
+      - "@sentry/node"
+      - serverless-http # 💡 CORREÇÃO CRÍTICA
+      - express # 💡 CRÍTICO: Correção do erro atual
+      - cors # 💡 CRÍTICO: Correção do erro atual
+      - helmet # 💡 CRÍTICO: Correção do erro atual
+      - bcryptjs # 💡 CRÍTICO: Correção do erro atual
+      - jsonwebtoken # 💡 CRÍTICO: Correção do erro atual
+      - pg # 💡 CRÍTICO: Adicionar módulo principal do PostgreSQL
+      - i18next
+      - dotenv
+      - express-validator
+      - joi
+      - uuid
+      - node-fetch
+      - pg-pool
+      - compression
+      - morgan
+      - multer
+      - multer-s3
+      - winston
+      - redis
+      - swagger-jsdoc
+      - swagger-ui-express
+      - moment
+      - date-fns
+      - hpp
+      - xss-clean
+      - express-mongo-sanitize
+      - express-rate-limit
+      - express-slow-down
+      - prom-client
+      - fast-glob
+      - node-cron
+      - i18next-http-middleware
+
     target: node18
     platform: node
     concurrency: 10
