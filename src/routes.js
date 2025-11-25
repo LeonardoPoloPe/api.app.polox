@@ -66,8 +66,55 @@ const usersRoutes = require("./routes/users");
 const profileRoutes = require("./routes/profiles"); // 🆕 Perfis de Acesso
 const menuRoutes = require("./routes/menus"); // 🆕 Menus Hierárquicos
 const tagsRoutes = require("./routes/tags"); // 🏷️ Sistema de Tags
-
+const MicrosController = require("./controllers/microsController");
 const router = express.Router();
+/**
+ * @swagger
+ * /micros/send-notification:
+ *   post:
+ *     summary: Publica mensagem no SNS para envio de email
+ *     tags: [Micros]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - subject
+ *               - email
+ *               - body
+ *             properties:
+ *               subject:
+ *                 type: string
+ *                 example: "Bem-vindo ao Polox!"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "usuario@exemplo.com"
+ *               body:
+ *                 type: string
+ *                 example: "Seu cadastro foi realizado com sucesso."
+ *     responses:
+ *       202:
+ *         description: Mensagem publicada com sucesso no SNS
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 messageId:
+ *                   type: string
+ *                 event:
+ *                   type: string
+ *                 timestamp:
+ *                   type: string
+ *                 payload:
+ *                   type: object
+ */
+router.post("/micros/send-notification", MicrosController.sendNotification);
 
 // ==========================================
 // 📚 CONFIGURAÇÃO DO SWAGGER

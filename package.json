@@ -59,6 +59,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.914.0",
+    "@aws-sdk/client-sns": "^3.940.0",
     "aws-sdk": "^2.1481.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
