@@ -99,6 +99,7 @@ custom:
       - fast-glob
       - node-cron
       - i18next-http-middleware
+      - nodemailer
 
     target: node18
     platform: node
