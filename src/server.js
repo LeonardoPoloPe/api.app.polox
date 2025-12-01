@@ -35,8 +35,7 @@
  * ============================================================================
  */
 
-#!/usr/bin/env node
-
+ 
 /**
  * 🚀 POLOX CRM API - SERVER
  *
@@ -151,20 +150,10 @@ async function startServer() {
     });
 
     // ==========================================
-    // CONFIGURAÇÃO DE ROTAS COM PREFIXO /api/v1/
+    // CONFIGURAÇÃO DE ROTAS
     // ==========================================
-
-    // Importar todas as rotas da API
-    const apiRoutes = require("./routes");
-
-    // Criar um router principal para a v1
-    const v1Router = express.Router();
-
-    // Montar todas as rotas de serviço DENTRO do v1Router
-    v1Router.use(apiRoutes);
-
-    // Montar o v1Router principal no 'app' com o prefixo
-    app.use("/api/v1", v1Router);
+    const routes = require("./routes");
+    app.use("/api/v1", routes);
 
     // ==========================================
     // CONFIGURAÇÃO DO SWAGGER

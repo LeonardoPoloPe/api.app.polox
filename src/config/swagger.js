@@ -97,25 +97,25 @@ const swaggerOptions = {
       process.env.NODE_ENV === "development"
         ? [
             {
-              url: "http://localhost:3000/api/v1",
+              url: "http://localhost:3000",
               description: "Servidor Local (Node.js) - Desenvolvimento",
             },
           ]
         : [
             {
-              url: "http://localhost:3000/api/v1",
+              url: "http://localhost:3000",
               description: "Servidor Local (Node.js)",
             },
             {
-              url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1",
+              url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev",
               description: "Desenvolvimento AWS Lambda",
             },
             {
-              url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1",
+              url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox",
               description: "Sandbox AWS Lambda",
             },
             {
-              url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api/v1",
+              url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod",
               description: "Produção AWS Lambda",
             },
           ],

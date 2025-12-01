@@ -71,45 +71,46 @@ const transporter = nodemailer.createTransport({
 
 // === FIM DAS CONFIGURAÇÕES SES SMTP ===
 
+
+
+// Bloco Swagger Corrigido em microsController.js
 /**
  * @swagger
  * /micros/send-notification:
  * post:
- * summary: Envia e-mail diretamente via SES SMTP (Síncrono)
  * tags: [Micros]
+ * summary: Envia notificação assíncrona (E-mail, SMS, Push)
+ * description: Endpoint usado internamente para processamento rápido de notificações.
+ * security:
+ * - bearerAuth: []
  * requestBody:
  * required: true
  * content:
  * application/json:
  * schema:
  * type: object
- * required:
- * - subject
- * - email
- * - body
+ * required: [channel, recipient, subject, body]
  * properties:
+ * channel:
+ * type: string
+ * enum: [email, sms, push]
+ * description: Canal de envio.
+ * example: email
+ * recipient:
+ * type: string
+ * description: Endereço (email, telefone ou userId) do destinatário.
+ * example: destinatario@email.com
  * subject:
  * type: string
- * example: "Bem-vindo ao Polox!"
- * email:
- * type: string
- * format: email
- * example: "usuario@exemplo.com"
+ * description: Assunto da mensagem (apenas para email).
+ * example: Sua fatura está pronta
  * body:
  * type: string
- * example: "Seu cadastro foi realizado com sucesso."
+ * description: Conteúdo da mensagem.
+ * example: Olá, sua fatura de R$ 100,00 foi gerada.
  * responses:
  * 200:
- * description: E-mail enviado com sucesso
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * success:
- * type: boolean
- * messageId:
- * type: string
+ * description: Notificação processada com sucesso.
  */
 async function sendNotification(req, res) {
   // Verifica autenticação (mantido por segurança)

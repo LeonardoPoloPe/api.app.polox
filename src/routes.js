@@ -51,6 +51,7 @@ const { authenticateToken } = require("./middleware/auth");
 // Importar rotas específicas
 const companiesRoutes = require("./routes/companies");
 const gamificationRoutes = require("./routes/gamification");
+const rouletteRoutes = require("./routes/roulette"); // 🎰 Sistema de Roletas
 const contactsRoutes = require("./routes/contacts"); // ✨ Identidade Unificada (substitui leads + clients)
 const dealsRoutes = require("./routes/deals"); // ✨ Pipeline de Vendas
 const contactNotesRoutes = require("./routes/contact-notes"); // ✨ Histórico Unificado
@@ -197,7 +198,7 @@ if (process.env.ENABLE_SWAGGER === "true") {
       res.send(swaggerSpec);
     });
 
-    // Rota para a UI do Swagger - HTML customizado para funcionar com serverless-offline
+    // Rota para a UI do Swagger - HTML customizado para evitar duplicação de prefixo
     router.get("/docs", (req, res) => {
       const html = `
 <!DOCTYPE html>
@@ -219,8 +220,13 @@ if (process.env.ENABLE_SWAGGER === "true") {
   <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
   <script>
     window.onload = function() {
+      // Corrige duplicação do prefixo /api/v1 nos endpoints
+      let docsJsonUrl = '/api/v1/docs.json';
+      if (window.location.pathname.endsWith('/docs')) {
+        docsJsonUrl = window.location.pathname.replace(/\\/docs$/, '/docs.json');
+      }
       const ui = SwaggerUIBundle({
-        url: window.location.origin + window.location.pathname.replace(/\\/docs.*$/, '') + '/docs.json',
+        url: docsJsonUrl,
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [
@@ -433,6 +439,11 @@ router.use("/companies", companiesRoutes);
 // 🎮 ROTAS DE GAMIFICAÇÃO
 // ==========================================
 router.use("/gamification", gamificationRoutes);
+
+// ==========================================
+// 🎰 ROTAS DE ROLETA (GAMIFICAÇÃO)
+// ==========================================
+router.use("/roulette", rouletteRoutes); // Rotas de roleta com admin e públicas
 
 // ==========================================
 // ✨ NOVA ARQUITETURA: IDENTIDADE VS. INTENÇÃO
