@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,21 +22,21 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
 
-const { query, transaction } = require('../config/database');
-const { ApiError, ValidationError } = require('../utils/errors');
+const { query, transaction } = require("../config/database");
+const { ApiError, ValidationError } = require("../utils/errors");
 
 /**
  * Model para log de auditoria
@@ -52,80 +52,76 @@ class AuditLogModel {
   static async create(logData, companyId) {
     const {
       user_id = null,
-      audit_action,
+      action,
       entity_type,
       entity_id,
-      entity_name = null,
-      old_values = null,
-      new_values = null,
-      ip_address = null,
-      user_agent = null,
-      session_id = null,
-      category = 'general',
-      severity = 'info',
       description = null,
-      metadata = null
     } = logData;
 
     // Validar dados obrigatórios
-    if (!audit_action) {
-      throw new ValidationError('Ação é obrigatória');
+    if (!action) {
+      throw new ValidationError("Ação é obrigatória");
     }
 
     if (!entity_type) {
-      throw new ValidationError('Tipo de entidade é obrigatório');
+      throw new ValidationError("Tipo de entidade é obrigatório");
     }
 
     if (!entity_id) {
-      throw new ValidationError('ID da entidade é obrigatório');
+      throw new ValidationError("ID da entidade é obrigatório");
     }
 
     const validActions = [
-      'create', 'read', 'update', 'delete', 'login', 'logout',
-      'export', 'import', 'send', 'receive', 'approve', 'reject',
-      'activate', 'deactivate', 'assign', 'unassign', 'upload',
-      'download', 'share', 'archive', 'restore'
+      "create",
+      "read",
+      "update",
+      "delete",
+      "login",
+      "logout",
+      "export",
+      "import",
+      "send",
+      "receive",
+      "approve",
+      "reject",
+      "activate",
+      "deactivate",
+      "assign",
+      "unassign",
+      "upload",
+      "download",
+      "share",
+      "archive",
+      "restore",
     ];
 
-    if (!validActions.includes(audit_action)) {
-      throw new ValidationError(`Ação deve ser uma de: ${validActions.join(', ')}`);
-    }
-
-    const validSeverities = ['debug', 'info', 'warning', 'error', 'critical'];
-
-    if (!validSeverities.includes(severity)) {
-      throw new ValidationError(`Severidade deve ser uma de: ${validSeverities.join(', ')}`);
+    if (!validActions.includes(action)) {
+      throw new ValidationError(
+        `Ação deve ser uma de: ${validActions.join(", ")}`
+      );
     }
 
     const insertQuery = `
       INSERT INTO polox.audit_logs (
-        company_id, user_id, audit_action, entity_type, entity_id,
-        entity_name, old_values, new_values, ip_address,
-        user_agent, session_id, category, severity, description,
-        metadata, created_at
+        company_id, user_id, audit_action, entity_type, entity_id, description, created_at
       )
-      VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8, $9,
-        $10, $11, $12, $13, $14,
-        $15, NOW()
-      )
-      RETURNING 
-        id, audit_action, entity_type, entity_id, entity_name,
-        category, severity, created_at
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      RETURNING id, audit_action, entity_type, entity_id, description, created_at
     `;
 
     try {
-      const result = await query(insertQuery, [
-        companyId, user_id, audit_action, entity_type, entity_id,
-        entity_name, old_values, new_values, ip_address,
-        user_agent, session_id, category, severity, description,
-        metadata
-      ], { companyId });
+      const result = await query(
+        insertQuery,
+        [companyId, user_id, action, entity_type, entity_id, description],
+        { companyId }
+      );
 
       return result.rows[0];
     } catch (error) {
-      throw new ApiError(500, `Erro ao criar log de auditoria: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao criar log de auditoria: ${error.message}`
+      );
     }
   }
 
@@ -148,12 +144,12 @@ class AuditLogModel {
       date_from = null,
       date_to = null,
       search = null,
-      sortBy = 'created_at',
-      sortOrder = 'DESC'
+      sortBy = "created_at",
+      sortOrder = "DESC",
     } = options;
 
     const offset = (page - 1) * limit;
-    const conditions = ['company_id = $1'];
+    const conditions = ["company_id = $1"];
     const values = [companyId];
     let paramCount = 2;
 
@@ -216,7 +212,8 @@ class AuditLogModel {
       paramCount++;
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     // Query para contar total
     const countQuery = `
@@ -243,18 +240,18 @@ class AuditLogModel {
     try {
       const [countResult, dataResult] = await Promise.all([
         query(countQuery, values, { companyId }),
-        query(selectQuery, [...values, limit, offset], { companyId })
+        query(selectQuery, [...values, limit, offset], { companyId }),
       ]);
 
       const total = parseInt(countResult.rows[0].count);
       const totalPages = Math.ceil(total / limit);
 
       return {
-        data: dataResult.rows.map(log => ({
+        data: dataResult.rows.map((log) => ({
           ...log,
           action_display: this.getActionDisplay(log.audit_action),
           severity_display: this.getSeverityDisplay(log.severity),
-          time_ago: this.getTimeAgo(log.created_at)
+          time_ago: this.getTimeAgo(log.created_at),
         })),
         pagination: {
           page,
@@ -262,11 +259,14 @@ class AuditLogModel {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
-      throw new ApiError(500, `Erro ao listar logs de auditoria: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao listar logs de auditoria: ${error.message}`
+      );
     }
   }
 
@@ -284,13 +284,13 @@ class AuditLogModel {
       action = null,
       user_id = null,
       date_from = null,
-      date_to = null
+      date_to = null,
     } = options;
 
     const conditions = [
-      'entity_type = $1',
-      'entity_id = $2',
-      'company_id = $3'
+      "entity_type = $1",
+      "entity_id = $2",
+      "company_id = $3",
     ];
     const values = [entityType, entityId, companyId];
     let paramCount = 4;
@@ -327,22 +327,27 @@ class AuditLogModel {
         u.email as user_email
       FROM polox.audit_logs al
       LEFT JOIN polox.users u ON al.user_id = u.id
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
       ORDER BY al.created_at DESC
       LIMIT $${paramCount}
     `;
 
     try {
-      const result = await query(selectQuery, [...values, limit], { companyId });
-      
-      return result.rows.map(log => ({
+      const result = await query(selectQuery, [...values, limit], {
+        companyId,
+      });
+
+      return result.rows.map((log) => ({
         ...log,
         action_display: this.getActionDisplay(log.action),
         changes: this.formatChanges(log.old_values, log.new_values),
-        time_ago: this.getTimeAgo(log.created_at)
+        time_ago: this.getTimeAgo(log.created_at),
       }));
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar logs da entidade: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar logs da entidade: ${error.message}`
+      );
     }
   }
 
@@ -360,11 +365,11 @@ class AuditLogModel {
       action = null,
       entity_type = null,
       date_from = null,
-      date_to = null
+      date_to = null,
     } = options;
 
     const offset = (page - 1) * limit;
-    const conditions = ['user_id = $1', 'company_id = $2'];
+    const conditions = ["user_id = $1", "company_id = $2"];
     const values = [userId, companyId];
     let paramCount = 3;
 
@@ -392,7 +397,7 @@ class AuditLogModel {
       paramCount++;
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const countQuery = `SELECT COUNT(*) FROM polox.audit_logs ${whereClause}`;
 
@@ -409,17 +414,17 @@ class AuditLogModel {
     try {
       const [countResult, dataResult] = await Promise.all([
         query(countQuery, values, { companyId }),
-        query(selectQuery, [...values, limit, offset], { companyId })
+        query(selectQuery, [...values, limit, offset], { companyId }),
       ]);
 
       const total = parseInt(countResult.rows[0].count);
       const totalPages = Math.ceil(total / limit);
 
       return {
-        data: dataResult.rows.map(log => ({
+        data: dataResult.rows.map((log) => ({
           ...log,
           action_display: this.getActionDisplay(log.action),
-          time_ago: this.getTimeAgo(log.created_at)
+          time_ago: this.getTimeAgo(log.created_at),
         })),
         pagination: {
           page,
@@ -427,11 +432,14 @@ class AuditLogModel {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar logs do usuário: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar logs do usuário: ${error.message}`
+      );
     }
   }
 
@@ -443,8 +451,8 @@ class AuditLogModel {
    */
   static async getStats(companyId, filters = {}) {
     const { date_from, date_to, user_id, entity_type } = filters;
-    
-    const conditions = ['company_id = $1'];
+
+    const conditions = ["company_id = $1"];
     const values = [companyId];
     let paramCount = 2;
 
@@ -472,7 +480,7 @@ class AuditLogModel {
       paramCount++;
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const statsQuery = `
       SELECT 
@@ -510,8 +518,8 @@ class AuditLogModel {
    */
   static async getStatsByAction(companyId, filters = {}) {
     const { date_from, date_to } = filters;
-    
-    const conditions = ['company_id = $1'];
+
+    const conditions = ["company_id = $1"];
     const values = [companyId];
     let paramCount = 2;
 
@@ -527,7 +535,7 @@ class AuditLogModel {
       paramCount++;
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const actionStatsQuery = `
       SELECT 
@@ -545,14 +553,17 @@ class AuditLogModel {
 
     try {
       const result = await query(actionStatsQuery, values, { companyId });
-      
-      return result.rows.map(row => ({
+
+      return result.rows.map((row) => ({
         ...row,
         action_display: this.getActionDisplay(row.action),
-        percentage: 0 // Será calculado no frontend se necessário
+        percentage: 0, // Será calculado no frontend se necessário
       }));
     } catch (error) {
-      throw new ApiError(500, `Erro ao obter estatísticas por ação: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao obter estatísticas por ação: ${error.message}`
+      );
     }
   }
 
@@ -564,8 +575,8 @@ class AuditLogModel {
    */
   static async getActivityByHour(companyId, filters = {}) {
     const { date_from, date_to } = filters;
-    
-    const conditions = ['company_id = $1'];
+
+    const conditions = ["company_id = $1"];
     const values = [companyId];
     let paramCount = 2;
 
@@ -581,7 +592,7 @@ class AuditLogModel {
       paramCount++;
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const hourStatsQuery = `
       SELECT 
@@ -597,22 +608,25 @@ class AuditLogModel {
 
     try {
       const result = await query(hourStatsQuery, values, { companyId });
-      
+
       // Preencher horas sem atividade
       const hourlyData = Array.from({ length: 24 }, (_, i) => ({
         hour: i,
         activity_count: 0,
         unique_users: 0,
-        error_count: 0
+        error_count: 0,
       }));
 
-      result.rows.forEach(row => {
+      result.rows.forEach((row) => {
         hourlyData[row.hour] = row;
       });
 
       return hourlyData;
     } catch (error) {
-      throw new ApiError(500, `Erro ao obter atividade por hora: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao obter atividade por hora: ${error.message}`
+      );
     }
   }
 
@@ -629,13 +643,13 @@ class AuditLogModel {
       severity = null,
       date_from = null,
       date_to = null,
-      ip_address = null
+      ip_address = null,
     } = options;
 
     const offset = (page - 1) * limit;
     const conditions = [
-      'company_id = $1',
-      "(action IN ('login', 'logout') OR severity IN ('error', 'warning', 'critical'))"
+      "company_id = $1",
+      "(action IN ('login', 'logout') OR severity IN ('error', 'warning', 'critical'))",
     ];
     const values = [companyId];
     let paramCount = 2;
@@ -664,7 +678,7 @@ class AuditLogModel {
       paramCount++;
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const countQuery = `SELECT COUNT(*) FROM polox.audit_logs ${whereClause}`;
 
@@ -684,19 +698,19 @@ class AuditLogModel {
     try {
       const [countResult, dataResult] = await Promise.all([
         query(countQuery, values, { companyId }),
-        query(selectQuery, [...values, limit, offset], { companyId })
+        query(selectQuery, [...values, limit, offset], { companyId }),
       ]);
 
       const total = parseInt(countResult.rows[0].count);
       const totalPages = Math.ceil(total / limit);
 
       return {
-        data: dataResult.rows.map(log => ({
+        data: dataResult.rows.map((log) => ({
           ...log,
           action_display: this.getActionDisplay(log.action),
           severity_display: this.getSeverityDisplay(log.severity),
           risk_level: this.getRiskLevel(log.action, log.severity),
-          time_ago: this.getTimeAgo(log.created_at)
+          time_ago: this.getTimeAgo(log.created_at),
         })),
         pagination: {
           page,
@@ -704,11 +718,14 @@ class AuditLogModel {
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
-      throw new ApiError(500, `Erro ao buscar logs de segurança: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao buscar logs de segurança: ${error.message}`
+      );
     }
   }
 
@@ -778,7 +795,7 @@ class AuditLogModel {
         GROUP BY u.id, u.full_name, u.email
         HAVING COUNT(DISTINCT al.ip_address) >= 3
         ORDER BY unique_ips DESC
-      `
+      `,
     };
 
     try {
@@ -797,13 +814,17 @@ class AuditLogModel {
           failed_login_sources: results.failedLogins.length,
           after_hours_users: results.afterHoursActivity.length,
           multi_ip_users: results.multipleIps.length,
-          total_risks: results.failedLogins.length + 
-                      results.afterHoursActivity.length + 
-                      results.multipleIps.length
-        }
+          total_risks:
+            results.failedLogins.length +
+            results.afterHoursActivity.length +
+            results.multipleIps.length,
+        },
       };
     } catch (error) {
-      throw new ApiError(500, `Erro ao detectar atividade suspeita: ${error.message}`);
+      throw new ApiError(
+        500,
+        `Erro ao detectar atividade suspeita: ${error.message}`
+      );
     }
   }
 
@@ -834,27 +855,27 @@ class AuditLogModel {
    */
   static getActionDisplay(action) {
     const actionMap = {
-      'create': 'Criado',
-      'read': 'Visualizado',
-      'update': 'Atualizado',
-      'delete': 'Deletado',
-      'login': 'Login',
-      'logout': 'Logout',
-      'export': 'Exportado',
-      'import': 'Importado',
-      'send': 'Enviado',
-      'receive': 'Recebido',
-      'approve': 'Aprovado',
-      'reject': 'Rejeitado',
-      'activate': 'Ativado',
-      'deactivate': 'Desativado',
-      'assign': 'Atribuído',
-      'unassign': 'Desatribuído',
-      'upload': 'Upload',
-      'download': 'Download',
-      'share': 'Compartilhado',
-      'archive': 'Arquivado',
-      'restore': 'Restaurado'
+      create: "Criado",
+      read: "Visualizado",
+      update: "Atualizado",
+      delete: "Deletado",
+      login: "Login",
+      logout: "Logout",
+      export: "Exportado",
+      import: "Importado",
+      send: "Enviado",
+      receive: "Recebido",
+      approve: "Aprovado",
+      reject: "Rejeitado",
+      activate: "Ativado",
+      deactivate: "Desativado",
+      assign: "Atribuído",
+      unassign: "Desatribuído",
+      upload: "Upload",
+      download: "Download",
+      share: "Compartilhado",
+      archive: "Arquivado",
+      restore: "Restaurado",
     };
 
     return actionMap[action] || action;
@@ -862,29 +883,31 @@ class AuditLogModel {
 
   static getSeverityDisplay(severity) {
     const severityMap = {
-      'debug': 'Debug',
-      'info': 'Informação',
-      'warning': 'Aviso',
-      'error': 'Erro',
-      'critical': 'Crítico'
+      debug: "Debug",
+      info: "Informação",
+      warning: "Aviso",
+      error: "Erro",
+      critical: "Crítico",
     };
 
     return severityMap[severity] || severity;
   }
 
   static getRiskLevel(action, severity) {
-    if (severity === 'critical') return 'high';
-    if (severity === 'error') return 'medium';
-    if (action === 'delete' || action === 'login') return 'medium';
-    return 'low';
+    if (severity === "critical") return "high";
+    if (severity === "error") return "medium";
+    if (action === "delete" || action === "login") return "medium";
+    return "low";
   }
 
   static formatChanges(oldValues, newValues) {
     if (!oldValues || !newValues) return null;
 
     try {
-      const old = typeof oldValues === 'string' ? JSON.parse(oldValues) : oldValues;
-      const new_ = typeof newValues === 'string' ? JSON.parse(newValues) : newValues;
+      const old =
+        typeof oldValues === "string" ? JSON.parse(oldValues) : oldValues;
+      const new_ =
+        typeof newValues === "string" ? JSON.parse(newValues) : newValues;
 
       const changes = [];
 
@@ -894,7 +917,7 @@ class AuditLogModel {
           changes.push({
             field: key,
             old_value: oldValue,
-            new_value: newValue
+            new_value: newValue,
           });
         }
       }
@@ -906,7 +929,7 @@ class AuditLogModel {
   }
 
   static getTimeAgo(date) {
-    if (!date) return '';
+    if (!date) return "";
 
     const now = new Date();
     const logDate = new Date(date);
@@ -927,7 +950,7 @@ class AuditLogModel {
   /**
    * Logs específicos para diferentes ações
    */
-  
+
   /**
    * Log de criação de entidade
    * @param {string} entityType - Tipo da entidade
@@ -939,21 +962,32 @@ class AuditLogModel {
    * @param {Object} requestInfo - Informações da requisição
    * @returns {Promise<Object>} Log criado
    */
-  static async logCreate(entityType, entityId, entityName, newValues, userId, companyId, requestInfo = {}) {
-    return await this.create({
-      user_id: userId,
-      action: 'create',
-      entity_type: entityType,
-      entity_id: entityId,
-      entity_name: entityName,
-      new_values: newValues,
-      ip_address: requestInfo.ip,
-      user_agent: requestInfo.userAgent,
-      session_id: requestInfo.sessionId,
-      category: 'crud',
-      severity: 'info',
-      description: `${entityType} '${entityName}' foi criado(a)`
-    }, companyId);
+  static async logCreate(
+    entityType,
+    entityId,
+    entityName,
+    newValues,
+    userId,
+    companyId,
+    requestInfo = {}
+  ) {
+    return await this.create(
+      {
+        user_id: userId,
+        action: "create",
+        entity_type: entityType,
+        entity_id: entityId,
+        entity_name: entityName,
+        new_values: newValues,
+        ip_address: requestInfo.ip,
+        user_agent: requestInfo.userAgent,
+        session_id: requestInfo.sessionId,
+        category: "crud",
+        severity: "info",
+        description: `${entityType} '${entityName}' foi criado(a)`,
+      },
+      companyId
+    );
   }
 
   /**
@@ -968,22 +1002,34 @@ class AuditLogModel {
    * @param {Object} requestInfo - Informações da requisição
    * @returns {Promise<Object>} Log criado
    */
-  static async logUpdate(entityType, entityId, entityName, oldValues, newValues, userId, companyId, requestInfo = {}) {
-    return await this.create({
-      user_id: userId,
-      action: 'update',
-      entity_type: entityType,
-      entity_id: entityId,
-      entity_name: entityName,
-      old_values: oldValues,
-      new_values: newValues,
-      ip_address: requestInfo.ip,
-      user_agent: requestInfo.userAgent,
-      session_id: requestInfo.sessionId,
-      category: 'crud',
-      severity: 'info',
-      description: `${entityType} '${entityName}' foi atualizado(a)`
-    }, companyId);
+  static async logUpdate(
+    entityType,
+    entityId,
+    entityName,
+    oldValues,
+    newValues,
+    userId,
+    companyId,
+    requestInfo = {}
+  ) {
+    return await this.create(
+      {
+        user_id: userId,
+        action: "update",
+        entity_type: entityType,
+        entity_id: entityId,
+        entity_name: entityName,
+        old_values: oldValues,
+        new_values: newValues,
+        ip_address: requestInfo.ip,
+        user_agent: requestInfo.userAgent,
+        session_id: requestInfo.sessionId,
+        category: "crud",
+        severity: "info",
+        description: `${entityType} '${entityName}' foi atualizado(a)`,
+      },
+      companyId
+    );
   }
 
   /**
@@ -995,22 +1041,31 @@ class AuditLogModel {
    * @param {Object} requestInfo - Informações da requisição
    * @returns {Promise<Object>} Log criado
    */
-  static async logLogin(userId, userEmail, success, companyId, requestInfo = {}) {
-    return await this.create({
-      user_id: success ? userId : null,
-      action: 'login',
-      entity_type: 'users',
-      entity_id: userId,
-      entity_name: userEmail,
-      ip_address: requestInfo.ip,
-      user_agent: requestInfo.userAgent,
-      session_id: requestInfo.sessionId,
-      category: 'authentication',
-      severity: success ? 'info' : 'error',
-      description: success 
-        ? `Login realizado com sucesso para ${userEmail}`
-        : `Tentativa de login falhou para ${userEmail}`
-    }, companyId);
+  static async logLogin(
+    userId,
+    userEmail,
+    success,
+    companyId,
+    requestInfo = {}
+  ) {
+    return await this.create(
+      {
+        user_id: success ? userId : null,
+        action: "login",
+        entity_type: "users",
+        entity_id: userId,
+        entity_name: userEmail,
+        ip_address: requestInfo.ip,
+        user_agent: requestInfo.userAgent,
+        session_id: requestInfo.sessionId,
+        category: "authentication",
+        severity: success ? "info" : "error",
+        description: success
+          ? `Login realizado com sucesso para ${userEmail}`
+          : `Tentativa de login falhou para ${userEmail}`,
+      },
+      companyId
+    );
   }
 }
 
