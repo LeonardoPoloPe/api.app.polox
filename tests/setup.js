@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -55,10 +55,6 @@ const { Pool } = require("pg");
 const path = require("path");
 const fs = require("fs");
 const dotenv = require("dotenv");
-const {
-  SecretsManagerClient,
-  GetSecretValueCommand,
-} = require("@aws-sdk/client-secrets-manager");
 
 // ==========================================
 // 0. CARREGAR VARIÁVEIS DE AMBIENTE DE TESTE
@@ -73,49 +69,6 @@ if (fs.existsSync(envTestPath)) {
   console.warn(
     "⚠️  [SETUP] Arquivo .env.test não encontrado, usando variáveis de ambiente"
   );
-}
-
-// Tentar carregar credenciais do AWS Secrets Manager (reutilizando DEV) se não houver DB_HOST/USER/PASSWORD
-async function loadSecretsForTestsIfNeeded() {
-  const hasDBEnv =
-    process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASSWORD;
-  if (hasDBEnv) return;
-
-  const region = process.env.AWS_REGION || "sa-east-1";
-  const secretName = process.env.SECRET_NAME_TEST || "dev-mysql";
-  try {
-    const client = new SecretsManagerClient({ region });
-    const res = await client.send(
-      new GetSecretValueCommand({ SecretId: secretName })
-    );
-    const secretString =
-      res.SecretString ||
-      Buffer.from(res.SecretBinary, "base64").toString("ascii");
-    const secrets = JSON.parse(secretString);
-
-    // Mapear chaves comuns
-    process.env.DB_HOST =
-      process.env.DB_HOST || secrets.DB_HOST || secrets.host;
-    process.env.DB_PORT =
-      process.env.DB_PORT || String(secrets.DB_PORT || secrets.port || "5432");
-    process.env.DB_USER =
-      process.env.DB_USER ||
-      secrets.DB_USER ||
-      secrets.username ||
-      secrets.user;
-    process.env.DB_PASSWORD =
-      process.env.DB_PASSWORD || secrets.DB_PASSWORD || secrets.password;
-    // Banco de teste: sempre usar app_polox_test (não o DB de DEV)
-    process.env.DB_NAME = process.env.DB_NAME || "app_polox_test";
-
-    console.log(
-      `🔐 [SETUP] Credenciais carregadas do Secrets Manager (${secretName}) para testes`
-    );
-  } catch (err) {
-    console.warn(
-      `⚠️  [SETUP] Não foi possível carregar secrets (${secretName}): ${err.message}`
-    );
-  }
 }
 
 // ==========================================
@@ -144,15 +97,8 @@ process.env.REDIS_ENABLED = "false"; // Desabilitar Redis
 // Timeout para testes longos
 jest.setTimeout(30000);
 
-// Carregar secrets (se necessário) ANTES de logar credenciais
-let secretsLoadedPromise = loadSecretsForTestsIfNeeded();
-
 console.log("🧪 [SETUP] Variáveis de ambiente configuradas para TESTE");
-console.log(
-  `   - DB (alvo): ${process.env.DB_NAME}@${
-    process.env.DB_HOST || "(aguardando secrets)"
-  }`
-);
+console.log(`   - DB (alvo): ${process.env.DB_NAME}@${process.env.DB_HOST}`);
 console.log(`   - Environment: ${process.env.NODE_ENV}`);
 
 // ==========================================
@@ -185,24 +131,7 @@ jest.mock("../src/utils/logger", () => ({
   securityLogger: jest.fn(),
 }));
 
-// Nota: AWS Secrets Manager NÃO é mockado - usamos o serviço real para testes
-// Isso garante que as credenciais sejam carregadas corretamente
-
-// Mock do Sentry (comentado - instale @sentry/node se necessário)
-// jest.mock('@sentry/node', () => ({
-//   init: jest.fn(),
-//   captureException: jest.fn(),
-//   captureMessage: jest.fn(),
-//   setContext: jest.fn(),
-//   setTag: jest.fn(),
-//   setUser: jest.fn(),
-//   Handlers: {
-//     requestHandler: () => (req, res, next) => next(),
-//     errorHandler: () => (err, req, res, next) => next(err),
-//   },
-// }));
-
-console.log("🔧 [SETUP] Mocks globais configurados (AWS, Logger)");
+console.log("🔧 [SETUP] Mocks globais configurados");
 
 // ==========================================
 // 3. POOL DE CONEXÕES GLOBAL
@@ -225,13 +154,8 @@ const createTestPool = async () => {
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
-    // Configuração SSL para RDS
-    ssl:
-      process.env.DB_HOST && process.env.DB_HOST.includes("rds.amazonaws.com")
-        ? {
-            rejectUnauthorized: false,
-          }
-        : false,
+    // SSL desabilitado para servidor não-AWS
+    ssl: false,
   });
 
   // Configurar search_path para polox schema

@@ -1,0 +1,87 @@
+# ============================================================================
+# POLO X - .dockerignore
+# ============================================================================
+# Arquivos e pastas a serem ignorados no build Docker
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testes
+tests/
+testes-internos/
+tests-curl-sh/
+coverage/
+.nyc_output/
+*.test.js
+*.spec.js
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose*.yml
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Ambiente
+.env.local
+.env.development
+.env.test
+.env.sandbox
+.env.*.local
+
+# Documentação
+docs/
+*.md
+README.md
+LICENSE
+
+# AWS
+.aws/
+
+# Temporários
+tmp/
+temp/
+*.tmp
+.cache/
+
+# Scripts de teste
+scripts/teste-carga/
+scripts/test-*.js
+
+# Uploads locais
+uploads/
+
+# Coverage
+.nyc_output/
+coverage/
+
+# Serverless
+.serverless/
+serverless*.yml
+
+# Outros
+.editorconfig
+.eslintrc*
+.prettierrc*
+replace-passwords.txt
+test-i18n.ps1

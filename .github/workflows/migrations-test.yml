@@ -1,4 +1,16 @@
-jobs:
+# ============================================================================
+# POLO X - GitHub Actions Workflow (DESABILITADO)
+# ============================================================================
+#
+# ⚠️ WORKFLOW DESABILITADO - Deploy Manual em Produção
+#
+# Motivo: Migração de AWS para servidor self-hosted
+# Deploy: Manual via docker-compose no servidor Ubuntu
+#
+# Para reativar: Descomente as linhas abaixo e configure os secrets do GitHub
+#
+# ============================================================================
+
 # name: Migrations - Test DB
 #
 # on:

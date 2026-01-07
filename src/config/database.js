@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -94,36 +94,15 @@ async function createPool() {
 
   const config = await initializeDatabase();
 
-  // Determinar host correto baseado no ambiente
-  let finalHost = config.host;
-  if (
-    process.env.NODE_ENV === "prod" ||
-    process.env.NODE_ENV === "production"
-  ) {
-    finalHost =
-      process.env.DB_PROXY_HOST ||
-      "polox-app-proxy.proxy-cd2em8e0a6ot.sa-east-1.rds.amazonaws.com";
-  }
-
   pool = new Pool({
-    host: finalHost,
+    host: config.host,
     port: config.port,
     database: config.database,
     user: config.user,
     password: config.password,
 
-    // Configurações SSL para AWS RDS
-    ssl:
-      process.env.NODE_ENV === "production"
-        ? {
-            rejectUnauthorized: true,
-            ca: require("fs").readFileSync(
-              __dirname + "/ssl/rds-ca-2019-root.pem"
-            ),
-          }
-        : {
-            rejectUnauthorized: false,
-          },
+    // SSL desabilitado para servidor não-AWS
+    ssl: false,
 
     // Configurações de pool otimizadas para Lambda (pg específicas)
     max: parseInt(process.env.DB_POOL_MAX) || 5, // Reduzido para Lambda
@@ -146,7 +125,7 @@ async function createPool() {
       // Log de conexão
       logger.info("Nova conexão PostgreSQL estabelecida", {
         database: config.database,
-        host: finalHost,
+        host: config.host,
         source: config.source,
         timestamp: new Date().toISOString(),
       });

@@ -1,0 +1,81 @@
+# ============================================================================
+# POLO X - Docker Compose (Produção com Traefik)
+# ============================================================================
+# Para rodar: docker-compose -f docker-compose.prod.yml up -d
+
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: polox-api-prod
+    restart: unless-stopped
+
+    volumes:
+      - api-logs:/app/logs
+      - api-uploads:/app/uploads
+
+    env_file:
+      - .env.production
+
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Database no host (PostgreSQL na porta 5434)
+      - DB_HOST=172.17.0.1 # IP do host Docker no Linux
+
+    networks:
+      - default
+      - proxy # Rede do Traefik
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+    labels:
+      # Habilitar Traefik
+      - "traefik.enable=true"
+
+      # Roteamento HTTPS: api.polox.com.br
+      - "traefik.http.routers.polox-api.rule=Host(`api.polox.com.br`)"
+      - "traefik.http.routers.polox-api.entrypoints=https"
+      - "traefik.http.routers.polox-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.polox-api.service=polox-api-service"
+
+      # Serviço interno (porta 3000 do Node.js)
+      - "traefik.http.services.polox-api-service.loadbalancer.server.port=3000"
+
+      # Health check
+      - "traefik.http.services.polox-api-service.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.polox-api-service.loadbalancer.healthcheck.interval=30s"
+
+      # Redirecionamento HTTP -> HTTPS
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.polox-api-http.rule=Host(`api.polox.com.br`)"
+      - "traefik.http.routers.polox-api-http.entrypoints=http"
+      - "traefik.http.routers.polox-api-http.middlewares=https-redirect"
+      - "traefik.http.routers.polox-api-http.service=polox-api-service"
+
+      # CORS Headers (opcional - descomente se necessário)
+      # - "traefik.http.routers.polox-api.middlewares=polox-cors"
+      # - "traefik.http.middlewares.polox-cors.headers.accesscontrolallowmethods=GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      # - "traefik.http.middlewares.polox-cors.headers.accesscontrolalloworiginlist=https://app.polox.com.br,https://polox.com.br"
+      # - "traefik.http.middlewares.polox-cors.headers.accesscontrolallowcredentials=true"
+      # - "traefik.http.middlewares.polox-cors.headers.accesscontrolmaxage=3600"
+
+# Volumes para persistência de dados
+volumes:
+  api-logs:
+  api-uploads:
+
+# Redes
+networks:
+  proxy:
+    external: true # Rede criada pelo Traefik
+  default:
+    driver: bridge # Rede interna do projeto

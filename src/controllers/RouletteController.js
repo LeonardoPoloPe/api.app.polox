@@ -2,18 +2,18 @@
  * ============================================================================
  * POLO X - Proprietary System / Sistema Proprietário
  * ============================================================================
- * 
+ *
  * Copyright (c) 2025 Polo X Manutencao de Equipamentos de Informatica LTDA
  * CNPJ: 55.419.946/0001-89
- * 
+ *
  * Legal Name / Razão Social: Polo X Manutencao de Equipamentos de Informatica LTDA
  * Trade Name / Nome Fantasia: Polo X
- * 
+ *
  * Developer / Desenvolvedor: Leonardo Polo Pereira
- * 
+ *
  * LICENSING STATUS / STATUS DE LICENCIAMENTO: Restricted Use / Uso Restrito
  * ALL RIGHTS RESERVED / TODOS OS DIREITOS RESERVADOS
- * 
+ *
  * This code is proprietary and confidential. It is strictly prohibited to:
  * Este código é proprietário e confidencial. É estritamente proibido:
  * - Copy, modify or distribute without express authorization
@@ -22,15 +22,15 @@
  * - Usar ou integrar em outros projetos
  * - Share with unauthorized third parties
  * - Compartilhar com terceiros não autorizados
- * 
+ *
  * Violations will be prosecuted under Brazilian Law:
  * Violações serão processadas conforme Lei Brasileira:
  * - Law 9.609/98 (Software Law / Lei do Software)
  * - Law 9.610/98 (Copyright Law / Lei de Direitos Autorais)
  * - Brazilian Penal Code Art. 184 (Código Penal Brasileiro Art. 184)
- * 
+ *
  * INPI Registration: In progress / Em andamento
- * 
+ *
  * For licensing / Para licenciamento: contato@polox.com.br
  * ============================================================================
  */
@@ -207,10 +207,53 @@ class RouletteController {
    *             properties:
    *               rouletteData:
    *                 type: object
+   *                 description: Dados da roleta
    *               prizes:
    *                 type: array
    *                 items:
    *                   type: object
+   *                   description: Dados de cada prêmio
+   *           example:
+   *             rouletteData:
+   *               name: "Roleta Black Friday"
+   *               description: "Roleta especial para promoções de Black Friday."
+   *               maxSpins: 1
+   *               isSingleUse: false
+   *               customTitle: "Gire e Ganhe!"
+   *               buttonText: "Rodar agora!"
+   *               generalColors:
+   *                 primary: "#8A2BE2"
+   *                 secondary: "#4B0082"
+   *                 background: "#FFFFFF"
+   *               backgroundImageUrl: "https://example.com/imagem-roleta.png"
+   *               startDate: "2025-11-28T00:00:00Z"
+   *               endDate: "2025-12-01T23:59:59Z"
+   *               isActive: true
+   *             prizes:
+   *               - prizeDescription: "10% de desconto"
+   *                 prizeType: "discount_percent"
+   *                 prizeValue: 10
+   *                 colorCode: "#3498DB"
+   *                 probabilityWeight: 30
+   *                 quantityAvailable: 100
+   *                 resendLinkUrl: "https://example.com/resgate/10"
+   *                 redirectionType: "url"
+   *               - prizeDescription: "Frete grátis"
+   *                 prizeType: "free_shipping"
+   *                 prizeValue: 0
+   *                 colorCode: "#2ECC71"
+   *                 probabilityWeight: 20
+   *                 quantityAvailable: 50
+   *                 resendLinkUrl: "https://example.com/resgate/frete"
+   *                 redirectionType: "url"
+   *               - prizeDescription: "Produto surpresa"
+   *                 prizeType: "gift"
+   *                 prizeValue: 0
+   *                 colorCode: "#E74C3C"
+   *                 probabilityWeight: 10
+   *                 quantityAvailable: 10
+   *                 resendLinkUrl: "https://example.com/resgate/surpresa"
+   *                 redirectionType: "url"
    *     responses:
    *       200:
    *         description: Roleta atualizada
@@ -264,7 +307,7 @@ class RouletteController {
       });
       const schema = Joi.object({
         rouletteData: Joi.object({
-          rouletteName: Joi.string().required().max(255),
+          name: Joi.string().required().max(255),
           description: Joi.string().allow(null, "").optional(),
           maxSpins: Joi.number().integer().min(1).default(1),
           isSingleUse: Joi.boolean().default(false),
@@ -279,23 +322,42 @@ class RouletteController {
         prizes: Joi.array().min(2).items(prizeSchema).required(),
       });
 
-      const { rouletteData, prizes } = await schema.validateAsync(req.body);
+      const { rouletteData, prizes } = await schema.validateAsync(req.body, {
+        stripUnknown: true,
+      });
+
+      // Normalizar dados para o formato esperado pelo Model
+      const normalizedData = {
+        name: rouletteData.name,
+        description: rouletteData.description,
+        maxSpins: rouletteData.maxSpins,
+        isSingleUse: rouletteData.isSingleUse,
+        customTitle: rouletteData.customTitle,
+        buttonText: rouletteData.buttonText,
+        generalColors: rouletteData.generalColors,
+        backgroundImageUrl: rouletteData.backgroundImageUrl,
+        startDate: rouletteData.startDate,
+        endDate: rouletteData.endDate,
+        isActive: rouletteData.isActive,
+      };
 
       // Atualiza roleta e prêmios
       const updatedRoulette = await RouletteModel.updateRoulette(
         id,
         companyId,
-        rouletteData,
+        normalizedData,
         prizes
       );
 
       // Log de auditoria
-      await AuditLogModel.logUpdate(
-        "roulette",
-        id,
-        rouletteData.rouletteName,
-        updatedRoulette,
-        userId,
+      await AuditLog.create(
+        {
+          user_id: userId,
+          action: "update",
+          entity_type: "roulette",
+          entity_id: id.toString(),
+          description: `Roleta "${rouletteData.name}" atualizada com ${prizes.length} prêmios`,
+        },
         companyId
       );
 
@@ -543,6 +605,58 @@ class RouletteController {
    * @description Gera um link único (token) para envio da roleta por um vendedor.
    * @access Private (Vendedor)
    */
+  /**
+   * @swagger
+   * /roulette/generate-link/{rouletteId}:
+   *   get:
+   *     tags:
+   *       - Roulette
+   *     summary: Gera link único para roleta
+   *     description: Gera um link único (token) para envio da roleta por um vendedor a um contato específico ou avulso.
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: rouletteId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID da roleta
+   *       - in: query
+   *         name: contactId
+   *         schema:
+   *           type: integer
+   *         description: ID do contato (opcional, para link personalizado)
+   *     responses:
+   *       200:
+   *         description: Link de roleta gerado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "Link de roleta gerado e pronto para envio."
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     token:
+   *                       type: string
+   *                       example: "550e8400-e29b-41d4-a716-446655440000"
+   *                     full_link:
+   *                       type: string
+   *                       example: "http://localhost:3000/public/roulette/550e8400-e29b-41d4-a716-446655440000"
+   *                     contact_id:
+   *                       type: integer
+   *                       nullable: true
+   *                       example: 123
+   *       404:
+   *         description: Roleta não encontrada ou inativa
+   */
   static async generateRouletteLink(req, res, next) {
     try {
       const companyId = req.user.companyId;
@@ -596,17 +710,39 @@ class RouletteController {
   // =========================================================================
 
   /**
-   * @description Resolve um token (Mock) para extrair IDs.
+   * @description Resolve um token para extrair IDs.
+   * Por enquanto, o token é o ID da roleta.
+   * Em produção, seria um JWT ou UUID mapeado em Redis/DB.
    */
   static async _resolveToken(token) {
     if (!token) throw new ApiError(400, "Token de roleta inválido.");
 
-    // **MOCK DE RESOLUÇÃO DE TOKEN** // Em um sistema real, você faria a decodificação ou busca no DB/Redis aqui.
+    // Interpreta o token como rouletteId (simplificado para MVP)
+    const rouletteId = parseInt(token);
+    if (isNaN(rouletteId)) {
+      throw new ApiError(400, "Token de roleta inválido.");
+    }
+
+    // Busca a roleta no banco para obter o company_id
+    const rouletteQuery = `
+      SELECT id, company_id, is_active 
+      FROM polox.roulettes 
+      WHERE id = $1 AND deleted_at IS NULL
+    `;
+    const { query } = require("../config/database");
+    const result = await query(rouletteQuery, [rouletteId]);
+
+    if (result.rows.length === 0 || !result.rows[0].is_active) {
+      throw new NotFoundError("Roleta não encontrada ou inativa.");
+    }
+
+    const roulette = result.rows[0];
+
     return {
-      rouletteId: 1,
-      companyId: 1,
-      vendorUserId: 10,
-      contactId: null, // Mock para simular envio avulso
+      rouletteId: roulette.id,
+      companyId: roulette.company_id,
+      vendorUserId: null, // Pode ser null para links públicos sem vendedor específico
+      contactId: null, // Sempre null para leads avulsos
     };
   }
 
@@ -634,6 +770,75 @@ class RouletteController {
    * @route POST /public/roulette/:token/spin
    * @description Roda a roleta e registra a vitória.
    * @access Public
+   */
+  /**
+   * @swagger
+   * /roulette/public/{token}/spin:
+   *   post:
+   *     tags:
+   *       - Roulette
+   *     summary: "[PÚBLICO] Roda a roleta"
+   *     description: Executa o sorteio, verifica limites e registra o resultado no histórico.
+   *     parameters:
+   *       - in: path
+   *         name: token
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Token de acesso único da roleta (por ora, o ID da roleta).
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               contactData:
+   *                 type: object
+   *                 properties:
+   *                   nome:
+   *                     type: string
+   *                     example: "Novo Lead"
+   *                   email:
+   *                     type: string
+   *                     format: email
+   *                     example: "novo@lead.com.br"
+   *                   phone:
+   *                     type: string
+   *                     example: "+5511999999999"
+   *                 description: Dados do contato (obrigatório para leads avulsos, requer nome + email OU phone)
+   *     responses:
+   *       200:
+   *         description: Roleta rodada, prêmio sorteado e código de resgate retornado.
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "Roleta rodada com sucesso! Código de resgate gerado."
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     prize:
+   *                       type: object
+   *                       description: Detalhes do prêmio ganho
+   *                     redeem_code:
+   *                       type: string
+   *                       example: "A3B7C9D2"
+   *                     spin_info:
+   *                       type: object
+   *                       description: Informações do histórico de spin
+   *       400:
+   *         description: Token inválido ou dados de contato ausentes
+   *       403:
+   *         description: Limite de rodadas atingido
+   *       404:
+   *         description: Roleta não encontrada ou inativa
    */
   static async publicSpinRoulette(req, res, next) {
     try {
@@ -728,6 +933,35 @@ class RouletteController {
    * @description Endpoint de resgate (conversão) que redireciona.
    * @access Public
    */
+  /**
+   * @swagger
+   * /roulette/public/claim/{redeemCode}:
+   *   get:
+   *     tags:
+   *       - Roulette
+   *     summary: "[PÚBLICO] Resgata o prêmio e redireciona (Conversão BI)"
+   *     description: Marca o prêmio como resgatado no banco de dados e redireciona para a URL configurada.
+   *     parameters:
+   *       - in: path
+   *         name: redeemCode
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Código único do prêmio ganho (ex. A3B7C9D2).
+   *       - in: query
+   *         name: method
+   *         schema:
+   *           type: string
+   *           default: url_redirect
+   *         description: Método de resgate (url_redirect, whatsapp, in_app)
+   *     responses:
+   *       302:
+   *         description: Redirecionamento para a URL de resgate.
+   *       400:
+   *         description: Código já resgatado ou inválido.
+   *       404:
+   *         description: Código de resgate não encontrado.
+   */
   static async publicClaimPrize(req, res, next) {
     try {
       const { redeemCode } = req.params;
@@ -747,7 +981,7 @@ class RouletteController {
       }
 
       // 2. Atualiza o status para CLAIMED
-      await RouletteModel.updateSpinToClaimed(spinHistory.id, claimedMethod);
+      await RouletteModel.markPrizeAsClaimed(redeemCode, claimedMethod);
 
       // 3. Busca o prêmio e a URL de redirecionamento
       const prizeArray = await RouletteModel.getPrizesByRouletteId(
@@ -766,8 +1000,8 @@ class RouletteController {
       // 4. Log de Auditoria (Ação de Conversão)
       await AuditLog.create(
         {
-          user_id: spinHistory.vendor_user_id,
-          action: "claim",
+          user_id: spinHistory.vendor_user_id || null,
+          action: "receive",
           entity_type: "roulette_prize",
           entity_id: spinHistory.prize_id.toString(),
           description: `Prêmio "${prize.prize_description}" resgatado (Código: ${redeemCode}, Contato ID: ${spinHistory.contact_id})`,
