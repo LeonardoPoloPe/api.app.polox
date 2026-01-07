@@ -22,8 +22,8 @@ COPY . .
 # Stage 2: Production
 FROM node:22.14.0-alpine
 
-# Instalar curl para health check
-RUN apk add --no-cache curl
+# Instalar curl e bash (necessários para health check e scripts)
+RUN apk add --no-cache curl bash
 
 # Criar usuário não-root
 RUN addgroup -g 1001 -S nodejs && \
