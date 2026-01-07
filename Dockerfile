@@ -35,14 +35,16 @@ WORKDIR /app
 COPY package*.json ./
 COPY pnpm-lock.yaml ./
 
-# Instalar apenas dependências de produção
+# Copiar scripts ANTES do install (necessário para postinstall)
+COPY scripts ./scripts
+
+# Instalar apenas dependências de produção (ignorando scripts postinstall)
 RUN npm install -g pnpm@latest && \
-    pnpm install --frozen-lockfile --prod
+    pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Copiar código da aplicação do builder
 COPY --from=builder --chown=nodejs:nodejs /app/src ./src
 COPY --from=builder --chown=nodejs:nodejs /app/migrations ./migrations
-COPY --from=builder --chown=nodejs:nodejs /app/scripts ./scripts
 
 # Criar diretórios para logs e uploads
 RUN mkdir -p /app/logs /app/uploads && \
