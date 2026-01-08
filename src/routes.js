@@ -147,16 +147,16 @@ if (process.env.ENABLE_SWAGGER === "true") {
             description: "Servidor Local (Node.js)",
           },
           {
-            url: "https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1",
-            description: "Desenvolvimento AWS Lambda",
+            url: "https://api-dev.polox.com.br/api/v1",
+            description: "Desenvolvimento (Self-Hosted)",
           },
           {
-            url: "https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1",
-            description: "Sandbox AWS Lambda",
+            url: "https://api-hml.polox.com.br/api/v1",
+            description: "Homologação (Self-Hosted)",
           },
           {
-            url: "https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api/v1",
-            description: "Produção AWS Lambda",
+            url: "https://api.polox.com.br/api/v1",
+            description: "Produção (Self-Hosted)",
           },
         ],
         components: {

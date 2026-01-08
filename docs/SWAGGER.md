@@ -4,15 +4,15 @@
 
 ### 🌐 **URLs da Documentação:**
 
-#### **🔗 Ambiente DEV (AWS):**
+#### **🔗 Ambiente DEV (Self-Hosted):**
 
-- **Interface Swagger UI**: [https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/docs](https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/docs)
-- **JSON da Especificação**: [https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/api-docs.json](https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/api-docs.json)
+- **Interface Swagger UI**: [https://api-dev.polox.com.br/api/v1/docs](https://api-dev.polox.com.br/api/v1/docs)
+- **JSON da Especificação**: [https://api-dev.polox.com.br/api/v1/docs.json](https://api-dev.polox.com.br/api/v1/docs.json)
 
-#### **🧪 Ambiente SANDBOX (AWS):**
+#### **🧪 Ambiente HML (Self-Hosted):**
 
-- **Interface Swagger UI**: [https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1/docs](https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1/docs)
-- **JSON da Especificação**: [https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1/api-docs.json](https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1/api-docs.json)
+- **Interface Swagger UI**: [https://api-hml.polox.com.br/api/v1/docs](https://api-hml.polox.com.br/api/v1/docs)
+- **JSON da Especificação**: [https://api-hml.polox.com.br/api/v1/docs.json](https://api-hml.polox.com.br/api/v1/docs.json)
 
 #### **🏠 Desenvolvimento Local:**
 
@@ -35,11 +35,11 @@ ENABLE_SWAGGER=false  # Desabilita Swagger
 
 ### 📋 **Configuração por Ambiente:**
 
-| Ambiente    | Status          | Motivo                   |
-| ----------- | --------------- | ------------------------ |
-| **DEV**     | ✅ Habilitado   | Desenvolvimento e testes |
-| **SANDBOX** | ✅ Habilitado   | Testes e validação       |
-| **PROD**    | ❌ Desabilitado | Segurança em produção    |
+| Ambiente | Status          | Motivo                   |
+| -------- | --------------- | ------------------------ |
+| **DEV**  | ✅ Habilitado   | Desenvolvimento e testes |
+| **HML**  | ✅ Habilitado   | Homologação e validação  |
+| **PROD** | ❌ Desabilitado | Segurança em produção    |
 
 ---
 
@@ -47,7 +47,7 @@ ENABLE_SWAGGER=false  # Desabilita Swagger
 
 ### 1. **Acessar a Documentação:**
 
-- **AWS DEV**: Navegue para `https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/docs`
+- **DEV**: Navegue para `https://api-dev.polox.com.br/api/v1/docs`
 - **Local**: Navegue para `http://localhost:3000/api/v1/docs`
 - A interface interativa será carregada automaticamente
 
@@ -217,20 +217,20 @@ Content-Type: application/json
 
 ### **🌐 Clique e Acesse Imediatamente:**
 
-| Ambiente    | 🔗 Swagger UI                                                                                              | 📄 OpenAPI JSON                                                                             |
-| ----------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **DEV**     | [**🚀 Abrir Swagger DEV**](https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/docs)         | [JSON](https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/api-docs.json)     |
-| **SANDBOX** | [**🧪 Abrir Swagger SANDBOX**](https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1/docs) | [JSON](https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1/api-docs.json) |
-| **PROD**    | ❌ _Desabilitado por segurança_                                                                            | ❌ _Não disponível_                                                                         |
+| Ambiente | 🔗 Swagger UI                                                        | 📄 OpenAPI JSON                                       |
+| -------- | -------------------------------------------------------------------- | ----------------------------------------------------- |
+| **DEV**  | [**🚀 Abrir Swagger DEV**](https://api-dev.polox.com.br/api/v1/docs) | [JSON](https://api-dev.polox.com.br/api/v1/docs.json) |
+| **HML**  | [**🧪 Abrir Swagger HML**](https://api-hml.polox.com.br/api/v1/docs) | [JSON](https://api-hml.polox.com.br/api/v1/docs.json) |
+| **PROD** | ❌ _Desabilitado por segurança_                                      | ❌ _Não disponível_                                   |
 
 ### **⚡ Teste Rápido:**
 
 ```bash
 # Testar se Swagger está ativo
-curl https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/docs
+curl https://api-dev.polox.com.br/api/v1/docs
 
 # Obter especificação OpenAPI
-curl https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1/api-docs.json
+curl https://api-dev.polox.com.br/api/v1/docs.json
 ```
 
 **💡 Dica**: Marque estes links nos favoritos do seu navegador para acesso rápido durante o desenvolvimento!

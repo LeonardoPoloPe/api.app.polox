@@ -46,9 +46,9 @@
 const https = require('https');
 
 const ENVIRONMENTS = {
-  dev: 'https://z8ixwvp0qe.execute-api.sa-east-1.amazonaws.com/dev/api/v1',
-  sandbox: 'https://el0qui6eqj.execute-api.sa-east-1.amazonaws.com/sandbox/api/v1',
-  prod: 'https://18yioqws85.execute-api.sa-east-1.amazonaws.com/prod/api/v1'
+  dev: 'https://api-dev.polox.com.br/api/v1',
+  hml: 'https://api-hml.polox.com.br/api/v1',
+  prod: 'https://api.polox.com.br/api/v1'
 };
 
 const CREDENTIALS = {
