@@ -1,0 +1,67 @@
+# ============================================================================
+# POLO X - Docker Compose (Desenvolvimento com Traefik)
+# ============================================================================
+# Para rodar: docker compose -f docker-compose.dev.yml up -d
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: polox-api-dev
+    restart: unless-stopped
+
+    volumes:
+      - api-logs-dev:/app/logs
+      - api-uploads-dev:/app/uploads
+
+    env_file:
+      - .env.dev
+
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      # Database no host (PostgreSQL na porta 5434)
+      - DB_HOST=172.17.0.1
+      - DB_NAME=app_polox_dev
+
+    networks:
+      - default
+      - proxy # Rede do Traefik
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+    labels:
+      # Habilitar Traefik
+      - "traefik.enable=true"
+
+      # Roteamento HTTPS: api-dev.polox.com.br
+      - "traefik.http.routers.polox-api-dev.rule=Host(`api-dev.polox.com.br`)"
+      - "traefik.http.routers.polox-api-dev.entrypoints=https"
+      - "traefik.http.routers.polox-api-dev.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.polox-api-dev.service=polox-api-dev-service"
+
+      # Serviço interno (porta 3000 do Node.js)
+      - "traefik.http.services.polox-api-dev-service.loadbalancer.server.port=3000"
+
+      # Redirect HTTP → HTTPS
+      - "traefik.http.routers.polox-api-dev-http.rule=Host(`api-dev.polox.com.br`)"
+      - "traefik.http.routers.polox-api-dev-http.entrypoints=http"
+      - "traefik.http.routers.polox-api-dev-http.middlewares=https-redirect"
+
+volumes:
+  api-logs-dev:
+    driver: local
+  api-uploads-dev:
+    driver: local
+
+networks:
+  proxy:
+    external: true
+  default:
+    driver: bridge
