@@ -133,9 +133,12 @@ const getAllowedOrigins = () => {
     prod: [
       "https://app.polox.com", // App principal
       "https://app.polox.com.br", // App principal (.br)
+      "https://app-dev.polox.com.br", // App principal (.br)
+      "https://app-hml.polox.com.br", // App principal (.br)
       "https://polox.com", // Site institucional
       "https://polox.com.br", // Site institucional (.br)
       "https://bomelo.com.br", // White-label: Bomelo (parceiro)
+      ""
       ...apiUrls, // URLs da API (Swagger)
       // 📝 Para adicionar novo white-label, adicione aqui e faça deploy
     ],
