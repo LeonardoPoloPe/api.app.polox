@@ -131,22 +131,26 @@ const getAllowedOrigins = () => {
   const origins = {
     // 🔴 PRODUÇÃO - Domínios oficiais e white-labels
     prod: [
-      "https://app-dev.polox.com.br",
+      "https://app-dev.polox.com.br", // App desenvolvimento
+      "https://app-hml.polox.com.br", // App homologação
       "https://app.polox.com", // App principal
       "https://app.polox.com.br", // App principal (.br)
+      "https://app-sandbox.polox.com.br", // App sandbox
       "https://polox.com", // Site institucional
       "https://polox.com.br", // Site institucional (.br)
       "https://bomelo.com.br", // White-label: Bomelo (parceiro)
+      "http://localhost:3000", // Dev local
+      "http://localhost:3001", // Dev local (porta alternativa)
       ...apiUrls, // URLs da API (Swagger)
       // 📝 Para adicionar novo white-label, adicione aqui e faça deploy
     ],
 
     // 🟡 SANDBOX - Ambiente de homologação/testes
     sandbox: [
-      "https://app-dev.polox.com.br",
+      "https://app-dev.polox.com.br", // App desenvolvimento
+      "https://app-hml.polox.com.br", // App homologação
       "https://app-sandbox.polox.com", // App de testes
       "https://app-sandbox.polox.com.br", // App de testes (.br)
-      "https://app-hml.polox.com.br", // App homologação
       "https://sandbox.polox.com", // Sandbox alternativo
       "https://sandbox.polox.com.br", // Sandbox alternativo (.br)
       "http://localhost:3000", // Dev local (React padrão)
@@ -157,6 +161,8 @@ const getAllowedOrigins = () => {
     // 🟢 DESENVOLVIMENTO - Apenas localhost
     dev: [
       "https://app-dev.polox.com.br", // App desenvolvimento
+      "https://app-hml.polox.com.br", // App homologação
+      "https://app-sandbox.polox.com.br", // App sandbox
       "http://localhost:3000", // React/Next.js padrão
       "http://localhost:3001", // Porta alternativa
       "http://localhost:5173", // Vite padrão
