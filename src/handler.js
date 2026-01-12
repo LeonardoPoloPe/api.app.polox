@@ -215,6 +215,12 @@ app.use(
       // Permitir requisições sem origin (como mobile apps, Postman, etc)
       if (!origin) return callback(null, true);
 
+      // Em desenvolvimento, permitir extensões do Chrome
+      if (process.env.NODE_ENV === 'dev' && origin && origin.startsWith('chrome-extension://')) {
+        logger.info(`CORS permitiu extensão do Chrome: ${origin}`);
+        return callback(null, true);
+      }
+
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
