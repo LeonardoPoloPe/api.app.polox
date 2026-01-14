@@ -373,6 +373,7 @@ class Contact {
     const {
       tipo, // 'lead' | 'cliente'
       owner_id,
+      origem, // Mapeado para lead_source
       search,
       numerotelefone,
       sort_by = "created_at",
@@ -396,6 +397,12 @@ class Contact {
     if (owner_id) {
       conditions.push(`owner_id = $${paramIndex}`);
       params.push(owner_id);
+      paramIndex++;
+    }
+
+    if (origem) {
+      conditions.push(`lead_source = $${paramIndex}`);
+      params.push(origem);
       paramIndex++;
     }
 
@@ -424,7 +431,9 @@ class Contact {
         }
 
         if (variantB && variantB !== variantA) {
-          conditions.push(`(phone = $${paramIndex} OR phone = $${paramIndex + 1})`);
+          conditions.push(
+            `(phone = $${paramIndex} OR phone = $${paramIndex + 1})`
+          );
           params.push(variantA, variantB);
           paramIndex += 2;
         } else {
@@ -1224,7 +1233,9 @@ class Contact {
           variantB = `55${onlyDigits}`;
         }
         if (variantB && variantB !== variantA) {
-          conditions.push(`(phone = $${paramIndex} OR phone = $${paramIndex + 1})`);
+          conditions.push(
+            `(phone = $${paramIndex} OR phone = $${paramIndex + 1})`
+          );
           params.push(variantA, variantB);
           paramIndex += 2;
         } else {
@@ -1284,16 +1295,16 @@ class Contact {
    */
   static async getKanbanSummary(companyId, limit = 10, ownerId = null) {
     const statuses = [
-      'novo',
-      'em_contato', 
-      'qualificado',
-      'proposta_enviada',
-      'em_negociacao',
-      'fechado',
-      'perdido'
+      "novo",
+      "em_contato",
+      "qualificado",
+      "proposta_enviada",
+      "em_negociacao",
+      "fechado",
+      "perdido",
     ];
 
-    const ownerFilter = ownerId ? 'AND owner_id = $3' : '';
+    const ownerFilter = ownerId ? "AND owner_id = $3" : "";
     const params = ownerId ? [companyId, limit, ownerId] : [companyId, limit];
 
     // 🔥 OTIMIZAÇÃO: Query simplificada (50% mais rápida)
@@ -1320,7 +1331,7 @@ class Contact {
           c.temperature,
           c.score,
           c.owner_id,
-          c.lead_source as origem,
+          c.lead_source,
           c.kanban_position,
           c.created_at,
           c.updated_at,
@@ -1341,7 +1352,7 @@ class Contact {
         rl.temperature,
         rl.score,
         rl.owner_id,
-        rl.origem,
+        rl.lead_source,
         rl.kanban_position,
         rl.created_at,
         rl.updated_at
@@ -1361,25 +1372,25 @@ class Contact {
     `;
 
     const result = await query(sql, params);
-    
+
     // 🔥 OTIMIZAÇÃO: Formatação em JS (mais rápida que json_build_object no Postgres)
     const summary = {};
-    statuses.forEach(status => {
+    statuses.forEach((status) => {
       summary[status] = { count: 0, leads: [] };
     });
 
     // Agrupar resultados por status
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
       if (!row.status) return; // Skip null status
-      
+
       // Inicializar status se necessário
       if (!summary[row.status]) {
         summary[row.status] = { count: 0, leads: [] };
       }
-      
+
       // Atualizar contagem
       summary[row.status].count = parseInt(row.total_count, 10);
-      
+
       // Adicionar lead apenas se tiver ID (LEFT JOIN pode retornar nulls)
       if (row.id) {
         summary[row.status].leads.push({
@@ -1391,10 +1402,10 @@ class Contact {
           temperature: row.temperature,
           score: row.score,
           owner_id: row.owner_id,
-          origem: row.origem,
+          lead_source: row.lead_source,
           kanban_position: row.kanban_position,
           created_at: row.created_at,
-          updated_at: row.updated_at
+          updated_at: row.updated_at,
         });
       }
     });
@@ -1404,13 +1415,13 @@ class Contact {
 
   /**
    * 📊 KANBAN: Atualizar posição do lead no Kanban (drag & drop)
-   * 
+   *
    * OTIMIZAÇÃO DE PERFORMANCE:
    * - Usa sistema de GAPS (1000, 2000, 3000...)
    * - Inserir entre dois = calcular média (ex: entre 2000 e 3000 = 2500)
    * - Evita updates em massa (O(1) em 99% dos casos)
    * - Rebalanceia automaticamente quando gaps ficam < 10
-   * 
+   *
    * @param {number} contactId - ID do contato a ser movido
    * @param {number} companyId - ID da empresa
    * @param {string} newStatus - Novo status (raia de destino)
@@ -1418,7 +1429,13 @@ class Contact {
    * @param {string} position - 'before' ou 'after' do targetContactId
    * @returns {Promise<Object>} Contato atualizado
    */
-  static async updateKanbanPosition(contactId, companyId, newStatus, targetContactId, position = 'after') {
+  static async updateKanbanPosition(
+    contactId,
+    companyId,
+    newStatus,
+    targetContactId,
+    position = "after"
+  ) {
     // 🔥 OTIMIZAÇÃO: UMA ÚNICA QUERY CTE ao invés de 4-5 queries sequenciais
     // Reduz latência de ~150ms para ~20ms
     const positionCalculationSQL = `
@@ -1455,7 +1472,7 @@ class Contact {
       contactId,
       companyId,
       targetContactId || null,
-      newStatus
+      newStatus,
     ]);
 
     if (!posResult.rows[0] || !posResult.rows[0].current_id) {
@@ -1466,7 +1483,7 @@ class Contact {
     let newPosition;
 
     // 3. Calcular nova posição usando GAPS
-    if (position === 'before') {
+    if (position === "before") {
       if (!prev_position) {
         // É o primeiro da lista
         newPosition = Math.max(1, target_pos - 1000);
@@ -1503,21 +1520,23 @@ class Contact {
     );
 
     if (needsRebalance.rows[0].needs_rebalance) {
-      console.log(`🔄 Rebalanceando raia ${newStatus} da empresa ${companyId} (gaps muito pequenos)`);
-      await query(
-        `SELECT polox.rebalance_kanban_lane($1, $2)`,
-        [companyId, newStatus]
+      console.log(
+        `🔄 Rebalanceando raia ${newStatus} da empresa ${companyId} (gaps muito pequenos)`
       );
-      
+      await query(`SELECT polox.rebalance_kanban_lane($1, $2)`, [
+        companyId,
+        newStatus,
+      ]);
+
       // Recalcular newPosition após rebalanceamento
       const recalcTarget = await query(
         `SELECT kanban_position FROM polox.contacts WHERE id = $1`,
         [targetContactId]
       );
-      
+
       if (recalcTarget.rows.length > 0) {
         const recalcPosition = recalcTarget.rows[0].kanban_position || 1000;
-        if (position === 'before') {
+        if (position === "before") {
           newPosition = Math.max(1, recalcPosition - 1000);
         } else {
           newPosition = recalcPosition + 1000;
@@ -1548,9 +1567,15 @@ class Contact {
    * @param {number|null} ownerId - Filtrar por responsável (opcional)
    * @returns {Promise<Object>} { leads: [], total: number, hasMore: boolean }
    */
-  static async getKanbanLaneLeads(companyId, status, limit = 10, offset = 0, ownerId = null) {
-    const ownerFilter = ownerId ? 'AND owner_id = $5' : '';
-    const params = ownerId 
+  static async getKanbanLaneLeads(
+    companyId,
+    status,
+    limit = 10,
+    offset = 0,
+    ownerId = null
+  ) {
+    const ownerFilter = ownerId ? "AND owner_id = $5" : "";
+    const params = ownerId
       ? [companyId, status, limit, offset, ownerId]
       : [companyId, status, limit, offset];
 
@@ -1565,7 +1590,7 @@ class Contact {
         c.temperature,
         c.score,
         c.owner_id,
-        c.lead_source as origem,
+        c.lead_source,
         c.kanban_position,
         c.created_at,
         c.updated_at
@@ -1592,19 +1617,22 @@ class Contact {
 
     const [leadsResult, countResult] = await Promise.all([
       query(leadsSQL, params),
-      query(countSQL, ownerId ? [companyId, status, ownerId] : [companyId, status])
+      query(
+        countSQL,
+        ownerId ? [companyId, status, ownerId] : [companyId, status]
+      ),
     ]);
 
     const total = parseInt(countResult.rows[0].total, 10);
     const leads = leadsResult.rows;
-    const hasMore = (offset + limit) < total;
+    const hasMore = offset + limit < total;
 
     return {
       leads,
       total,
       hasMore,
       currentOffset: offset,
-      nextOffset: hasMore ? offset + limit : null
+      nextOffset: hasMore ? offset + limit : null,
     };
   }
 }

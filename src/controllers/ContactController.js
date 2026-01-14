@@ -80,15 +80,17 @@ class ContactController {
     status: Joi.string()
       .valid("novo", "em_contato", "qualificado", "perdido", "descartado")
       .default("novo"),
-    loss_reason: Joi.string().allow(null, "").when("status", {
-      is: Joi.string().valid("perdido", "descartado"),
-      then: Joi.string().required().min(3).messages({
-        "string.empty": "Motivo de perda/descarte é obrigatório",
-        "any.required": "Motivo de perda/descarte é obrigatório",
-        "string.min": "Motivo deve ter no mínimo 3 caracteres",
+    loss_reason: Joi.string()
+      .allow(null, "")
+      .when("status", {
+        is: Joi.string().valid("perdido", "descartado"),
+        then: Joi.string().required().min(3).messages({
+          "string.empty": "Motivo de perda/descarte é obrigatório",
+          "any.required": "Motivo de perda/descarte é obrigatório",
+          "string.min": "Motivo deve ter no mínimo 3 caracteres",
+        }),
+        otherwise: Joi.string().allow(null, ""),
       }),
-      otherwise: Joi.string().allow(null, ""),
-    }),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()).default([]),
     interests: Joi.array().items(Joi.number().integer().positive()).default([]),
@@ -114,15 +116,17 @@ class ContactController {
       "perdido",
       "descartado"
     ),
-    loss_reason: Joi.string().allow(null, "").when("status", {
-      is: Joi.string().valid("perdido", "descartado"),
-      then: Joi.string().required().min(3).messages({
-        "string.empty": "Motivo de perda/descarte é obrigatório",
-        "any.required": "Motivo de perda/descarte é obrigatório",
-        "string.min": "Motivo deve ter no mínimo 3 caracteres",
+    loss_reason: Joi.string()
+      .allow(null, "")
+      .when("status", {
+        is: Joi.string().valid("perdido", "descartado"),
+        then: Joi.string().required().min(3).messages({
+          "string.empty": "Motivo de perda/descarte é obrigatório",
+          "any.required": "Motivo de perda/descarte é obrigatório",
+          "string.min": "Motivo deve ter no mínimo 3 caracteres",
+        }),
+        otherwise: Joi.string().allow(null, ""),
       }),
-      otherwise: Joi.string().allow(null, ""),
-    }),
     origem: Joi.string().max(100).allow(null),
     tags: Joi.array().items(Joi.string()),
     interests: Joi.array().items(Joi.number().integer().positive()),
@@ -286,6 +290,12 @@ class ContactController {
       value.owner_id = userId;
     }
 
+    // Mapear 'origem' para 'lead_source' (compatibilidade com banco de dados)
+    if (value.origem !== undefined) {
+      value.lead_source = value.origem;
+      delete value.origem;
+    }
+
     // Criar contato
     const contact = await Contact.create(companyId, value);
 
@@ -327,6 +337,12 @@ class ContactController {
     if (error) {
       const messages = error.details.map((d) => d.message).join(", ");
       throw new ValidationError(messages);
+    }
+
+    // Mapear 'origem' para 'lead_source' (compatibilidade com banco de dados)
+    if (value.origem !== undefined) {
+      value.lead_source = value.origem;
+      delete value.origem;
     }
 
     const contact = await Contact.update(id, companyId, value);
@@ -614,7 +630,7 @@ class ContactController {
       document,
       nome,
       tipo: "lead", // Sempre nasce como lead
-      origem: origem_lp || "api",
+      lead_source: origem_lp || "api",
       owner_id: userId, // O vendedor que criou/processou
     });
 
@@ -770,10 +786,10 @@ class ContactController {
   /**
    * 🔍 AUTOCOMPLETE: Busca rápida de contatos (com paginação)
    * GET /api/contacts/autocomplete?q=nome&tipo=lead&limit=10&offset=0
-   * 
+   *
    * Busca otimizada para campos de autocomplete no frontend.
    * Pesquisa por nome, email ou telefone simultaneamente.
-   * 
+   *
    * Retorna: id, nome, email, phone, status, temperature com paginação
    */
   static autocomplete = asyncHandler(async (req, res) => {
@@ -806,7 +822,7 @@ class ContactController {
     // Busca em nome, email OU telefone
     // Remove caracteres especiais do telefone para busca
     const phoneDigits = searchTerm.replace(/\D/g, "");
-    
+
     if (phoneDigits.length >= 8) {
       // Se parece com telefone (8+ dígitos), busca em todos os campos
       conditions.push(`(
@@ -832,7 +848,7 @@ class ContactController {
       FROM polox.contacts
       WHERE ${conditions.join(" AND ")}
     `;
-    
+
     const countResult = await Contact.query(countSql, params);
     const total = parseInt(countResult.rows[0].total);
 
